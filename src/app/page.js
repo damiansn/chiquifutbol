@@ -6,6 +6,9 @@ export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Estado para las ligas ocultas por el usuario
+  const [hiddenLeagues, setHiddenLeagues] = useState<number[]>([]);
 
   const fetchMatches = async () => {
     try {
@@ -14,11 +17,33 @@ export default function Home() {
       const json = await res.json();
       setData(json);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Cargar preferencias guardadas al iniciar
+  useEffect(() => {
+    const savedHidden = localStorage.getItem("chiquifutbol_hidden_leagues");
+    if (savedHidden) {
+      try {
+        setHiddenLeagues(JSON.parse(savedHidden));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  // Guardar preferencias cuando cambien
+  const toggleLeagueFilter = (leagueId: number) => {
+    const updated = hiddenLeagues.includes(leagueId)
+      ? hiddenLeagues.filter((id) => id !== leagueId)
+      : [...hiddenLeagues, leagueId];
+    
+    setHiddenLeagues(updated);
+    localStorage.setItem("chiquifutbol_hidden_leagues", JSON.stringify(updated));
   };
 
   useEffect(() => {
@@ -44,10 +69,11 @@ export default function Home() {
   }
 
   const leagues = data?.leagues || [];
+  const filteredLeagues = leagues.filter((league: any) => !hiddenLeagues.includes(league.id));
 
   return (
     <main style={{ maxWidth: "800px", width: "100%", margin: "0 auto", padding: "20px" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "24px" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "20px" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>
           Chiquifútbol Live
         </h1>
@@ -59,18 +85,53 @@ export default function Home() {
         </button>
       </header>
 
-      {leagues.length === 0 ? (
-        <p style={{ textAlign: "center", opacity: 0.6, padding: "40px" }}>No hay ligas disponibles en este momento.</p>
+      {/* Barra de Filtros / Chips Limpios */}
+      {leagues.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", opacity: 0.6, marginBottom: "8px", letterSpacing: "0.5px" }}>
+            Filtrar Ligas
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {leagues.map((league: any) => {
+              const isHidden = hiddenLeagues.includes(league.id);
+              return (
+                <button
+                  key={league.id}
+                  onClick={() => toggleLeagueFilter(league.id)}
+                  style={{
+                    background: isHidden ? "rgba(128,128,128,0.08)" : "rgba(16, 185, 129, 0.12)",
+                    color: isHidden ? "inherit" : "#10b981",
+                    border: isHidden ? "1px solid rgba(128,128,128,0.2)" : "1px solid rgba(16, 185, 129, 0.3)",
+                    padding: "6px 12px",
+                    borderRadius: "9999px",
+                    fontSize: "0.8rem",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    opacity: isHidden ? 0.5 : 1,
+                    textDecoration: isHidden ? "line-through" : "none",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  {league.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {filteredLeagues.length === 0 ? (
+        <p style={{ textAlign: "center", opacity: 0.6, padding: "40px" }}>No hay torneos seleccionados para mostrar.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          {leagues.map((league) => (
+          {filteredLeagues.map((league: any) => (
             <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "12px", overflow: "hidden" }}>
               <div style={{ background: "rgba(128,128,128,0.1)", padding: "12px 16px", fontWeight: "bold", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
                 <span>{league.name} ({league.country_name})</span>
               </div>
 
               <div>
-                {league.games.map((game) => {
+                {league.games.map((game: any) => {
                   const isLive = game.status.enum === 2;
                   const isFinished = game.status.enum === 3;
                   const isProgrammed = game.status.enum === 1;
@@ -80,7 +141,7 @@ export default function Home() {
                       
                       {/* Equipos, Goles y Autores */}
                       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {game.teams.map((team, idx) => {
+                        {game.teams.map((team: any, idx: number) => {
                           const score = game.scores ? game.scores[idx] : "-";
                           const goals = team.goals || [];
 
@@ -96,7 +157,7 @@ export default function Home() {
                               {/* Lista de goleadores del equipo */}
                               {goals.length > 0 && (
                                 <div style={{ fontSize: "0.8rem", opacity: 0.7, display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "2px" }}>
-                                  {goals.map((goal, gIdx) => (
+                                  {goals.map((goal: any, gIdx: number) => (
                                     <span key={gIdx} style={{ background: "rgba(128,128,128,0.08)", padding: "1px 6px", borderRadius: "4px" }}>
                                       ⚽ {goal.player_name || goal.player_sname} ({goal.time_to_display || `${goal.time}'`})
                                       {goal.goal_type === "Pen" && " (P)"}
@@ -131,7 +192,7 @@ export default function Home() {
 
                         {game.tv_networks && game.tv_networks.length > 0 && (
                           <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>
-                            📺 {game.tv_networks.map(tv => tv.name).join(", ")}
+                            📺 {game.tv_networks.map((tv: any) => tv.name).join(", ")}
                           </div>
                         )}
                       </div>
