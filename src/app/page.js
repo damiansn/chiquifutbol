@@ -225,18 +225,26 @@ export default function Home() {
 
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", fontWeight: "bold", fontSize: "1.1rem", gap: "8px", minWidth: "120px", textAlign: "center" }}>
                             
-                            {/* Tarjeta Roja Local */}
+                            {/* Tarjetas Rojas Local */}
                             {teamA.red_cards > 0 && (
-                              <span style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title={`${teamA.red_cards} expulsado(s)`}></span>
+                              <div style={{ display: "flex", gap: "2px" }}>
+                                {Array.from({ length: teamA.red_cards }).map((_, i) => (
+                                  <span key={`red-a-${i}`} style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title="Expulsado"></span>
+                                ))}
+                              </div>
                             )}
 
-                            <span>{scoreA}</span>
+                            <span style={{ color: isLive ? "#ef4444" : "inherit" }}>{scoreA}</span>
                             <span style={{ opacity: 0.4 }}>–</span>
-                            <span>{scoreB}</span>
+                            <span style={{ color: isLive ? "#ef4444" : "inherit" }}>{scoreB}</span>
 
-                            {/* Tarjeta Roja Visitante */}
+                            {/* Tarjetas Rojas Visitante */}
                             {teamB.red_cards > 0 && (
-                              <span style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title={`${teamB.red_cards} expulsado(s)`}></span>
+                              <div style={{ display: "flex", gap: "2px" }}>
+                                {Array.from({ length: teamB.red_cards }).map((_, i) => (
+                                  <span key={`red-b-${i}`} style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title="Expulsado"></span>
+                                ))}
+                              </div>
                             )}
 
                           </div>
