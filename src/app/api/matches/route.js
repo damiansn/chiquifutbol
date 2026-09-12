@@ -6,7 +6,7 @@ const redis = new Redis(process.env.REDIS_URL);
 
 export async function GET() {
     try {
-        const cachedData = await redis.get('live_matches');
+        const cachedData = await redis.get('live_matches_v2');
         if (cachedData) {
             return NextResponse.json(JSON.parse(cachedData));
         }
@@ -28,7 +28,7 @@ export async function GET() {
         }));
 
         // Guardamos en caché por 60 segundos (para que refresque más rápido los goles en vivo)
-        await redis.set('live_matches', JSON.stringify(matches), 'EX', 60);
+        await redis.set('live_matches_v2', JSON.stringify(matches), 'EX', 60);
 
         return NextResponse.json(matches);
 
