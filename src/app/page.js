@@ -163,9 +163,18 @@ export default function Home() {
           {filteredLeagues.map((league) => (
             <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", overflow: "hidden" }}>
               
-              {/* Cabecera de la Liga */}
-              <div style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", padding: "10px 16px", fontWeight: "bold", borderBottom: "1px solid rgba(128,128,128,0.2)", fontSize: "0.9rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>🏆 {league.name} ({league.country_name})</span>
+              {/* Cabecera de la Liga (Enlace a Promiedos) */}
+              <div style={{ background: "rgba(16, 185, 129, 0.15)", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
+                <a 
+                  href={`http://www.promiedos.com.ar/league/${league.url_name}/${league.country_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#10b981", padding: "10px 16px", fontWeight: "bold", fontSize: "0.9rem", display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none" }}
+                  title="Ver posiciones en Promiedos"
+                >
+                  <span>🏆 {league.name} ({league.country_name})</span>
+                  <span style={{ fontSize: "0.75rem", fontWeight: "normal", opacity: 0.8 }}>Ver posiciones ↗</span>
+                </a>
               </div>
 
               <div>
