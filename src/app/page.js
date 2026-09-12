@@ -82,9 +82,19 @@ export default function Home() {
   return (
     <main style={{ maxWidth: "950px", width: "100%", margin: "0 auto", padding: "20px" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>
-          Chiquifútbol Live
-        </h1>
+        
+        {/* Header con el logo cargado desde public/logo.svg */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img 
+            src="/logo.svg" 
+            alt="Chiquifútbol Logo" 
+            style={{ height: "38px", width: "auto", display: "block" }} 
+          />
+          <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", margin: 0 }}>
+            Chiquifútbol Live
+          </h1>
+        </div>
+
         <button 
           onClick={() => { setLoading(true); fetchMatches(); }} 
           style={{ background: "transparent", border: "1px solid currentColor", padding: "6px 14px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" }}
