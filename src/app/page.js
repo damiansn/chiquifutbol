@@ -1,129 +1,149 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from "react";
 
 export default function Home() {
-  const [matches, setMatches] = useState([]);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedTournaments, setSelectedTournaments] = useState([]);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetch('/api/matches')
-      .then((res) => res.json())
-      .then((data) => {
-        setMatches(data);
-        // Seleccionamos todos los torneos por defecto automáticamente al recibir los datos
-        const uniqueTournaments = [...new Set(data.map((m) => m.tournament))];
-        setSelectedTournaments(uniqueTournaments);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error cargando partidos:', err);
-        setLoading(false);
-      });
-  }, []);
-
-  const allTournaments = [...new Set(matches.map((m) => m.tournament))];
-
-  const handleCheckboxChange = (tournament) => {
-    if (selectedTournaments.includes(tournament)) {
-      setSelectedTournaments(selectedTournaments.filter((t) => t !== tournament));
-    } else {
-      setSelectedTournaments([...selectedTournaments, tournament]);
+  const fetchMatches = async () => {
+    try {
+      const res = await fetch("/api/matches");
+      if (!res.ok) throw new Error("Error al obtener los partidos");
+      const json = await res.json();
+      setData(json);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredMatches = matches.filter((m) => selectedTournaments.includes(m.tournament));
+  useEffect(() => {
+    fetchMatches();
+    const interval = setInterval(fetchMatches, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (loading) {
     return (
-      <main style={{ padding: '20px', fontFamily: 'sans-serif', textAlign: 'center' }}>
-        <p>Cargando partidos en vivo...</p>
-      </main>
+      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <p>Cargando partidos...</p>
+      </div>
     );
   }
 
-  return (
-    <main style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        
-        {/* Encabezado */}
-        <header style={{ backgroundColor: '#1b4d3e', color: 'white', padding: '15px', borderRadius: '8px', textAlign: 'center', marginBottom: '20px' }}>
-          <h1 style={{ margin: 0, fontSize: '24px' }}>⚽ ChiquiFútbol</h1>
-          <p style={{ margin: '5px 0 0 0', fontSize: '14px', opacity: 0.8 }}>Resultados en vivo</p>
-        </header>
-
-        {/* Panel de Filtros por Torneo */}
-        {allTournaments.length > 0 && (
-          <div style={{ backgroundColor: 'white', padding: '12px 15px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>Filtrar torneos:</span>
-              <button 
-                onClick={() => setSelectedTournaments(selectedTournaments.length === allTournaments.length ? [] : allTournaments)}
-                style={{ background: 'none', border: 'none', color: '#1b4d3e', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                {selectedTournaments.length === allTournaments.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-              {allTournaments.map((tourney) => (
-                <label key={tourney} style={{ display: 'flex', alignItems: 'center', fontSize: '14px', cursor: 'pointer', gap: '6px', color: '#333' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedTournaments.includes(tourney)}
-                    onChange={() => handleCheckboxChange(tourney)}
-                    style={{ cursor: 'pointer', accentColor: '#1b4d3e' }}
-                  />
-                  {tourney}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Listado de Partidos */}
-        {filteredMatches.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#666' }}>No hay partidos seleccionados o disponibles para mostrar.</p>
-        ) : (
-          filteredMatches.map((match) => (
-            <div key={match.match_id} style={{ backgroundColor: 'white', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              
-              <div style={{ backgroundColor: '#e9ecef', padding: '8px 12px', fontSize: '13px', fontWeight: 'bold', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{match.tournament}</span>
-                <span style={{ color: match.status === 'LIVE' ? '#d9534f' : '#666' }}>
-                  {match.status === 'LIVE' ? `🔴 ${match.minute}` : match.minute}
-                </span>
-              </div>
-
-              <div style={{ padding: '12px 15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '16px' }}>
-                  <span style={{ fontWeight: match.home_team.goals > match.away_team.goals ? 'bold' : 'normal', color: '#222' }}>
-                    {match.home_team.name}
-                  </span>
-                  <span style={{ backgroundColor: '#f1f3f5', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', color: '#222' }}>
-                    {match.home_team.goals}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '16px' }}>
-                  <span style={{ fontWeight: match.away_team.goals > match.home_team.goals ? 'bold' : 'normal', color: '#222' }}>
-                    {match.away_team.name}
-                  </span>
-                  <span style={{ backgroundColor: '#f1f3f5', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold', color: '#222' }}>
-                    {match.away_team.goals}
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: '#f8f9fa', padding: '6px 15px', fontSize: '12px', color: '#666', borderTop: '1px solid #eee' }}>
-                Estadio: {match.stadium}
-              </div>
-
-            </div>
-          ))
-        )}
-
+  if (error) {
+    return (
+      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#ef4444" }}>
+        <p>Error: {error}</p>
       </div>
+    );
+  }
+
+  const leagues = data?.leagues || [];
+
+  return (
+    <main style={{ maxWidth: "800px", width: "100%", margin: "0 auto", padding: "20px" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "24px" }}>
+        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>
+          Chiquifútbol Live
+        </h1>
+        <button 
+          onClick={() => { setLoading(true); fetchMatches(); }} 
+          style={{ background: "transparent", border: "1px solid currentColor", padding: "6px 14px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" }}
+        >
+          Actualizar
+        </button>
+      </header>
+
+      {leagues.length === 0 ? (
+        <p style={{ textAlign: "center", opacity: 0.6, padding: "40px" }}>No hay ligas disponibles en este momento.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {leagues.map((league) => (
+            <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "12px", overflow: "hidden" }}>
+              <div style={{ background: "rgba(128,128,128,0.1)", padding: "12px 16px", fontWeight: "bold", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
+                <span>{league.name} ({league.country_name})</span>
+              </div>
+
+              <div>
+                {league.games.map((game) => {
+                  const isLive = game.status.enum === 2;
+                  const isFinished = game.status.enum === 3;
+                  const isProgrammed = game.status.enum === 1;
+
+                  return (
+                    <div key={game.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "16px", borderBottom: "1px solid rgba(128,128,128,0.1)", gap: "16px" }}>
+                      
+                      {/* Equipos, Goles y Autores */}
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {game.teams.map((team, idx) => {
+                          const score = game.scores ? game.scores[idx] : "-";
+                          const goals = team.goals || [];
+
+                          return (
+                            <div key={team.id} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontWeight: 500 }}>{team.name}</span>
+                                <span style={{ fontWeight: "bold", background: "rgba(128,128,128,0.15)", padding: "2px 10px", borderRadius: "4px", minWidth: "1.5rem", textAlign: "center" }}>
+                                  {score}
+                                </span>
+                              </div>
+
+                              {/* Lista de goleadores del equipo */}
+                              {goals.length > 0 && (
+                                <div style={{ fontSize: "0.8rem", opacity: 0.7, display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "2px" }}>
+                                  {goals.map((goal, gIdx) => (
+                                    <span key={gIdx} style={{ background: "rgba(128,128,128,0.08)", padding: "1px 6px", borderRadius: "4px" }}>
+                                      ⚽ {goal.player_name || goal.player_sname} ({goal.time_to_display || `${goal.time}'`})
+                                      {goal.goal_type === "Pen" && " (P)"}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Estado y TV */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", textAlign: "right" }}>
+                        <div>
+                          {isLive && (
+                            <span style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", fontSize: "0.75rem", padding: "4px 10px", borderRadius: "9999px", fontWeight: "bold" }}>
+                              {game.game_time_status_to_display || "EN VIVO"}
+                            </span>
+                          )}
+                          {isFinished && (
+                            <span style={{ background: "rgba(128, 128, 128, 0.15)", opacity: 0.7, fontSize: "0.75rem", padding: "4px 10px", borderRadius: "9999px", fontWeight: "600" }}>
+                              Finalizado
+                            </span>
+                          )}
+                          {isProgrammed && (
+                            <span style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6", fontSize: "0.75rem", padding: "4px 10px", borderRadius: "9999px", fontWeight: "600" }}>
+                              {game.start_time}
+                            </span>
+                          )}
+                        </div>
+
+                        {game.tv_networks && game.tv_networks.length > 0 && (
+                          <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>
+                            📺 {game.tv_networks.map(tv => tv.name).join(", ")}
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
