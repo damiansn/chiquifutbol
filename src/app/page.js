@@ -223,10 +223,22 @@ export default function Home() {
                             <span style={{ fontWeight: 500 }}>{teamA.name}</span>
                           </div>
 
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", fontWeight: "bold", fontSize: "1.1rem", gap: "8px", minWidth: "80px", textAlign: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", fontWeight: "bold", fontSize: "1.1rem", gap: "8px", minWidth: "120px", textAlign: "center" }}>
+                            
+                            {/* Tarjeta Roja Local */}
+                            {teamA.red_cards > 0 && (
+                              <span style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title={`${teamA.red_cards} expulsado(s)`}></span>
+                            )}
+
                             <span>{scoreA}</span>
                             <span style={{ opacity: 0.4 }}>–</span>
                             <span>{scoreB}</span>
+
+                            {/* Tarjeta Roja Visitante */}
+                            {teamB.red_cards > 0 && (
+                              <span style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title={`${teamB.red_cards} expulsado(s)`}></span>
+                            )}
+
                           </div>
 
                           <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "10px", textAlign: "left" }}>
