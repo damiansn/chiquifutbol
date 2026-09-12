@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 export default function Home() {
   const [data, setData] = useState(null);
@@ -163,18 +164,16 @@ export default function Home() {
           {filteredLeagues.map((league) => (
             <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", overflow: "hidden" }}>
               
-              {/* Cabecera de la Liga (Enlace a Promiedos) */}
+              {/* Cabecera de la Liga (Enlace interno a la vista de posiciones propia) */}
               <div style={{ background: "rgba(16, 185, 129, 0.15)", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
-                <a 
-                  href={`http://www.promiedos.com.ar/league/${league.url_name}/${league.country_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link 
+                  href={`/posiciones?leagueId=${league.id}&name=${encodeURIComponent(league.name)}`}
                   style={{ color: "#10b981", padding: "10px 16px", fontWeight: "bold", fontSize: "0.9rem", display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none" }}
-                  title="Ver posiciones en Promiedos"
+                  title="Ver tabla de posiciones"
                 >
                   <span>🏆 {league.name} ({league.country_name})</span>
                   <span style={{ fontSize: "0.75rem", fontWeight: "normal", opacity: 0.8 }}>Ver posiciones ↗</span>
-                </a>
+                </Link>
               </div>
 
               <div>

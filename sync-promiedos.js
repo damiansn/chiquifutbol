@@ -6,7 +6,7 @@ dotenv.config({ path: '.env.local' });
 
 const redis = new Redis(process.env.REDIS_URL);
 
-async function sincronizarPartidos() {
+async function sincronizarDatos() {
     console.log("Iniciando navegador para consultar Promiedos...");
     
     const browser = await puppeteer.launch({ 
@@ -20,22 +20,36 @@ async function sincronizarPartidos() {
     try {
         await page.goto('https://www.promiedos.com.ar', { waitUntil: 'networkidle2', timeout: 60000 });
 
+        // 1. Sincronizar Partidos
         const partidosJson = await page.evaluate(async () => {
             try {
-                const response = await fetch('https://api.promiedos.com.ar/games/today');
-                return await response.json();
+                const res = await fetch('https://api.promiedos.com.ar/games/today');
+                return await res.json();
             } catch (e) {
                 return { error: e.message };
             }
         });
 
-        if (!partidosJson || partidosJson.error) {
-            console.error("Error al obtener el JSON de la API:", partidosJson?.error || "Vacío");
-            return;
+        if (partidosJson && !partidosJson.error) {
+            await redis.set('chiquifutbol_matches_v2', JSON.stringify(partidosJson));
+            console.log("¡Partidos sincronizados en Redis!");
         }
 
-        await redis.set('chiquifutbol_matches_v2', JSON.stringify(partidosJson));
-        console.log("¡Datos de la API sincronizados en Redis correctamente!");
+        // 2. Sincronizar Posiciones (Ejemplo para Liga Profesional - ID 1 u otro endpoint de posiciones de su API)
+        const standingsJson = await page.evaluate(async () => {
+            try {
+                // Ajustar el endpoint según la estructura de la API de Promiedos para posiciones
+                const res = await fetch('https://api.promiedos.com.ar/league/standings/1'); 
+                return await res.json();
+            } catch (e) {
+                return { error: e.message };
+            }
+        });
+
+        if (standingsJson && !standingsJson.error) {
+            await redis.set('chiquifutbol_standings', JSON.stringify(standingsJson));
+            console.log("¡Tabla de posiciones sincronizada en Redis!");
+        }
 
     } catch (error) {
         console.error("Error durante el proceso con Puppeteer:", error);
@@ -44,5 +58,5 @@ async function sincronizarPartidos() {
     }
 }
 
-sincronizarPartidos();
-setInterval(sincronizarPartidos, 60000);
+sincronizarDatos();
+setInterval(sincronizarDatos, 60000);
