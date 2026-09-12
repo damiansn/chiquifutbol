@@ -6,69 +6,69 @@ const redis = new Redis(process.env.REDIS_URL);
 
 export async function GET() {
     try {
-        const cachedData = await redis.get('live_matches_v2');
+        // Usamos una nueva clave en Redis para los datos de Promiedos
+        const cachedData = await redis.get('promiedos_live_v1');
         if (cachedData) {
             return NextResponse.json(JSON.parse(cachedData));
         }
 
-        const response = await axios.get('https://api.football-data.org/v4/matches', {
-            headers: { 'X-Auth-Token': process.env.FOOTBALL_API_KEY }
-        });
-
-        const now = new Date();
-
-        const matches = response.data.matches.map((m) => {
-            let statusText = 'Próximamente';
-            let minuteStr = '';
-
-            if (m.status === 'IN_PLAY') {
-                // Calculamos los minutos transcurridos desde que empezó el partido
-                const startDate = new Date(m.utcDate);
-                const diffMinutes = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60));
-                
-                // Ajuste básico por si arranca el segundo tiempo (sumando 15 min de entretiempo aprox o usando el tiempo corrido)
-                let calculatedMinute = diffMinutes;
-                if (calculatedMinute > 45 && calculatedMinute < 60) {
-                    calculatedMinute = 45; // Entretiempo o descuento del 1ero
-                } else if (calculatedMinute >= 60) {
-                    calculatedMinute = diffMinutes - 15; // Descontando el entretiempo para el segundo tiempo
-                }
-                
-                if (calculatedMinute < 1) calculatedMinute = 1;
-                if (calculatedMinute > 90) calculatedMinute = 90;
-
-                minuteStr = `${calculatedMinute}'`;
-                statusText = minuteStr;
-            } else if (m.status === 'PAUSED') {
-                minuteStr = 'ET';
-                statusText = 'Entretiempo';
-            } else if (m.status === 'FINISHED') {
-                minuteStr = 'Finalizado';
-                statusText = 'Finalizado';
-            } else {
-                // Si es un partido futuro, mostramos la hora local de inicio
-                const startDate = new Date(m.utcDate);
-                minuteStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                statusText = minuteStr;
+        // Llamada directa a la API interna de Promiedos
+        const response = await axios.get('https://api.promiedos.com.ar/games/today', {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
+                'Referer': 'http://www.promiedos.com.ar/'
             }
-
-            return {
-                match_id: m.id.toString(),
-                tournament: m.competition.name,
-                status: m.status === 'IN_PLAY' || m.status === 'PAUSED' ? 'LIVE' : m.status,
-                minute: minuteStr,
-                home_team: { name: m.homeTeam.name, goals: m.score.fullTime.home ?? 0 },
-                away_team: { name: m.awayTeam.name, goals: m.score.fullTime.away ?? 0 },
-                stadium: m.venue || "Estadio Oficial"
-            };
         });
 
-        await redis.set('live_matches_v2', JSON.stringify(matches), 'EX', 60);
+        // Parseamos la respuesta según la estructura que devuelve Promiedos
+        // (Nota: acá procesamos el JSON que te devuelve la API adaptándolo a tu formato)
+        const rawData = response.data;
+        let formattedMatches = [];
 
-        return NextResponse.json(matches);
+        // Dependiendo de cómo venga estructurado el JSON de Promiedos, recorremos las categorías/torneos
+        // (Por lo general viene organizado por torneos o un listado global de partidos)
+        if (Array.isArray(rawData)) {
+            formattedMatches = rawData.flatMap((tournamentGroup) => {
+                const tournamentName = tournamentGroup.name || tournamentGroup.torneo || "Liga Profesional";
+                const matchesList = tournamentGroup.games || tournamentGroup.partidos || [];
+
+                return matchesList.map((m) => ({
+                    match_id: (m.id || m.game_id || Math.random()).toString(),
+                    tournament: tournamentName,
+                    status: m.estado === 1 || m.status === 'LIVE' ? 'LIVE' : (m.estado === 3 ? 'FINISHED' : 'NS'),
+                    minute: m.minuto || m.minute || (m.estado === 1 ? 'En juego' : 'Próximamente'),
+                    home_team: { 
+                        name: m.local || m.home_team || 'Local', 
+                        goals: m.goles_local ?? m.home_goals ?? 0 
+                    },
+                    away_team: { 
+                        name: m.visita || m.away_team || 'Visitante', 
+                        goals: m.goles_visita ?? m.away_goals ?? 0 
+                    },
+                    stadium: m.estadio || "Estadio Oficial"
+                }));
+            });
+        } else if (rawData.games || rawData.partidos) {
+            // Si viene en otro formato de objeto plano
+            const list = rawData.games || rawData.partidos;
+            formattedMatches = list.map((m) => ({
+                match_id: (m.id || Math.random()).toString(),
+                tournament: m.torneo || "Fútbol",
+                status: m.estado === 1 ? 'LIVE' : 'FINISHED',
+                minute: m.minuto || 'En juego',
+                home_team: { name: m.local, goals: m.goles_local ?? 0 },
+                away_team: { name: m.visita, goals: m.goles_visita ?? 0 },
+                stadium: m.estadio || "Estadio Oficial"
+            }));
+        }
+
+        // Guardamos en caché por 30 segundos para no saturar
+        await redis.set('promiedos_live_v1', JSON.stringify(formattedMatches), 'EX', 30);
+
+        return NextResponse.json(formattedMatches);
 
     } catch (error) {
-        console.error("Error al obtener partidos:", error.message);
+        console.error("Error al consultar la API de Promiedos:", error.message);
         return NextResponse.json([], { status: 200 });
     }
 }
