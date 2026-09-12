@@ -80,7 +80,7 @@ export default function Home() {
   const filteredLeagues = leagues.filter((league) => !hiddenLeagues.includes(league.id));
 
   return (
-    <main style={{ maxWidth: "850px", width: "100%", margin: "0 auto", padding: "20px" }}>
+    <main style={{ maxWidth: "950px", width: "100%", margin: "0 auto", padding: "20px" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "20px" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>
           Chiquifútbol Live
@@ -171,7 +171,6 @@ export default function Home() {
                   const goalsA = teamA.goals || [];
                   const goalsB = teamB.goals || [];
 
-                  // Formatear la cadena de goleadores estilo Promiedos (ej: 10' Ríos; 19' Florentín)
                   const formatGoals = (goalsList) => {
                     return goalsList.map((g) => {
                       const time = g.time_to_display || `${g.time}'`;
@@ -184,12 +183,13 @@ export default function Home() {
                   const strGoalsA = formatGoals(goalsA);
                   const strGoalsB = formatGoals(goalsB);
                   const hasGoals = strGoalsA !== "" || strGoalsB !== "";
+                  const tvList = game.tv_networks ? game.tv_networks.map((tv) => tv.name).join(", ") : "";
 
                   return (
                     <div key={game.id} style={{ display: "flex", borderBottom: "1px solid rgba(128,128,128,0.15)", fontSize: "0.9rem" }}>
                       
-                      {/* 1. Columna Estado (Izquierda: Finalizado, En Vivo, Hora) */}
-                      <div style={{ width: "95px", background: "rgba(128,128,128,0.06)", borderRight: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", textAlign: "center", fontWeight: "600", fontSize: "0.75rem" }}>
+                      {/* 1. Columna Estado (Izquierda) */}
+                      <div style={{ width: "95px", background: "rgba(128,128,128,0.06)", borderRight: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", textAlign: "center", fontWeight: "600", fontSize: "0.75rem", flexShrink: 0 }}>
                         {isLive && (
                           <span style={{ color: "#ef4444", fontWeight: "bold" }}>
                             {game.game_time_status_to_display || "EN VIVO"}
@@ -203,55 +203,49 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* 2. Columna Central (Equipos, Goles y TV) */}
+                      {/* 2. Columna Central (Equipos, Marcador y Goleadores) */}
                       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                         
-                        {/* Fila principal del partido: Local / Marcador / Visitante */}
+                        {/* Fila principal: Local / Marcador / Visitante */}
                         <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", justifyContent: "space-between" }}>
                           
-                          {/* Equipo Local (Alineado a la derecha hacia el marcador) */}
                           <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", textAlign: "right" }}>
                             <span style={{ fontWeight: 500 }}>{teamA.name}</span>
                           </div>
 
-                          {/* Marcador central */}
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", fontWeight: "bold", fontSize: "1.1rem", gap: "8px", minWidth: "80px", textAlign: "center" }}>
                             <span>{scoreA}</span>
                             <span style={{ opacity: 0.4 }}>–</span>
                             <span>{scoreB}</span>
                           </div>
 
-                          {/* Equipo Visitante (Alineado a la izquierda desde el marcador) */}
                           <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "10px", textAlign: "left" }}>
                             <span style={{ fontWeight: 500 }}>{teamB.name}</span>
                           </div>
 
                         </div>
 
-                        {/* Goleadores estilo Promiedos (Divididos en 2 columnas abajo de los equipos) */}
+                        {/* Goleadores en 2 columnas */}
                         {hasGoals && (
                           <div style={{ display: "flex", borderTop: "1px dashed rgba(128,128,128,0.15)", fontSize: "0.75rem", opacity: 0.75, background: "rgba(128,128,128,0.02)" }}>
-                            
-                            {/* Goles Local (Columna Izquierda) */}
                             <div style={{ flex: 1, padding: "6px 16px", textAlign: "right", borderRight: "1px dashed rgba(128,128,128,0.15)" }}>
                               {strGoalsA}
                             </div>
-
-                            {/* Goles Visitante (Columna Derecha) */}
                             <div style={{ flex: 1, padding: "6px 16px", textAlign: "left" }}>
                               {strGoalsB}
                             </div>
-
                           </div>
                         )}
 
-                        {/* TV si la hay */}
-                        {game.tv_networks && game.tv_networks.length > 0 && (
-                          <div style={{ fontSize: "0.7rem", opacity: 0.5, padding: "2px 16px 6px 16px", textAlign: "right" }}>
-                            📺 {game.tv_networks.map((tv) => tv.name).join(", ")}
-                          </div>
-                        )}
+                      </div>
 
+                      {/* 3. Columna Derecha (Televisación) */}
+                      <div style={{ width: "160px", background: "rgba(128,128,128,0.04)", borderLeft: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px", textAlign: "center", fontSize: "0.75rem", opacity: 0.7, flexShrink: 0 }}>
+                        {tvList ? (
+                          <span>📺 {tvList}</span>
+                        ) : (
+                          <span style={{ opacity: 0.4 }}>-</span>
+                        )}
                       </div>
 
                     </div>
