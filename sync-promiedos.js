@@ -34,19 +34,6 @@ async function sincronizarPartidos() {
             return;
         }
 
-        // Ajuste inteligente: recorremos los partidos por si la API se traba en ET 
-        // para asegurar que el usuario vea el avance si hay datos de tiempo reales.
-        if (partidosJson.leagues) {
-            partidosJson.leagues.forEach(league => {
-                league.games.forEach(game => {
-                    // Si el estado dice Entretiempo pero ya pasó un rato, o si queremos forzar lectura limpia:
-                    if (game.game_time_status_to_display === "ET") {
-                        // Podés dejarlo o normalizarlo acá si querés que mueva
-                    }
-                });
-            });
-        }
-
         await redis.set('chiquifutbol_matches_v2', JSON.stringify(partidosJson));
         console.log("¡Datos de la API sincronizados en Redis correctamente!");
 

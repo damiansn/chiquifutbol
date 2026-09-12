@@ -91,7 +91,7 @@ export default function Home() {
             style={{ height: "58px", width: "auto", display: "block" }} 
           />
           <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", margin: 0 }}>
-            Chiquifútbol Live
+            Chiquifútbol
           </h1>
         </div>
 
