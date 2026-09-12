@@ -8,7 +8,7 @@ export default function Home() {
   const [error, setError] = useState(null);
   
   // Estado para las ligas ocultas por el usuario
-  const [hiddenLeagues, setHiddenLeagues] = useState<number[]>([]);
+  const [hiddenLeagues, setHiddenLeagues] = useState([]);
 
   const fetchMatches = async () => {
     try {
@@ -17,7 +17,7 @@ export default function Home() {
       const json = await res.json();
       setData(json);
       setError(null);
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -37,7 +37,7 @@ export default function Home() {
   }, []);
 
   // Guardar preferencias cuando cambien
-  const toggleLeagueFilter = (leagueId: number) => {
+  const toggleLeagueFilter = (leagueId) => {
     const updated = hiddenLeagues.includes(leagueId)
       ? hiddenLeagues.filter((id) => id !== leagueId)
       : [...hiddenLeagues, leagueId];
@@ -69,7 +69,7 @@ export default function Home() {
   }
 
   const leagues = data?.leagues || [];
-  const filteredLeagues = leagues.filter((league: any) => !hiddenLeagues.includes(league.id));
+  const filteredLeagues = leagues.filter((league) => !hiddenLeagues.includes(league.id));
 
   return (
     <main style={{ maxWidth: "800px", width: "100%", margin: "0 auto", padding: "20px" }}>
@@ -92,7 +92,7 @@ export default function Home() {
             Filtrar Ligas
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {leagues.map((league: any) => {
+            {leagues.map((league) => {
               const isHidden = hiddenLeagues.includes(league.id);
               return (
                 <button
@@ -124,14 +124,14 @@ export default function Home() {
         <p style={{ textAlign: "center", opacity: 0.6, padding: "40px" }}>No hay torneos seleccionados para mostrar.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          {filteredLeagues.map((league: any) => (
+          {filteredLeagues.map((league) => (
             <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "12px", overflow: "hidden" }}>
               <div style={{ background: "rgba(128,128,128,0.1)", padding: "12px 16px", fontWeight: "bold", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
                 <span>{league.name} ({league.country_name})</span>
               </div>
 
               <div>
-                {league.games.map((game: any) => {
+                {league.games.map((game) => {
                   const isLive = game.status.enum === 2;
                   const isFinished = game.status.enum === 3;
                   const isProgrammed = game.status.enum === 1;
@@ -141,7 +141,7 @@ export default function Home() {
                       
                       {/* Equipos, Goles y Autores */}
                       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {game.teams.map((team: any, idx: number) => {
+                        {game.teams.map((team, idx) => {
                           const score = game.scores ? game.scores[idx] : "-";
                           const goals = team.goals || [];
 
@@ -157,7 +157,7 @@ export default function Home() {
                               {/* Lista de goleadores del equipo */}
                               {goals.length > 0 && (
                                 <div style={{ fontSize: "0.8rem", opacity: 0.7, display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "2px" }}>
-                                  {goals.map((goal: any, gIdx: number) => (
+                                  {goals.map((goal, gIdx) => (
                                     <span key={gIdx} style={{ background: "rgba(128,128,128,0.08)", padding: "1px 6px", borderRadius: "4px" }}>
                                       ⚽ {goal.player_name || goal.player_sname} ({goal.time_to_display || `${goal.time}'`})
                                       {goal.goal_type === "Pen" && " (P)"}
@@ -192,7 +192,7 @@ export default function Home() {
 
                         {game.tv_networks && game.tv_networks.length > 0 && (
                           <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>
-                            📺 {game.tv_networks.map((tv: any) => tv.name).join(", ")}
+                            📺 {game.tv_networks.map((tv) => tv.name).join(", ")}
                           </div>
                         )}
                       </div>
