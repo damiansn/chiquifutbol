@@ -18,10 +18,12 @@ async function sincronizarDatos() {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
     try {
-        // 1. Sincronizar Partidos
-        await page.goto('https://www.promiedos.com.ar', { waitUntil: 'networkidle2', timeout: 60000 });
+        // 1. Sincronizar Partidos (Ayer, Hoy y Mañana)
+        console.log("Sincronizando partidos (ayer, hoy, mañana)...");
 
-        const partidosJson = await page.evaluate(async () => {
+        // --- HOY ---
+        await page.goto('https://www.promiedos.com.ar', { waitUntil: 'networkidle2', timeout: 60000 });
+        const partidosHoy = await page.evaluate(async () => {
             try {
                 const res = await fetch('https://api.promiedos.com.ar/games/today');
                 return await res.json();
@@ -29,11 +31,42 @@ async function sincronizarDatos() {
                 return { error: e.message };
             }
         });
-
-        if (partidosJson && !partidosJson.error) {
-            await redis.set('chiquifutbol_matches_v2', JSON.stringify(partidosJson));
-            console.log("¡Partidos sincronizados en Redis!");
+        if (partidosHoy && !partidosHoy.error) {
+            await redis.set('chiquifutbol_matches_v2', JSON.stringify(partidosHoy));
+            console.log("¡Partidos de HOY sincronizados en Redis!");
         }
+
+        // --- AYER ---
+        await page.goto('https://www.promiedos.com.ar/ayer', { waitUntil: 'networkidle2', timeout: 60000 });
+        const partidosAyer = await page.evaluate(async () => {
+            try {
+                const res = await fetch('https://api.promiedos.com.ar/games/yesterday');
+                return await res.json();
+            } catch (e) {
+                // Fallback por si la API usa otra ruta, intentamos extraer del DOM o usar ruta alternativa
+                return { error: e.message };
+            }
+        });
+        if (partidosAyer && !partidosAyer.error) {
+            await redis.set('chiquifutbol_matches_ayer', JSON.stringify(partidosAyer));
+            console.log("¡Partidos de AYER sincronizados en Redis!");
+        }
+
+        // --- MAÑANA ---
+        await page.goto('https://www.promiedos.com.ar/man', { waitUntil: 'networkidle2', timeout: 60000 });
+        const partidosManana = await page.evaluate(async () => {
+            try {
+                const res = await fetch('https://api.promiedos.com.ar/games/tomorrow');
+                return await res.json();
+            } catch (e) {
+                return { error: e.message };
+            }
+        });
+        if (partidosManana && !partidosManana.error) {
+            await redis.set('chiquifutbol_matches_manana', JSON.stringify(partidosManana));
+            console.log("¡Partidos de MAÑANA sincronizados en Redis!");
+        }
+
 
         // 2. Sincronizar la URL de la Liga Profesional (Tablas y Estadísticas)
         console.log("Consultando tablas y estadísticas completas...");

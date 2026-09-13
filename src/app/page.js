@@ -8,11 +8,13 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  const [selectedDate, setSelectedDate] = useState("today"); // 'ayer', 'today', 'manana'
   const [hiddenLeagues, setHiddenLeagues] = useState([]);
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (date = selectedDate) => {
     try {
-      const res = await fetch("/api/matches");
+      setLoading(true);
+      const res = await fetch(`/api/matches?date=${date}`);
       if (!res.ok) throw new Error("Error al obtener los partidos");
       const json = await res.json();
       setData(json);
@@ -35,6 +37,11 @@ export default function Home() {
     }
   }, []);
 
+  const handleDateChange = (newDate) => {
+    setSelectedDate(newDate);
+    fetchMatches(newDate);
+  };
+
   const toggleLeagueFilter = (leagueId) => {
     const updated = hiddenLeagues.includes(leagueId)
       ? hiddenLeagues.filter((id) => id !== leagueId)
@@ -56,18 +63,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchMatches();
-    const interval = setInterval(fetchMatches, 30000);
+    fetchMatches(selectedDate);
+    const interval = setInterval(() => fetchMatches(selectedDate), 30000);
     return () => clearInterval(interval);
-  }, []);
-
-  if (loading) {
-    return (
-      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <p>Cargando partidos...</p>
-      </div>
-    );
-  }
+  }, [selectedDate]);
 
   if (error) {
     return (
@@ -84,7 +83,6 @@ export default function Home() {
     <main style={{ maxWidth: "950px", width: "100%", margin: "0 auto", padding: "20px" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "20px" }}>
         
-        {/* Header con el logo cargado desde public/logo.svg */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img 
             src="/logo.svg" 
@@ -97,12 +95,38 @@ export default function Home() {
         </div>
 
         <button 
-          onClick={() => { setLoading(true); fetchMatches(); }} 
+          onClick={() => fetchMatches(selectedDate)} 
           style={{ background: "transparent", border: "1px solid currentColor", padding: "6px 14px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" }}
         >
           Actualizar
         </button>
       </header>
+
+      {/* Selector de Fecha (Ayer, Hoy, Mañana) */}
+      <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "20px" }}>
+        {[
+          { id: "ayer", label: "Ayer" },
+          { id: "today", label: "Hoy" },
+          { id: "manana", label: "Mañana" }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => handleDateChange(tab.id)}
+            style={{
+              background: selectedDate === tab.id ? "#10b981" : "rgba(128,128,128,0.08)",
+              color: selectedDate === tab.id ? "#fff" : "inherit",
+              border: "1px solid rgba(128,128,128,0.2)",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       {/* Barra de Filtros */}
       {leagues.length > 0 && (
@@ -157,14 +181,17 @@ export default function Home() {
         </div>
       )}
 
-      {filteredLeagues.length === 0 ? (
-        <p style={{ textAlign: "center", opacity: 0.6, padding: "40px" }}>No hay torneos seleccionados para mostrar.</p>
+      {loading ? (
+        <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", minHeight: "200px" }}>
+          <p style={{ opacity: 0.7 }}>Cargando partidos...</p>
+        </div>
+      ) : filteredLeagues.length === 0 ? (
+        <p style={{ textAlign: "center", opacity: 0.6, padding: "40px" }}>No hay torneos seleccionados o partidos para mostrar en esta fecha.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           {filteredLeagues.map((league) => (
             <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", overflow: "hidden" }}>
               
-              {/* Cabecera de la Liga (Enlace interno a la vista de posiciones propia) */}
               <div style={{ background: "rgba(16, 185, 129, 0.15)", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
                 <Link 
                   href={`/posiciones?leagueId=${league.id}&name=${encodeURIComponent(league.name)}`}
@@ -206,7 +233,6 @@ export default function Home() {
                   return (
                     <div key={game.id} style={{ display: "flex", borderBottom: "1px solid rgba(128,128,128,0.15)", fontSize: "0.9rem" }}>
                       
-                      {/* 1. Columna Estado (Izquierda) */}
                       <div style={{ width: "95px", background: "rgba(128,128,128,0.06)", borderRight: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", textAlign: "center", fontWeight: "600", fontSize: "0.75rem", flexShrink: 0 }}>
                         {isLive && (
                           <span style={{ color: "#ef4444", fontWeight: "bold" }}>
@@ -221,10 +247,8 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* 2. Columna Central (Equipos, Marcador y Goleadores) */}
                       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                         
-                        {/* Fila principal: Local / Marcador / Visitante */}
                         <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", justifyContent: "space-between" }}>
                           
                           <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", textAlign: "right" }}>
@@ -233,7 +257,6 @@ export default function Home() {
 
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", fontWeight: "bold", fontSize: "1.1rem", gap: "8px", minWidth: "120px", textAlign: "center" }}>
                             
-                            {/* Tarjetas Rojas Local */}
                             {teamA.red_cards > 0 && (
                               <div style={{ display: "flex", gap: "2px" }}>
                                 {Array.from({ length: teamA.red_cards }).map((_, i) => (
@@ -246,7 +269,6 @@ export default function Home() {
                             <span style={{ opacity: 0.4 }}>–</span>
                             <span style={{ color: isLive ? "#ef4444" : "inherit" }}>{scoreB}</span>
 
-                            {/* Tarjetas Rojas Visitante */}
                             {teamB.red_cards > 0 && (
                               <div style={{ display: "flex", gap: "2px" }}>
                                 {Array.from({ length: teamB.red_cards }).map((_, i) => (
@@ -263,7 +285,6 @@ export default function Home() {
 
                         </div>
 
-                        {/* Goleadores en 2 columnas */}
                         {hasGoals && (
                           <div style={{ display: "flex", borderTop: "1px dashed rgba(128,128,128,0.15)", fontSize: "0.75rem", opacity: 0.75, background: "rgba(128,128,128,0.02)" }}>
                             <div style={{ flex: 1, padding: "6px 16px", textAlign: "right", borderRight: "1px dashed rgba(128,128,128,0.15)" }}>
@@ -277,7 +298,6 @@ export default function Home() {
 
                       </div>
 
-                      {/* 3. Columna Derecha (Televisación) */}
                       <div style={{ width: "160px", background: "rgba(128,128,128,0.04)", borderLeft: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px", textAlign: "center", fontSize: "0.75rem", opacity: 0.7, flexShrink: 0 }}>
                         {tvList ? (
                           <span>📺 {tvList}</span>
