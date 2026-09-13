@@ -50,6 +50,27 @@ function StandingsContent() {
       { title: "PROMEDIOS", teams: rawTeams.slice(60, 90) },
       { title: "Tabla Anual", teams: rawTeams.slice(90, 120) }
     ].filter(section => section.teams.length > 0);
+  } else if (tablesList.length > 0) {
+    tablesList = tablesList.map((table, index) => {
+      let customTitle = table.title;
+      const lowerTitle = (table.title || "").toLowerCase();
+
+      if (lowerTitle.includes("promedio") || lowerTitle.includes("relegation") || index === 4) {
+        customTitle = "PROMEDIOS";
+      } else if (index === 0) {
+        customTitle = "Clausura - Grupo A";
+      } else if (index === 1) {
+        customTitle = "Clausura - Grupo B";
+      } else if (index === 2) {
+        customTitle = "Apertura - Grupo A";
+      } else if (index === 3) {
+        customTitle = "Apertura - Grupo B";
+      } else if (index === 5 || lowerTitle.includes("anual") || lowerTitle.includes("general")) {
+        customTitle = "Tabla Anual";
+      }
+
+      return { ...table, title: customTitle };
+    });
   }
 
   return (
@@ -80,8 +101,8 @@ function StandingsContent() {
                       <th style={{ padding: "10px", width: "40px", textAlign: "center" }}>#</th>
                       <th style={{ padding: "10px" }}>Equipo</th>
                       <th style={{ padding: "10px", textAlign: "center" }}>Prom</th>
-                      <th style={{ padding: "10px", textAlign: "center" }}>{isPromedios ? "Pts" : "Pts"}</th>
-                      <th style={{ padding: "10px", textAlign: "center" }}>{isPromedios ? "PJ" : "DG"}</th>
+                      <th style={{ padding: "10px", textAlign: "center" }}>Pts</th>
+                      <th style={{ padding: "10px", textAlign: "center" }}>PJ</th>
                       {isPromedios && (
                         <>
                           <th style={{ padding: "10px", textAlign: "center" }}>'24</th>
@@ -104,12 +125,12 @@ function StandingsContent() {
                             : Math.round(Number(team.points ?? team.pts ?? 0))}
                         </td>
 
-                        {/* Columna Pts (en promedios muestra goal_difference que tiene los Pts totales) */}
+                        {/* Columna Pts */}
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
                           {isPromedios ? (team.goal_difference ?? 0) : (team.played ?? team.pj ?? 0)}
                         </td>
 
-                        {/* Columna PJ (en promedios muestra played que tiene los PJ reales) */}
+                        {/* Columna PJ */}
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
                           {isPromedios ? (team.played ?? team.pj ?? 0) : (team.goal_difference ?? team.dg ?? 0)}
                         </td>
