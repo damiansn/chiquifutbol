@@ -38,8 +38,21 @@ function StandingsContent() {
     return <div style={{ padding: "40px", textAlign: "center", color: "inherit" }}>Cargando posiciones...</div>;
   }
 
-  // Obtenemos las tablas agrupadas o armamos una estructura de respaldo si viene plano
-  const tablesList = standings?.tables || (standings?.teams ? [{ title: leagueName, teams: standings.teams }] : (Array.isArray(standings) ? [{ title: leagueName, teams: standings }] : []));
+  // Extraemos la lista plana de equipos o las tablas si ya vienen agrupadas
+  const rawTeams = standings?.tables ? null : (standings?.teams || (Array.isArray(standings) ? standings : []));
+
+  // Si tenemos una lista plana, la seccionamos automáticamente por bloques de 15 y 30 equipos
+  let tablesList = standings?.tables || [];
+  if (rawTeams && rawTeams.length > 0) {
+    tablesList = [
+      { title: "Clausura - Grupo A", teams: rawTeams.slice(0, 15) },
+      { title: "Clausura - Grupo B", teams: rawTeams.slice(15, 30) },
+      { title: "Apertura - Grupo A", teams: rawTeams.slice(30, 45) },
+      { title: "Apertura - Grupo B", teams: rawTeams.slice(45, 60) },
+      { title: "Promedios", teams: rawTeams.slice(60, 90) },
+      { title: "Tabla Anual", teams: rawTeams.slice(90, 120) }
+    ].filter(section => section.teams.length > 0);
+  }
 
   return (
     <main style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
@@ -55,7 +68,6 @@ function StandingsContent() {
       {tablesList.length > 0 ? (
         tablesList.map((section, sIndex) => (
           <div key={sIndex} style={{ marginBottom: "30px" }}>
-            {/* Título de la sección / grupo (ej: Grupo A, Grupo B, Clausura, etc.) */}
             <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#10b981", marginBottom: "10px", textTransform: "uppercase" }}>
               {section.title}
             </h2>
@@ -72,29 +84,21 @@ function StandingsContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {section.teams && section.teams.length > 0 ? (
-                    section.teams.map((team, index) => (
-                      <tr key={team.id || team.team_id || index} style={{ borderBottom: "1px solid rgba(128,128,128,0.1)" }}>
-                        <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.position || index + 1}</td>
-                        <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
-                        <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
-                          {team.points ?? team.pts ?? 0}
-                        </td>
-                        <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                          {team.played ?? team.pj ?? 0}
-                        </td>
-                        <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                          {team.goal_difference ?? team.dg ?? 0}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" style={{ padding: "20px", textAlign: "center", opacity: 0.6 }}>
-                        No hay equipos en esta tabla.
+                  {section.teams.map((team, index) => (
+                    <tr key={team.id || team.team_id || index} style={{ borderBottom: "1px solid rgba(128,128,128,0.1)" }}>
+                      <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.position || index + 1}</td>
+                      <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
+                      <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
+                        {team.points ?? team.pts ?? 0}
+                      </td>
+                      <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
+                        {team.played ?? team.pj ?? 0}
+                      </td>
+                      <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
+                        {team.goal_difference ?? team.dg ?? 0}
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
