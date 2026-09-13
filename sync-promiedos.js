@@ -55,25 +55,43 @@ async function sincronizarDatos() {
 
                 rows.forEach((row) => {
                     const cols = row.querySelectorAll('td');
-                    if (cols.length >= 5) {
+                    if (cols.length >= 3) {
                         const name = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
-                        const pointsStr = cols[2]?.innerText?.trim();
+                        
+                        let pointsStr = null;
+                        let playedVal = 0;
+                        let dgVal = 0;
+
+                        // Si es la tabla de promedios, el valor decimal está en la tercera columna (índice 2, bajo el título "Prom")
+                        if (title.toLowerCase().includes('promedio')) {
+                            const promVal = cols[2]?.innerText?.trim().replace(',', '.');
+                            if (promVal && !isNaN(parseFloat(promVal))) {
+                                pointsStr = promVal;
+                                playedVal = parseInt(cols[4]?.innerText?.trim() || 0); // PJ
+                                dgVal = parseInt(cols[5]?.innerText?.trim() || 0);
+                            }
+                        } 
+                        
+                        // Si no encontró o no es promedios, usa la lógica estándar de la columna 2
+                        if (!pointsStr) {
+                            const standardPts = cols[2]?.innerText?.trim().replace(',', '.');
+                            if (standardPts && !isNaN(parseFloat(standardPts))) {
+                                pointsStr = standardPts;
+                                playedVal = parseInt(cols[3]?.innerText?.trim() || 0);
+                                dgVal = parseInt(cols[4]?.innerText?.trim() || 0);
+                            }
+                        }
 
                         if (name && name !== "Equipo" && pointsStr) {
-                            // Reemplazamos la coma por punto para que JS reconozca correctamente los decimales de Promedios
-                            const normalizedPoints = pointsStr.replace(',', '.');
-                            
-                            if (!isNaN(parseFloat(normalizedPoints))) {
-                                const pointsValue = normalizedPoints.includes('.') ? parseFloat(normalizedPoints) : parseInt(normalizedPoints) || 0;
+                            const pointsValue = parseFloat(pointsStr) || 0;
 
-                                teams.push({
-                                    position: teams.length + 1,
-                                    name: name,
-                                    points: pointsValue,
-                                    played: parseInt(cols[3]?.innerText?.trim() || 0),
-                                    goal_difference: parseInt(cols[4]?.innerText?.trim() || 0)
-                                });
-                            }
+                            teams.push({
+                                position: teams.length + 1,
+                                name: name,
+                                points: pointsValue,
+                                played: playedVal,
+                                goal_difference: dgVal
+                            });
                         }
                     }
                 });
