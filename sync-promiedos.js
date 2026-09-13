@@ -57,13 +57,16 @@ async function sincronizarDatos() {
                     const cols = row.querySelectorAll('td');
                     if (cols.length >= 5) {
                         const name = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
-                        const points = cols[2]?.innerText?.trim();
+                        const pointsStr = cols[2]?.innerText?.trim();
 
-                        if (name && name !== "Equipo" && !isNaN(parseInt(points))) {
+                        // Verificamos si tiene puntos válidos (ya sea entero o decimal para promedios)
+                        if (name && name !== "Equipo" && pointsStr && !isNaN(parseFloat(pointsStr))) {
+                            const pointsValue = pointsStr.includes('.') ? parseFloat(pointsStr) : parseInt(pointsStr) || 0;
+
                             teams.push({
                                 position: teams.length + 1,
                                 name: name,
-                                points: parseInt(cols[2]?.innerText?.trim() || 0),
+                                points: pointsValue,
                                 played: parseInt(cols[3]?.innerText?.trim() || 0),
                                 goal_difference: parseInt(cols[4]?.innerText?.trim() || 0)
                             });
