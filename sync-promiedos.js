@@ -65,9 +65,9 @@ async function sincronizarDatos() {
                 
                 // Detección robusta para asegurar que tome la tabla de promedios
                 let isPromedioTable = title.toLowerCase().includes('promedio') || 
-                                      title.toLowerCase().includes('relegation') || 
-                                      tableText.includes('prom') || 
-                                      headers.some(h => h.includes('prom'));
+                                    title.toLowerCase().includes('relegation') || 
+                                    tableText.includes('prom') || 
+                                    headers.some(h => h.includes('prom'));
 
                 if (isPromedioTable) {
                     title = "PROMEDIOS";
@@ -145,36 +145,76 @@ async function sincronizarDatos() {
             return groupedTables;
         });
 
-        // 3. Sincronizar Estadísticas Personales (Goles, Asistencias, Tarjetas, etc.)
+        // 3. Sincronizar Estadísticas Personales (Goles, Asistencias, Tarjetas, etc.) - Versión ampliada y flexible
         const statsData = await page.evaluate(() => {
             const statBlocks = [];
             const tables = document.querySelectorAll('table');
             
-            tables.forEach(table => {
+            tables.forEach((table, index) => {
+                const rows = table.querySelectorAll('tr');
+                if (rows.length < 3) return;
+
                 let titleText = "";
                 let el = table.previousElementSibling;
-                while (el && !titleText) {
+                let steps = 0;
+                while (el && !titleText && steps < 4) {
                     const text = el.innerText ? el.innerText.trim() : "";
                     if (text.length > 0 && text.length < 60) {
                         titleText = text;
                     }
                     el = el.previousElementSibling;
+                    steps++;
                 }
 
-                const categories = ["goles", "asistencias", "barridas", "tarjetas rojas", "tarjetas amarillas"];
-                if (categories.some(cat => titleText.toLowerCase().includes(cat))) {
-                    const rows = table.querySelectorAll('tr');
+                if (!titleText) {
+                    const parent = table.closest('div');
+                    if (parent) {
+                        const header = parent.querySelector('div, span, h2, h3, b');
+                        if (header) titleText = header.innerText.trim();
+                    }
+                }
+
+                const lowerTitle = titleText.toLowerCase();
+                const headersText = Array.from(table.querySelectorAll('th, tr:first-child')).map(e => e.innerText.toLowerCase()).join(' ');
+
+                const isStatTable = lowerTitle.includes('goleador') || 
+                                    lowerTitle.includes('gol') || 
+                                    lowerTitle.includes('asistenci') || 
+                                    lowerTitle.includes('tarjeta') || 
+                                    lowerTitle.includes('amarilla') || 
+                                    lowerTitle.includes('roja') ||
+                                    headersText.includes('goles') ||
+                                    headersText.includes('asist') ||
+                                    (rows.length > 3 && table.querySelectorAll('td').length / rows.length <= 3);
+
+                if (isStatTable) {
                     const players = [];
 
-                    rows.forEach(row => {
+                    rows.forEach((row, rIdx) => {
+                        if (rIdx === 0 && (row.querySelector('th') || row.innerText.toLowerCase().includes('jugador'))) return;
+
                         const cols = row.querySelectorAll('td');
                         if (cols.length >= 2) {
-                            const playerName = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
-                            const statVal = cols[cols.length - 1]?.innerText?.trim();
-                            if (playerName && playerName !== "Equipo" && statVal) {
+                            let playerName = "";
+                            let statValue = "";
+
+                            if (cols.length >= 3) {
+                                playerName = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
+                                statValue = cols[cols.length - 1]?.innerText?.trim();
+                            } else {
+                                playerName = cols[0]?.innerText?.trim();
+                                statValue = cols[1]?.innerText?.trim();
+                            }
+
+                            if (playerName && 
+                                playerName.toLowerCase() !== "equipo" && 
+                                playerName.toLowerCase() !== "jugador" && 
+                                playerName.toLowerCase() !== "goles" &&
+                                statValue && !isNaN(statValue)) {
+                                
                                 players.push({
                                     name: playerName,
-                                    value: isNaN(statVal) ? statVal : Number(statVal)
+                                    value: Number(statValue)
                                 });
                             }
                         }
@@ -182,8 +222,8 @@ async function sincronizarDatos() {
 
                     if (players.length > 0) {
                         statBlocks.push({
-                            category: titleText,
-                            players: players.slice(0, 5) // Top 5 de cada categoría
+                            category: titleText ? titleText.toUpperCase() : `ESTADÍSTICA ${index}`,
+                            players: players.slice(0, 10)
                         });
                     }
                 }
