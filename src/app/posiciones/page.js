@@ -79,11 +79,9 @@ function StandingsContent() {
                     <tr style={{ background: "rgba(16, 185, 129, 0.15)", textAlign: "left", color: "#10b981" }}>
                       <th style={{ padding: "10px", width: "40px", textAlign: "center" }}>#</th>
                       <th style={{ padding: "10px" }}>Equipo</th>
-                      <th style={{ padding: "10px", textAlign: "center" }}>
-                        {isPromedios ? "Prom" : "Pts"}
-                      </th>
-                      <th style={{ padding: "10px", textAlign: "center" }}>PJ</th>
-                      <th style={{ padding: "10px", textAlign: "center" }}>DG</th>
+                      <th style={{ padding: "10px", textAlign: "center" }}>Prom</th>
+                      <th style={{ padding: "10px", textAlign: "center" }}>{isPromedios ? "Pts" : "Pts"}</th>
+                      <th style={{ padding: "10px", textAlign: "center" }}>{isPromedios ? "PJ" : "DG"}</th>
                       {isPromedios && (
                         <>
                           <th style={{ padding: "10px", textAlign: "center" }}>'24</th>
@@ -98,17 +96,25 @@ function StandingsContent() {
                       <tr key={team.id || team.team_id || index} style={{ borderBottom: "1px solid rgba(128,128,128,0.1)" }}>
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.position || index + 1}</td>
                         <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
+                        
+                        {/* Columna Prom / Pts principal */}
                         <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
                           {isPromedios
                             ? (team.points ?? "0.000") 
                             : Math.round(Number(team.points ?? team.pts ?? 0))}
                         </td>
+
+                        {/* Columna Pts (en promedios muestra goal_difference que tiene los Pts totales) */}
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                          {team.played ?? team.pj ?? 0}
+                          {isPromedios ? (team.goal_difference ?? 0) : (team.played ?? team.pj ?? 0)}
                         </td>
+
+                        {/* Columna PJ (en promedios muestra played que tiene los PJ reales) */}
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                          {isPromedios ? (team.goal_difference ?? 0) : (team.goal_difference ?? team.dg ?? 0)}
+                          {isPromedios ? (team.played ?? team.pj ?? 0) : (team.goal_difference ?? team.dg ?? 0)}
                         </td>
+
+                        {/* Temporadas '24, '25, '26 */}
                         {isPromedios && (
                           <>
                             <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons?.[0] ?? 0}</td>
