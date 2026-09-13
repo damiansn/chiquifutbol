@@ -78,25 +78,25 @@ async function sincronizarDatos() {
 
                         if (isPromedioTable) {
                             // Estructura de la tabla de promedios:
-                            // cols[2] = Prom (ej. 1.765)
                             // cols[3] = Pts (ej. 173)
                             // cols[4] = PJ (ej. 98)
                             // cols[5] = Temporada 24
                             // cols[6] = Temporada 25
                             // cols[7] = Temporada 26
-                            let rawProm = cols[2]?.innerText?.trim() || cols[2]?.textContent?.trim() || '';
-                            rawProm = rawProm.replace(',', '.');
-                            
-                            const parsedProm = parseFloat(rawProm);
+                            const ptsVal = parseInt(cols[3]?.innerText?.trim() || 0);
+                            playedVal = parseInt(cols[4]?.innerText?.trim() || 0);
+                            dgVal = 0; 
 
-                            if (!isNaN(parsedProm)) {
-                                pointsStr = parsedProm.toFixed(3); // Mantiene los decimales exactos como string
-                                playedVal = parseInt(cols[4]?.innerText?.trim() || 0); // PJ
-                                dgVal = 0; 
+                            season24 = parseInt(cols[5]?.innerText?.trim() || 0);
+                            season25 = parseInt(cols[6]?.innerText?.trim() || 0);
+                            season26 = parseInt(cols[7]?.innerText?.trim() || 0);
 
-                                season24 = parseInt(cols[5]?.innerText?.trim() || 0);
-                                season25 = parseInt(cols[6]?.innerText?.trim() || 0);
-                                season26 = parseInt(cols[7]?.innerText?.trim() || 0);
+                            // Calculamos el promedio exacto dividiendo Pts / PJ con 3 decimales
+                            if (playedVal > 0) {
+                                const calculatedProm = ptsVal / playedVal;
+                                pointsStr = calculatedProm.toFixed(3);
+                            } else {
+                                pointsStr = "0.000";
                             }
                         } else {
                             const standardPts = cols[2]?.innerText?.trim().replace(',', '.');
