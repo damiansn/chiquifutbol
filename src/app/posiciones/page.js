@@ -38,8 +38,8 @@ function StandingsContent() {
     return <div style={{ padding: "40px", textAlign: "center", color: "inherit" }}>Cargando posiciones...</div>;
   }
 
-  // Detectamos los equipos sin importar si vienen en .teams, .standings o directamente en el array
-  const teamsList = standings?.teams || standings?.standings || (Array.isArray(standings) ? standings : []);
+  // Obtenemos las tablas agrupadas o armamos una estructura de respaldo si viene plano
+  const tablesList = standings?.tables || (standings?.teams ? [{ title: leagueName, teams: standings.teams }] : (Array.isArray(standings) ? [{ title: leagueName, teams: standings }] : []));
 
   return (
     <main style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
@@ -52,44 +52,59 @@ function StandingsContent() {
         </Link>
       </header>
 
-      <div style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
-          <thead>
-            <tr style={{ background: "rgba(16, 185, 129, 0.15)", textAlign: "left", color: "#10b981" }}>
-              <th style={{ padding: "10px", width: "40px", textAlign: "center" }}>#</th>
-              <th style={{ padding: "10px" }}>Equipo</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>Pts</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>PJ</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>DG</th>
-            </tr>
-          </thead>
-          <tbody>
-            {teamsList.length > 0 ? (
-              teamsList.map((team, index) => (
-                <tr key={team.id || team.team_id || index} style={{ borderBottom: "1px solid rgba(128,128,128,0.1)" }}>
-                  <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.position || index + 1}</td>
-                  <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
-                  <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
-                    {team.points ?? team.pts ?? 0}
-                  </td>
-                  <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                    {team.played ?? team.pj ?? 0}
-                  </td>
-                  <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                    {team.goal_difference ?? team.dg ?? 0}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" style={{ padding: "30px", textAlign: "center", opacity: 0.6 }}>
-                  {error ? `Error: ${error}` : "No hay datos estructurados todavía."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {tablesList.length > 0 ? (
+        tablesList.map((section, sIndex) => (
+          <div key={sIndex} style={{ marginBottom: "30px" }}>
+            {/* Título de la sección / grupo (ej: Grupo A, Grupo B, Clausura, etc.) */}
+            <h2 style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#10b981", marginBottom: "10px", textTransform: "uppercase" }}>
+              {section.title}
+            </h2>
+
+            <div style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                <thead>
+                  <tr style={{ background: "rgba(16, 185, 129, 0.15)", textAlign: "left", color: "#10b981" }}>
+                    <th style={{ padding: "10px", width: "40px", textAlign: "center" }}>#</th>
+                    <th style={{ padding: "10px" }}>Equipo</th>
+                    <th style={{ padding: "10px", textAlign: "center" }}>Pts</th>
+                    <th style={{ padding: "10px", textAlign: "center" }}>PJ</th>
+                    <th style={{ padding: "10px", textAlign: "center" }}>DG</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.teams && section.teams.length > 0 ? (
+                    section.teams.map((team, index) => (
+                      <tr key={team.id || team.team_id || index} style={{ borderBottom: "1px solid rgba(128,128,128,0.1)" }}>
+                        <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.position || index + 1}</td>
+                        <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
+                        <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
+                          {team.points ?? team.pts ?? 0}
+                        </td>
+                        <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
+                          {team.played ?? team.pj ?? 0}
+                        </td>
+                        <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
+                          {team.goal_difference ?? team.dg ?? 0}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" style={{ padding: "20px", textAlign: "center", opacity: 0.6 }}>
+                        No hay equipos en esta tabla.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", padding: "30px", textAlign: "center", opacity: 0.6 }}>
+          {error ? `Error: ${error}` : "No hay datos estructurados todavía."}
+        </div>
+      )}
     </main>
   );
 }
