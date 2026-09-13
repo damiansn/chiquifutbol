@@ -40,18 +40,15 @@ async function sincronizarDatos() {
         await page.goto('https://www.promiedos.com.ar/league/liga-profesional/hc', { waitUntil: 'networkidle2', timeout: 60000 });
 
         const standingsData = await page.evaluate(() => {
-            // Buscamos la tabla de posiciones en el DOM de Promiedos
-            // Por lo general está en una tabla dentro de la sección de posiciones
             const rows = document.querySelectorAll('.posiciones tr, table tr');
             const teams = [];
 
-            rows.forEach((row, index) => {
+            rows.forEach((row) => {
                 const cols = row.querySelectorAll('td');
                 if (cols.length >= 5) {
                     const name = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
-                    const points = cols[2]?.innerText?.trim() || cols[tokens]?.innerText?.trim();
+                    const points = cols[2]?.innerText?.trim();
                     
-                    // Intentamos filtrar para quedarnos solo con filas que tengan equipos y puntos válidos
                     if (name && name !== "Equipo" && !isNaN(parseInt(points))) {
                         teams.push({
                             position: teams.length + 1,
@@ -67,14 +64,14 @@ async function sincronizarDatos() {
             return { teams };
         });
 
+        console.log(`Equipos detectados por el scraper: ${standingsData.teams.length}`);
+
         if (standingsData && standingsData.teams.length > 0) {
-            // Guardamos usando una clave genérica o específica para la liga profesional
             await redis.set('chiquifutbol_standings', JSON.stringify(standingsData));
-            // Si querés guardarla por ID de liga específico (ej: liga profesional ID 1 o similar):
             await redis.set('chiquifutbol_standings_1', JSON.stringify(standingsData));
-            console.log(`¡Tabla de posiciones sincronizada en Redis (${standingsData.teams.length} equipos) !`);
+            console.log(`¡Tabla de posiciones sincronizada en Redis (${standingsData.teams.length} equipos)!`);
         } else {
-            console.log("No se pudieron extraer equipos de la tabla (puede que el selector de CSS necesite un ajuste fino).");
+            console.log("No se pudieron extraer equipos de la tabla.");
         }
 
     } catch (error) {
