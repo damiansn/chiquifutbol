@@ -89,7 +89,9 @@ function StandingsContent() {
                       <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.position || index + 1}</td>
                       <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
                       <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
-                        {team.points ?? team.pts ?? 0}
+                        {section.title.toLowerCase().includes("promedio") 
+                          ? (team.points ?? team.pts ?? 0) 
+                          : Math.round(team.points ?? team.pts ?? 0)}
                       </td>
                       <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
                         {team.played ?? team.pj ?? 0}
