@@ -62,11 +62,14 @@ async function sincronizarDatos() {
                         let playedVal = 0;
                         let dgVal = 0;
 
-                        // Si es la tabla de promedios, el valor decimal está en la tercera columna (índice 2, bajo el título "Prom")
+                        // Si es la tabla de promedios, leemos explícitamente el valor decimal de la columna "Prom"
                         if (title.toLowerCase().includes('promedio')) {
-                            const promVal = cols[2]?.innerText?.trim().replace(',', '.');
-                            if (promVal && !isNaN(parseFloat(promVal))) {
-                                pointsStr = promVal;
+                            let rawProm = cols[2]?.innerText?.trim() || '';
+                            rawProm = rawProm.replace(',', '.');
+                            const parsedProm = parseFloat(rawProm);
+
+                            if (!isNaN(parsedProm)) {
+                                pointsStr = parsedProm.toFixed(3); // Aseguramos que guarde los 3 decimales exactos
                                 playedVal = parseInt(cols[4]?.innerText?.trim() || 0); // PJ
                                 dgVal = parseInt(cols[5]?.innerText?.trim() || 0);
                             }
