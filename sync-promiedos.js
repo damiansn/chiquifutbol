@@ -46,7 +46,7 @@ async function sincronizarDatos() {
 
             tableElements.forEach((table, index) => {
                 const rows = table.querySelectorAll('tr');
-                if (rows.length < 3) return; // Ignorar tablas muy chicas que no sean de posiciones
+                if (rows.length < 3) return;
 
                 const teams = [];
                 let title = "";
@@ -74,7 +74,6 @@ async function sincronizarDatos() {
                     title = "PROMEDIOS";
                 }
 
-                // Si la tabla pertenece claramente a estadísticas personales, la saltamos aquí para procesarla después
                 if (tableText.includes('goles') || tableText.includes('promedio de gol') && headers.length <= 3) {
                     return; 
                 }
@@ -151,7 +150,7 @@ async function sincronizarDatos() {
             return groupedTables;
         });
 
-        // Extraer Estadísticas Personales de manera directa buscando encabezados cercanos
+        // Extraer Estadísticas Personales correctamente (Buscando nombre de jugador en celdas de texto)
         const statsData = await page.evaluate(() => {
             const statBlocks = [];
             const tables = document.querySelectorAll('table');
@@ -161,8 +160,6 @@ async function sincronizarDatos() {
                 if (rows.length < 2) return;
 
                 let titleText = "";
-                
-                // Buscar texto descriptivo en elementos contenedores anteriores (divs o títulos de sección en Promiedos)
                 let parent = table.parentElement;
                 for (let i = 0; i < 4 && parent && !titleText; i++) {
                     const candidate = parent.querySelector('div, span, b, h3, h4');
@@ -175,34 +172,49 @@ async function sincronizarDatos() {
                     parent = parent.parentElement;
                 }
 
-                // Fallback si no encuentra arriba, busca en hermanos previos
                 if (!titleText) {
                     let prev = table.previousElementSibling;
-                    while (prev && !titleText) {
+                    let steps = 0;
+                    while (prev && !titleText && steps < 4) {
                         const t = prev.innerText ? prev.innerText.trim() : "";
                         if (t.length > 2 && t.length < 35) {
                             titleText = t;
                         }
                         prev = prev.previousElementSibling;
+                        steps++;
                     }
                 }
 
                 const lowerTitle = titleText.toLowerCase();
                 const isStatTable = lowerTitle.includes('goles') || 
                                     lowerTitle.includes('asistencia') || 
+                                    lowerTitle.includes('barrida') || 
                                     lowerTitle.includes('tarjeta') || 
                                     lowerTitle.includes('amarilla') || 
                                     lowerTitle.includes('roja') ||
                                     lowerTitle.includes('goleador');
 
-                // Validar estructura típica de estadísticas (jugador + número al costado)
                 if (isStatTable || rows.length <= 15) {
                     const players = [];
 
                     rows.forEach((row) => {
                         const cols = row.querySelectorAll('td');
-                        if (cols.length >= 2) {
-                            let playerName = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
+                        if (cols.length >= 3) {
+                            let playerName = "";
+                            
+                            // Buscar el primer texto que no sea un número en las columnas intermedias
+                            for (let c = 1; c < cols.length - 1; c++) {
+                                const text = cols[c]?.innerText?.trim();
+                                if (text && text.length > 1 && isNaN(text)) {
+                                    playerName = text;
+                                    break;
+                                }
+                            }
+
+                            if (!playerName && cols[2]) {
+                                playerName = cols[2]?.innerText?.trim();
+                            }
+
                             let statValueStr = cols[cols.length - 1]?.innerText?.trim().replace(',', '.');
                             const statValue = parseFloat(statValueStr);
 
