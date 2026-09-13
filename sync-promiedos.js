@@ -63,7 +63,6 @@ async function sincronizarDatos() {
                 const headers = Array.from(rows[0]?.querySelectorAll('th, td') || []).map(th => th.innerText.trim().toLowerCase());
                 const tableText = table.innerText.toLowerCase();
                 
-                // Detección robusta para asegurar que tome la tabla de promedios
                 let isPromedioTable = title.toLowerCase().includes('promedio') || 
                                     title.toLowerCase().includes('relegation') || 
                                     tableText.includes('prom') || 
@@ -98,7 +97,7 @@ async function sincronizarDatos() {
                             season25 = parseInt(cols[6]?.innerText?.trim() || 0);
                             season26 = parseInt(cols[7]?.innerText?.trim() || 0);
                             
-                            dgVal = totalPts; // Guardamos Pts totales para mostrarlos en la columna Pts
+                            dgVal = totalPts;
 
                             if (!isNaN(parsedProm) && parsedProm > 0 && parsedProm < 10) {
                                 pointsStr = parsedProm.toFixed(3);
@@ -145,76 +144,83 @@ async function sincronizarDatos() {
             return groupedTables;
         });
 
-        // 3. Sincronizar Estadísticas Personales (Goles, Asistencias, Tarjetas, etc.) - Versión ampliada y flexible
+        // 3. Sincronizar Estadísticas Personales adaptado a la estructura visual de la imagen
         const statsData = await page.evaluate(() => {
             const statBlocks = [];
             const tables = document.querySelectorAll('table');
             
             tables.forEach((table, index) => {
                 const rows = table.querySelectorAll('tr');
-                if (rows.length < 3) return;
+                if (rows.length < 2) return;
 
                 let titleText = "";
-                let el = table.previousElementSibling;
-                let steps = 0;
-                while (el && !titleText && steps < 4) {
-                    const text = el.innerText ? el.innerText.trim() : "";
-                    if (text.length > 0 && text.length < 60) {
-                        titleText = text;
+                
+                // Buscar el título dentro del contenedor superior o hermanos anteriores
+                let container = table.closest('div');
+                while (container && !titleText) {
+                    const possibleHeader = container.querySelector('div, span, b');
+                    if (possibleHeader && possibleHeader !== container) {
+                        const t = possibleHeader.innerText.trim();
+                        if (t.length > 0 && t.length < 40 && !t.toLowerCase().includes('ver más')) {
+                            titleText = t;
+                        }
                     }
-                    el = el.previousElementSibling;
-                    steps++;
+                    container = container.parentElement;
                 }
 
+                // Fallback por si el contenedor falla
                 if (!titleText) {
-                    const parent = table.closest('div');
-                    if (parent) {
-                        const header = parent.querySelector('div, span, h2, h3, b');
-                        if (header) titleText = header.innerText.trim();
+                    let el = table.previousElementSibling;
+                    let steps = 0;
+                    while (el && !titleText && steps < 4) {
+                        const text = el.innerText ? el.innerText.trim() : "";
+                        if (text.length > 0 && text.length < 40) {
+                            titleText = text;
+                        }
+                        el = el.previousElementSibling;
+                        steps++;
                     }
                 }
 
                 const lowerTitle = titleText.toLowerCase();
-                const headersText = Array.from(table.querySelectorAll('th, tr:first-child')).map(e => e.innerText.toLowerCase()).join(' ');
 
-                const isStatTable = lowerTitle.includes('goleador') || 
-                                    lowerTitle.includes('gol') || 
-                                    lowerTitle.includes('asistenci') || 
+                // Validar si es una tabla de estadísticas personales (Goles, Asistencias, Barridas, Tarjetas, etc.)
+                const isStatTable = lowerTitle.includes('goles') || 
+                                    lowerTitle.includes('asistencia') || 
+                                    lowerTitle.includes('barrida') || 
                                     lowerTitle.includes('tarjeta') || 
                                     lowerTitle.includes('amarilla') || 
                                     lowerTitle.includes('roja') ||
-                                    headersText.includes('goles') ||
-                                    headersText.includes('asist') ||
-                                    (rows.length > 3 && table.querySelectorAll('td').length / rows.length <= 3);
+                                    lowerTitle.includes('goleador');
 
                 if (isStatTable) {
                     const players = [];
 
-                    rows.forEach((row, rIdx) => {
-                        if (rIdx === 0 && (row.querySelector('th') || row.innerText.toLowerCase().includes('jugador'))) return;
-
+                    rows.forEach((row) => {
                         const cols = row.querySelectorAll('td');
                         if (cols.length >= 2) {
+                            // En Promiedos las estadísticas personales suelen tener la imagen en cols[0] y el nombre en cols[1]
                             let playerName = "";
-                            let statValue = "";
+                            let statValueStr = "";
 
                             if (cols.length >= 3) {
-                                playerName = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
-                                statValue = cols[cols.length - 1]?.innerText?.trim();
+                                playerName = cols[1]?.innerText?.trim();
+                                statValueStr = cols[cols.length - 1]?.innerText?.trim().replace(',', '.');
                             } else {
                                 playerName = cols[0]?.innerText?.trim();
-                                statValue = cols[1]?.innerText?.trim();
+                                statValueStr = cols[1]?.innerText?.trim().replace(',', '.');
                             }
+
+                            const statValue = parseFloat(statValueStr);
 
                             if (playerName && 
                                 playerName.toLowerCase() !== "equipo" && 
                                 playerName.toLowerCase() !== "jugador" && 
-                                playerName.toLowerCase() !== "goles" &&
-                                statValue && !isNaN(statValue)) {
+                                !isNaN(statValue)) {
                                 
                                 players.push({
                                     name: playerName,
-                                    value: Number(statValue)
+                                    value: statValue
                                 });
                             }
                         }
@@ -222,8 +228,8 @@ async function sincronizarDatos() {
 
                     if (players.length > 0) {
                         statBlocks.push({
-                            category: titleText ? titleText.toUpperCase() : `ESTADÍSTICA ${index}`,
-                            players: players.slice(0, 10)
+                            category: titleText.toUpperCase(),
+                            players: players.slice(0, 10) // Trae los primeros (ej: Top 6 o Top 10)
                         });
                     }
                 }
