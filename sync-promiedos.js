@@ -74,7 +74,8 @@ async function sincronizarDatos() {
                     title = "PROMEDIOS";
                 }
 
-                if (tableText.includes('goles') || tableText.includes('promedio de gol') && headers.length <= 3) {
+                // Omitir si es una tabla clara de estadísticas dentro del loop de posiciones
+                if (tableText.includes('goles') || tableText.includes('asistencia') || tableText.includes('amarillas')) {
                     return; 
                 }
 
@@ -150,89 +151,76 @@ async function sincronizarDatos() {
             return groupedTables;
         });
 
-        // Extraer Estadísticas Personales correctamente (Buscando nombre de jugador en celdas de texto)
+        // Extraer Estadísticas Personales con tolerancia a títulos y nombres limpios
         const statsData = await page.evaluate(() => {
             const statBlocks = [];
             const tables = document.querySelectorAll('table');
             
-            tables.forEach((table) => {
+            tables.forEach((table, index) => {
                 const rows = table.querySelectorAll('tr');
                 if (rows.length < 2) return;
 
+                // Descartar si es una tabla gigante (posiciones principales)
+                if (rows.length > 15) return;
+
                 let titleText = "";
-                let parent = table.parentElement;
-                for (let i = 0; i < 4 && parent && !titleText; i++) {
-                    const candidate = parent.querySelector('div, span, b, h3, h4');
-                    if (candidate && candidate !== table) {
-                        const t = candidate.innerText.trim();
-                        if (t.length > 2 && t.length < 35) {
-                            titleText = t;
-                        }
+                let prev = table.previousElementSibling;
+                while (prev && !titleText) {
+                    const t = prev.innerText ? prev.innerText.trim() : "";
+                    if (t.length > 1 && t.length < 50) {
+                        titleText = t;
                     }
-                    parent = parent.parentElement;
+                    prev = prev.previousElementSibling;
                 }
 
                 if (!titleText) {
-                    let prev = table.previousElementSibling;
-                    let steps = 0;
-                    while (prev && !titleText && steps < 4) {
-                        const t = prev.innerText ? prev.innerText.trim() : "";
-                        if (t.length > 2 && t.length < 35) {
-                            titleText = t;
-                        }
-                        prev = prev.previousElementSibling;
-                        steps++;
+                    const parent = table.parentElement;
+                    if (parent) {
+                        const candidate = parent.querySelector('div, span, b, h3, h4');
+                        if (candidate) titleText = candidate.innerText.trim();
                     }
                 }
 
-                const lowerTitle = titleText.toLowerCase();
-                const isStatTable = lowerTitle.includes('goles') || 
-                                    lowerTitle.includes('asistencia') || 
-                                    lowerTitle.includes('barrida') || 
-                                    lowerTitle.includes('tarjeta') || 
-                                    lowerTitle.includes('amarilla') || 
-                                    lowerTitle.includes('roja') ||
-                                    lowerTitle.includes('goleador');
+                if (!titleText) {
+                    titleText = `ESTADÍSTICA ${index}`;
+                }
 
-                if (isStatTable || rows.length <= 15) {
-                    const players = [];
-
-                    rows.forEach((row) => {
-                        const cols = row.querySelectorAll('td');
-                        if (cols.length >= 3) {
-                            let playerName = "";
-                            
-                            // Buscar el primer texto que no sea un número en las columnas intermedias
-                            for (let c = 1; c < cols.length - 1; c++) {
-                                const text = cols[c]?.innerText?.trim();
-                                if (text && text.length > 1 && isNaN(text)) {
-                                    playerName = text;
-                                    break;
-                                }
-                            }
-
-                            if (!playerName && cols[2]) {
-                                playerName = cols[2]?.innerText?.trim();
-                            }
-
-                            let statValueStr = cols[cols.length - 1]?.innerText?.trim().replace(',', '.');
-                            const statValue = parseFloat(statValueStr);
-
-                            if (playerName && 
-                                !playerName.toLowerCase().includes('equipo') && 
-                                !playerName.toLowerCase().includes('jugador') && 
-                                !isNaN(statValue)) {
-                                players.push({ name: playerName, value: statValue });
+                const players = [];
+                rows.forEach((row) => {
+                    const cols = row.querySelectorAll('td');
+                    if (cols.length >= 2) {
+                        let playerName = "";
+                        // Buscar la celda que contenga texto de nombre (evitando números de posición puros)
+                        for (let c = 0; c < cols.length; c++) {
+                            const txt = cols[c]?.innerText?.trim() || "";
+                            if (txt.length > 2 && isNaN(txt) && !txt.toLowerCase().includes('jugador') && !txt.toLowerCase().includes('equipo')) {
+                                playerName = txt;
+                                break;
                             }
                         }
-                    });
 
-                    if (players.length > 0 && titleText) {
-                        statBlocks.push({
-                            category: titleText.toUpperCase(),
-                            players: players.slice(0, 10)
-                        });
+                        // Buscar el valor numérico de la estadística (suele estar en la última columna)
+                        let statValue = NaN;
+                        for (let c = cols.length - 1; c >= 0; c--) {
+                            const valStr = cols[c]?.innerText?.trim().replace(',', '.');
+                            const val = parseFloat(valStr);
+                            if (!isNaN(val) && valStr !== '') {
+                                statValue = val;
+                                break;
+                            }
+                        }
+
+                        if (playerName && !isNaN(statValue)) {
+                            players.push({ name: playerName, value: statValue });
+                        }
                     }
+                });
+
+                if (players.length > 0) {
+                    statBlocks.push({
+                        category: titleText.toUpperCase(),
+                        players: players.slice(0, 10)
+                    });
                 }
             });
 
