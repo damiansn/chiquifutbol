@@ -35,18 +35,20 @@ async function sincronizarDatos() {
             console.log("¡Partidos sincronizados en Redis!");
         }
 
-        // 2. Sincronizar y separar las tablas por bloques (Grupos / Torneos)
-        console.log("Consultando tablas de posiciones completas...");
+        // 2. Sincronizar la URL de la Liga Profesional (Tablas y Estadísticas)
+        console.log("Consultando tablas y estadísticas completas...");
         await page.goto('https://www.promiedos.com.ar/league/liga-profesional/hc', { waitUntil: 'networkidle2', timeout: 60000 });
 
+        // Extraer Tablas de Posiciones
         const tablesData = await page.evaluate(() => {
             const tableElements = document.querySelectorAll('table');
             const groupedTables = [];
 
             tableElements.forEach((table, index) => {
                 const rows = table.querySelectorAll('tr');
-                const teams = [];
+                if (rows.length < 3) return; // Ignorar tablas muy chicas que no sean de posiciones
 
+                const teams = [];
                 let title = "";
                 let el = table.previousElementSibling;
                 while (el && !title) {
@@ -70,6 +72,11 @@ async function sincronizarDatos() {
 
                 if (isPromedioTable) {
                     title = "PROMEDIOS";
+                }
+
+                // Si la tabla pertenece claramente a estadísticas personales, la saltamos aquí para procesarla después
+                if (tableText.includes('goles') || tableText.includes('promedio de gol') && headers.length <= 3) {
+                    return; 
                 }
 
                 rows.forEach((row, rIdx) => {
@@ -144,92 +151,74 @@ async function sincronizarDatos() {
             return groupedTables;
         });
 
-        // 3. Sincronizar Estadísticas Personales adaptado a la estructura visual de la imagen
+        // Extraer Estadísticas Personales de manera directa buscando encabezados cercanos
         const statsData = await page.evaluate(() => {
             const statBlocks = [];
             const tables = document.querySelectorAll('table');
             
-            tables.forEach((table, index) => {
+            tables.forEach((table) => {
                 const rows = table.querySelectorAll('tr');
                 if (rows.length < 2) return;
 
                 let titleText = "";
                 
-                // Buscar el título dentro del contenedor superior o hermanos anteriores
-                let container = table.closest('div');
-                while (container && !titleText) {
-                    const possibleHeader = container.querySelector('div, span, b');
-                    if (possibleHeader && possibleHeader !== container) {
-                        const t = possibleHeader.innerText.trim();
-                        if (t.length > 0 && t.length < 40 && !t.toLowerCase().includes('ver más')) {
+                // Buscar texto descriptivo en elementos contenedores anteriores (divs o títulos de sección en Promiedos)
+                let parent = table.parentElement;
+                for (let i = 0; i < 4 && parent && !titleText; i++) {
+                    const candidate = parent.querySelector('div, span, b, h3, h4');
+                    if (candidate && candidate !== table) {
+                        const t = candidate.innerText.trim();
+                        if (t.length > 2 && t.length < 35) {
                             titleText = t;
                         }
                     }
-                    container = container.parentElement;
+                    parent = parent.parentElement;
                 }
 
-                // Fallback por si el contenedor falla
+                // Fallback si no encuentra arriba, busca en hermanos previos
                 if (!titleText) {
-                    let el = table.previousElementSibling;
-                    let steps = 0;
-                    while (el && !titleText && steps < 4) {
-                        const text = el.innerText ? el.innerText.trim() : "";
-                        if (text.length > 0 && text.length < 40) {
-                            titleText = text;
+                    let prev = table.previousElementSibling;
+                    while (prev && !titleText) {
+                        const t = prev.innerText ? prev.innerText.trim() : "";
+                        if (t.length > 2 && t.length < 35) {
+                            titleText = t;
                         }
-                        el = el.previousElementSibling;
-                        steps++;
+                        prev = prev.previousElementSibling;
                     }
                 }
 
                 const lowerTitle = titleText.toLowerCase();
-
-                // Validar si es una tabla de estadísticas personales (Goles, Asistencias, Barridas, Tarjetas, etc.)
                 const isStatTable = lowerTitle.includes('goles') || 
                                     lowerTitle.includes('asistencia') || 
-                                    lowerTitle.includes('barrida') || 
                                     lowerTitle.includes('tarjeta') || 
                                     lowerTitle.includes('amarilla') || 
                                     lowerTitle.includes('roja') ||
                                     lowerTitle.includes('goleador');
 
-                if (isStatTable) {
+                // Validar estructura típica de estadísticas (jugador + número al costado)
+                if (isStatTable || rows.length <= 15) {
                     const players = [];
 
                     rows.forEach((row) => {
                         const cols = row.querySelectorAll('td');
                         if (cols.length >= 2) {
-                            // En Promiedos las estadísticas personales suelen tener la imagen en cols[0] y el nombre en cols[1]
-                            let playerName = "";
-                            let statValueStr = "";
-
-                            if (cols.length >= 3) {
-                                playerName = cols[1]?.innerText?.trim();
-                                statValueStr = cols[cols.length - 1]?.innerText?.trim().replace(',', '.');
-                            } else {
-                                playerName = cols[0]?.innerText?.trim();
-                                statValueStr = cols[1]?.innerText?.trim().replace(',', '.');
-                            }
-
+                            let playerName = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
+                            let statValueStr = cols[cols.length - 1]?.innerText?.trim().replace(',', '.');
                             const statValue = parseFloat(statValueStr);
 
                             if (playerName && 
-                                playerName.toLowerCase() !== "equipo" && 
-                                playerName.toLowerCase() !== "jugador" && 
+                                !playerName.toLowerCase().includes('equipo') && 
+                                !playerName.toLowerCase().includes('jugador') && 
                                 !isNaN(statValue)) {
-                                
-                                players.push({
-                                    name: playerName,
-                                    value: statValue
-                                });
+                                players.push({ name: playerName, value: statValue });
                             }
                         }
                     });
 
-                    if (players.length > 0) {
+                    if (players.length > 0 && titleText) {
                         statBlocks.push({
                             category: titleText.toUpperCase(),
-                            players: players.slice(0, 10) // Trae los primeros (ej: Top 6 o Top 10)
+                            players: players.slice(0, 10)
                         });
                     }
                 }
@@ -240,13 +229,13 @@ async function sincronizarDatos() {
 
         console.log(`Se detectaron ${tablesData.length} tablas de posiciones y ${statsData.length} bloques de estadísticas.`);
 
-        if (tablesData.length > 0) {
+        if (tablesData.length > 0 || statsData.length > 0) {
             const payload = JSON.stringify({ tables: tablesData, stats: statsData });
             await redis.set('chiquifutbol_standings', payload);
             await redis.set('chiquifutbol_standings_1', payload);
             console.log("¡Tablas y estadísticas guardadas en Redis con éxito!");
         } else {
-            console.log("No se pudieron extraer las tablas correctamente.");
+            console.log("No se pudieron extraer los datos correctamente.");
         }
 
     } catch (error) {
