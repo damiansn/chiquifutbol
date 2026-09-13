@@ -49,11 +49,22 @@ async function sincronizarDatos() {
 
                 let title = `Tabla ${index + 1}`;
                 let parentPrev = table.previousElementSibling;
-                if (parentPrev && parentPrev.innerText && parentPrev.innerText.length < 30) {
+                if (parentPrev && parentPrev.innerText && parentPrev.innerText.trim().length > 0 && parentPrev.innerText.length < 50) {
                     title = parentPrev.innerText.trim();
                 }
 
-                rows.forEach((row) => {
+                // Detectar si es la tabla de promedios mirando los encabezados (th) de la tabla
+                const headers = Array.from(rows[0]?.querySelectorAll('th') || []).map(th => th.innerText.trim().toLowerCase());
+                let isPromedioTable = title.toLowerCase().includes('promedio') || headers.includes('prom') || headers.some(h => h.includes('promedio'));
+
+                if (isPromedioTable && title.startsWith('Tabla ')) {
+                    title = "PROMEDIOS";
+                }
+
+                rows.forEach((row, rIdx) => {
+                    // Omitir cabecera si tiene th
+                    if (rIdx === 0 && row.querySelectorAll('th').length > 0) return;
+
                     const cols = row.querySelectorAll('td');
                     if (cols.length >= 3) {
                         const name = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
@@ -62,21 +73,17 @@ async function sincronizarDatos() {
                         let playedVal = 0;
                         let dgVal = 0;
 
-                        // Si es la tabla de promedios, leemos explícitamente el valor decimal de la columna "Prom"
-                        if (title.toLowerCase().includes('promedio')) {
+                        if (isPromedioTable) {
                             let rawProm = cols[2]?.innerText?.trim() || '';
                             rawProm = rawProm.replace(',', '.');
                             const parsedProm = parseFloat(rawProm);
 
                             if (!isNaN(parsedProm)) {
-                                pointsStr = parsedProm.toFixed(3); // Aseguramos que guarde los 3 decimales exactos
-                                playedVal = parseInt(cols[4]?.innerText?.trim() || 0); // PJ
-                                dgVal = parseInt(cols[5]?.innerText?.trim() || 0);
+                                pointsStr = parsedProm.toFixed(3); // Mantiene los 3 decimales exactos
+                                playedVal = parseInt(cols[3]?.innerText?.trim() || cols[4]?.innerText?.trim() || 0);
+                                dgVal = parseInt(cols[4]?.innerText?.trim() || cols[5]?.innerText?.trim() || 0);
                             }
-                        } 
-                        
-                        // Si no encontró o no es promedios, usa la lógica estándar de la columna 2
-                        if (!pointsStr) {
+                        } else {
                             const standardPts = cols[2]?.innerText?.trim().replace(',', '.');
                             if (standardPts && !isNaN(parseFloat(standardPts))) {
                                 pointsStr = standardPts;
@@ -85,8 +92,8 @@ async function sincronizarDatos() {
                             }
                         }
 
-                        if (name && name !== "Equipo" && pointsStr) {
-                            const pointsValue = parseFloat(pointsStr) || 0;
+                        if (name && name !== "Equipo" && name !== "Equipos" && pointsStr) {
+                            const pointsValue = parseFloat(pointsStr);
 
                             teams.push({
                                 position: teams.length + 1,
