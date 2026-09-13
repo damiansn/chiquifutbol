@@ -38,18 +38,16 @@ function StandingsContent() {
     return <div style={{ padding: "40px", textAlign: "center", color: "inherit" }}>Cargando posiciones...</div>;
   }
 
-  // Extraemos la lista plana de equipos o las tablas si ya vienen agrupadas
+  let tablesList = standings?.tables || [];
   const rawTeams = standings?.tables ? null : (standings?.teams || (Array.isArray(standings) ? standings : []));
 
-  // Si tenemos una lista plana, la seccionamos automáticamente por bloques de 15 y 30 equipos
-  let tablesList = standings?.tables || [];
   if (rawTeams && rawTeams.length > 0) {
     tablesList = [
       { title: "Clausura - Grupo A", teams: rawTeams.slice(0, 15) },
       { title: "Clausura - Grupo B", teams: rawTeams.slice(15, 30) },
       { title: "Apertura - Grupo A", teams: rawTeams.slice(30, 45) },
       { title: "Apertura - Grupo B", teams: rawTeams.slice(45, 60) },
-      { title: "Promedios", teams: rawTeams.slice(60, 90) },
+      { title: "PROMEDIOS", teams: rawTeams.slice(60, 90) },
       { title: "Tabla Anual", teams: rawTeams.slice(90, 120) }
     ].filter(section => section.teams.length > 0);
   }
@@ -95,8 +93,8 @@ function StandingsContent() {
                         <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
                         <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
                           {isPromedios
-                            ? Number(team.points ?? team.pts ?? 0).toFixed(3)
-                            : Math.round(team.points ?? team.pts ?? 0)}
+                            ? (team.points ?? team.pts ?? "0.000")
+                            : Math.round(Number(team.points ?? team.pts ?? 0))}
                         </td>
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
                           {team.played ?? team.pj ?? 0}

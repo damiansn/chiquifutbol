@@ -73,13 +73,13 @@ async function sincronizarDatos() {
                         let playedVal = 0;
                         let dgVal = 0;
 
-                        if (isPromedioTable) {
+                    if (isPromedioTable) {
                             let rawProm = cols[2]?.innerText?.trim() || '';
                             rawProm = rawProm.replace(',', '.');
                             const parsedProm = parseFloat(rawProm);
 
                             if (!isNaN(parsedProm)) {
-                                pointsStr = parsedProm.toFixed(3); // Mantiene los 3 decimales exactos
+                                pointsStr = parsedProm.toFixed(3); // Lo dejamos como string exacto "1.765"
                                 playedVal = parseInt(cols[3]?.innerText?.trim() || cols[4]?.innerText?.trim() || 0);
                                 dgVal = parseInt(cols[4]?.innerText?.trim() || cols[5]?.innerText?.trim() || 0);
                             }
@@ -93,7 +93,8 @@ async function sincronizarDatos() {
                         }
 
                         if (name && name !== "Equipo" && name !== "Equipos" && pointsStr) {
-                            const pointsValue = parseFloat(pointsStr);
+                            // Si es promedios guardamos el string con decimales exactos, si no el número parseado
+                            const pointsValue = isPromedioTable ? pointsStr : (parseFloat(pointsStr) || 0);
 
                             teams.push({
                                 position: teams.length + 1,
