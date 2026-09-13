@@ -47,7 +47,6 @@ async function sincronizarDatos() {
                 const rows = table.querySelectorAll('tr');
                 const teams = [];
 
-                // Búsqueda robusta del título real (revisando elementos anteriores)
                 let title = "";
                 let el = table.previousElementSibling;
                 while (el && !title) {
@@ -61,7 +60,6 @@ async function sincronizarDatos() {
                     title = `Tabla ${index + 1}`;
                 }
 
-                // Detectar si es la tabla de promedios analizando cabeceras y título
                 const headers = Array.from(rows[0]?.querySelectorAll('th') || []).map(th => th.innerText.trim().toLowerCase());
                 let isPromedioTable = title.toLowerCase().includes('promedio') || headers.includes('prom') || headers.some(h => h.includes('promedio'));
 
@@ -70,7 +68,6 @@ async function sincronizarDatos() {
                 }
 
                 rows.forEach((row, rIdx) => {
-                    // Omitir cabecera si tiene th
                     if (rIdx === 0 && row.querySelectorAll('th').length > 0) return;
 
                     const cols = row.querySelectorAll('td');
@@ -85,18 +82,25 @@ async function sincronizarDatos() {
                         let season26 = 0;
 
                         if (isPromedioTable) {
-                            // Estructura segura para la tabla de promedios:
-                            // Intentamos leer el promedio directo de cols[2], si falla lo calculamos de los puntos totales y PJ
+                            // Mapeo exacto según la estructura visual:
+                            // cols[2] = Prom (ej. 1.765)
+                            // cols[3] = Pts (ej. 173)
+                            // cols[4] = PJ (ej. 98)
+                            // cols[5] = 24 (ej. 67)
+                            // cols[6] = 25 (ej. 62)
+                            // cols[7] = 26 (ej. 44)
+
                             let rawProm = cols[2]?.innerText?.trim().replace(',', '.') || '';
                             let parsedProm = parseFloat(rawProm);
+
+                            const totalPts = parseInt(cols[3]?.innerText?.trim() || 0);
+                            playedVal = parseInt(cols[4]?.innerText?.trim() || 0);
+
+                            season24 = parseInt(cols[5]?.innerText?.trim() || 0);
+                            season25 = parseInt(cols[6]?.innerText?.trim() || 0);
+                            season26 = parseInt(cols[7]?.innerText?.trim() || 0);
                             
-                            season24 = parseInt(cols[3]?.innerText?.trim() || 0);
-                            season25 = parseInt(cols[4]?.innerText?.trim() || 0);
-                            season26 = parseInt(cols[5]?.innerText?.trim() || 0);
-                            
-                            const totalPts = parseInt(cols[6]?.innerText?.trim() || 0);
-                            playedVal = parseInt(cols[7]?.innerText?.trim() || 0);
-                            dgVal = 0; 
+                            dgVal = totalPts; // Guardamos Pts temporales para mostrarlos en la columna de puntos
 
                             if (!isNaN(parsedProm) && parsedProm > 0 && parsedProm < 10) {
                                 pointsStr = parsedProm.toFixed(3);
@@ -106,7 +110,6 @@ async function sincronizarDatos() {
                                 pointsStr = "0.000";
                             }
                         } else {
-                            // Tablas estándar (Apertura, Clausura, Anual, etc.)
                             const standardPts = cols[2]?.innerText?.trim().replace(',', '.');
                             if (standardPts && !isNaN(parseFloat(standardPts))) {
                                 pointsStr = standardPts;
@@ -116,14 +119,12 @@ async function sincronizarDatos() {
                         }
 
                         if (name && name !== "Equipo" && name !== "Equipos" && pointsStr) {
-                            const pointsValue = isPromedioTable ? pointsStr : (parseFloat(pointsStr) || 0);
-
                             const teamObj = {
                                 position: teams.length + 1,
                                 name: name,
-                                points: pointsValue,
-                                played: playedVal,
-                                goal_difference: dgVal
+                                points: pointsStr, // El promedio exacto (ej. "1.765")
+                                played: playedVal,  // PJ real
+                                goal_difference: dgVal // Pts totales si es promedios, DG si es tabla normal
                             };
 
                             if (isPromedioTable) {
