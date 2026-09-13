@@ -38,10 +38,7 @@ function StandingsContent() {
     return <div style={{ padding: "40px", textAlign: "center", color: "inherit" }}>Cargando posiciones...</div>;
   }
 
-  // 1. Priorizamos las tablas estructuradas que devuelva el backend/scraper
   let tablesList = standings?.tables || [];
-
-  // 2. Si no hay tablas estructuradas pero sí una lista plana, armamos los bloques por defecto
   const rawTeams = standings?.tables ? null : (standings?.teams || (Array.isArray(standings) ? standings : []));
 
   if (rawTeams && rawTeams.length > 0) {
@@ -87,6 +84,13 @@ function StandingsContent() {
                       </th>
                       <th style={{ padding: "10px", textAlign: "center" }}>PJ</th>
                       <th style={{ padding: "10px", textAlign: "center" }}>DG</th>
+                      {isPromedios && (
+                        <>
+                          <th style={{ padding: "10px", textAlign: "center" }}>'24</th>
+                          <th style={{ padding: "10px", textAlign: "center" }}>'25</th>
+                          <th style={{ padding: "10px", textAlign: "center" }}>'26</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -96,15 +100,22 @@ function StandingsContent() {
                         <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
                         <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
                           {isPromedios
-                            ? (team.points ?? team.pts ?? "0.000")
+                            ? (team.points ?? "0.000") // Mantiene el string decimal exacto (ej: "1.765")
                             : Math.round(Number(team.points ?? team.pts ?? 0))}
                         </td>
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
                           {team.played ?? team.pj ?? 0}
                         </td>
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                          {team.goal_difference ?? team.dg ?? 0}
+                          {isPromedios ? "-" : (team.goal_difference ?? team.dg ?? 0)}
                         </td>
+                        {isPromedios && team.seasons && (
+                          <>
+                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons[0]}</td>
+                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons[1]}</td>
+                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons[2]}</td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>

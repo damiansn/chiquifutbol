@@ -72,24 +72,31 @@ async function sincronizarDatos() {
                         let pointsStr = null;
                         let playedVal = 0;
                         let dgVal = 0;
+                        let season24 = 0;
+                        let season25 = 0;
+                        let season26 = 0;
 
                         if (isPromedioTable) {
-                            let rawProm = cols[2]?.innerText?.trim() || '';
-                            
-                            if (!rawProm.includes('.') && !rawProm.includes(',')) {
-                                rawProm = cols[2]?.textContent?.trim() || '';
-                            }
-
+                            // Estructura de la tabla de promedios:
+                            // cols[2] = Prom (ej. 1.765)
+                            // cols[3] = Pts (ej. 173)
+                            // cols[4] = PJ (ej. 98)
+                            // cols[5] = Temporada 24
+                            // cols[6] = Temporada 25
+                            // cols[7] = Temporada 26
+                            let rawProm = cols[2]?.innerText?.trim() || cols[2]?.textContent?.trim() || '';
                             rawProm = rawProm.replace(',', '.');
-                            let parsedProm = parseFloat(rawProm);
+                            
+                            const parsedProm = parseFloat(rawProm);
 
                             if (!isNaN(parsedProm)) {
-                                if (parsedProm > 10 && !rawProm.includes('.')) {
-                                    parsedProm = parsedProm / 1000;
-                                }
-                                pointsStr = parsedProm.toFixed(3);
-                                playedVal = parseInt(cols[3]?.innerText?.trim() || cols[4]?.innerText?.trim() || 0);
-                                dgVal = parseInt(cols[4]?.innerText?.trim() || cols[5]?.innerText?.trim() || 0);
+                                pointsStr = parsedProm.toFixed(3); // Mantiene los decimales exactos como string
+                                playedVal = parseInt(cols[4]?.innerText?.trim() || 0); // PJ
+                                dgVal = 0; 
+
+                                season24 = parseInt(cols[5]?.innerText?.trim() || 0);
+                                season25 = parseInt(cols[6]?.innerText?.trim() || 0);
+                                season26 = parseInt(cols[7]?.innerText?.trim() || 0);
                             }
                         } else {
                             const standardPts = cols[2]?.innerText?.trim().replace(',', '.');
@@ -103,13 +110,20 @@ async function sincronizarDatos() {
                         if (name && name !== "Equipo" && name !== "Equipos" && pointsStr) {
                             const pointsValue = isPromedioTable ? pointsStr : (parseFloat(pointsStr) || 0);
 
-                            teams.push({
+                            const teamObj = {
                                 position: teams.length + 1,
                                 name: name,
                                 points: pointsValue,
                                 played: playedVal,
                                 goal_difference: dgVal
-                            });
+                            };
+
+                            // Si es la tabla de promedios, agregamos las temporadas
+                            if (isPromedioTable) {
+                                teamObj.seasons = [season24, season25, season26];
+                            }
+
+                            teams.push(teamObj);
                         }
                     }
                 });
