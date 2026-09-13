@@ -38,7 +38,10 @@ function StandingsContent() {
     return <div style={{ padding: "40px", textAlign: "center", color: "inherit" }}>Cargando posiciones...</div>;
   }
 
+  // 1. Priorizamos las tablas estructuradas que devuelva el backend/scraper
   let tablesList = standings?.tables || [];
+
+  // 2. Si no hay tablas estructuradas pero sí una lista plana, armamos los bloques por defecto
   const rawTeams = standings?.tables ? null : (standings?.teams || (Array.isArray(standings) ? standings : []));
 
   if (rawTeams && rawTeams.length > 0) {
