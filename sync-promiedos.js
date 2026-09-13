@@ -59,17 +59,21 @@ async function sincronizarDatos() {
                         const name = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
                         const pointsStr = cols[2]?.innerText?.trim();
 
-                        // Verificamos si tiene puntos válidos (ya sea entero o decimal para promedios)
-                        if (name && name !== "Equipo" && pointsStr && !isNaN(parseFloat(pointsStr))) {
-                            const pointsValue = pointsStr.includes('.') ? parseFloat(pointsStr) : parseInt(pointsStr) || 0;
+                        if (name && name !== "Equipo" && pointsStr) {
+                            // Reemplazamos la coma por punto para que JS reconozca correctamente los decimales de Promedios
+                            const normalizedPoints = pointsStr.replace(',', '.');
+                            
+                            if (!isNaN(parseFloat(normalizedPoints))) {
+                                const pointsValue = normalizedPoints.includes('.') ? parseFloat(normalizedPoints) : parseInt(normalizedPoints) || 0;
 
-                            teams.push({
-                                position: teams.length + 1,
-                                name: name,
-                                points: pointsValue,
-                                played: parseInt(cols[3]?.innerText?.trim() || 0),
-                                goal_difference: parseInt(cols[4]?.innerText?.trim() || 0)
-                            });
+                                teams.push({
+                                    position: teams.length + 1,
+                                    name: name,
+                                    points: pointsValue,
+                                    played: parseInt(cols[3]?.innerText?.trim() || 0),
+                                    goal_difference: parseInt(cols[4]?.innerText?.trim() || 0)
+                                });
+                            }
                         }
                     }
                 });
