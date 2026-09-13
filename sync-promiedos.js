@@ -47,17 +47,25 @@ async function sincronizarDatos() {
                 const rows = table.querySelectorAll('tr');
                 const teams = [];
 
-                let title = `Tabla ${index + 1}`;
-                let parentPrev = table.previousElementSibling;
-                if (parentPrev && parentPrev.innerText && parentPrev.innerText.trim().length > 0 && parentPrev.innerText.length < 50) {
-                    title = parentPrev.innerText.trim();
+                // Búsqueda robusta del título real (revisando elementos anteriores)
+                let title = "";
+                let el = table.previousElementSibling;
+                while (el && !title) {
+                    const text = el.innerText ? el.innerText.trim() : "";
+                    if (text.length > 0 && text.length < 60) {
+                        title = text;
+                    }
+                    el = el.previousElementSibling;
+                }
+                if (!title) {
+                    title = `Tabla ${index + 1}`;
                 }
 
-                // Detectar si es la tabla de promedios mirando los encabezados (th) de la tabla
+                // Detectar si es la tabla de promedios analizando cabeceras y título
                 const headers = Array.from(rows[0]?.querySelectorAll('th') || []).map(th => th.innerText.trim().toLowerCase());
                 let isPromedioTable = title.toLowerCase().includes('promedio') || headers.includes('prom') || headers.some(h => h.includes('promedio'));
 
-                if (isPromedioTable && title.startsWith('Tabla ')) {
+                if (isPromedioTable) {
                     title = "PROMEDIOS";
                 }
 
@@ -77,18 +85,10 @@ async function sincronizarDatos() {
                         let season26 = 0;
 
                         if (isPromedioTable) {
-                            // Imprimimos en consola las columnas para validar la estructura exacta si hace falta
-                            if (rIdx === 1) {
-                                console.log("Cols promedios:", Array.from(cols).map((c, i) => `[${i}]: ${c.innerText.trim()}`));
-                            }
-
-                            // Estructura de la tabla de promedios:
-                            // cols[2] = Prom
-                            // cols[3], [4], [5] = Temporadas '24, '25, '26
-                            // cols[6] = Pts Totales
-                            // cols[7] = PJ Totales
-                            const promText = cols[2]?.innerText?.trim().replace(',', '.') || '0';
-                            const parsedProm = parseFloat(promText);
+                            // Estructura segura para la tabla de promedios:
+                            // Intentamos leer el promedio directo de cols[2], si falla lo calculamos de los puntos totales y PJ
+                            let rawProm = cols[2]?.innerText?.trim().replace(',', '.') || '';
+                            let parsedProm = parseFloat(rawProm);
                             
                             season24 = parseInt(cols[3]?.innerText?.trim() || 0);
                             season25 = parseInt(cols[4]?.innerText?.trim() || 0);
@@ -98,7 +98,7 @@ async function sincronizarDatos() {
                             playedVal = parseInt(cols[7]?.innerText?.trim() || 0);
                             dgVal = 0; 
 
-                            if (!isNaN(parsedProm) && parsedProm > 0) {
+                            if (!isNaN(parsedProm) && parsedProm > 0 && parsedProm < 10) {
                                 pointsStr = parsedProm.toFixed(3);
                             } else if (playedVal > 0) {
                                 pointsStr = (totalPts / playedVal).toFixed(3);
@@ -106,6 +106,7 @@ async function sincronizarDatos() {
                                 pointsStr = "0.000";
                             }
                         } else {
+                            // Tablas estándar (Apertura, Clausura, Anual, etc.)
                             const standardPts = cols[2]?.innerText?.trim().replace(',', '.');
                             if (standardPts && !isNaN(parseFloat(standardPts))) {
                                 pointsStr = standardPts;
@@ -125,7 +126,6 @@ async function sincronizarDatos() {
                                 goal_difference: dgVal
                             };
 
-                            // Si es la tabla de promedios, agregamos las temporadas
                             if (isPromedioTable) {
                                 teamObj.seasons = [season24, season25, season26];
                             }
