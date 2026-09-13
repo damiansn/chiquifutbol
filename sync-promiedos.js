@@ -145,12 +145,60 @@ async function sincronizarDatos() {
             return groupedTables;
         });
 
-        console.log(`Se detectaron ${tablesData.length} tablas separadas.`);
+        // 3. Sincronizar Estadísticas Personales (Goles, Asistencias, Tarjetas, etc.)
+        const statsData = await page.evaluate(() => {
+            const statBlocks = [];
+            const tables = document.querySelectorAll('table');
+            
+            tables.forEach(table => {
+                let titleText = "";
+                let el = table.previousElementSibling;
+                while (el && !titleText) {
+                    const text = el.innerText ? el.innerText.trim() : "";
+                    if (text.length > 0 && text.length < 60) {
+                        titleText = text;
+                    }
+                    el = el.previousElementSibling;
+                }
+
+                const categories = ["goles", "asistencias", "barridas", "tarjetas rojas", "tarjetas amarillas"];
+                if (categories.some(cat => titleText.toLowerCase().includes(cat))) {
+                    const rows = table.querySelectorAll('tr');
+                    const players = [];
+
+                    rows.forEach(row => {
+                        const cols = row.querySelectorAll('td');
+                        if (cols.length >= 2) {
+                            const playerName = cols[1]?.innerText?.trim() || cols[0]?.innerText?.trim();
+                            const statVal = cols[cols.length - 1]?.innerText?.trim();
+                            if (playerName && playerName !== "Equipo" && statVal) {
+                                players.push({
+                                    name: playerName,
+                                    value: isNaN(statVal) ? statVal : Number(statVal)
+                                });
+                            }
+                        }
+                    });
+
+                    if (players.length > 0) {
+                        statBlocks.push({
+                            category: titleText,
+                            players: players.slice(0, 5) // Top 5 de cada categoría
+                        });
+                    }
+                }
+            });
+
+            return statBlocks;
+        });
+
+        console.log(`Se detectaron ${tablesData.length} tablas de posiciones y ${statsData.length} bloques de estadísticas.`);
 
         if (tablesData.length > 0) {
-            await redis.set('chiquifutbol_standings', JSON.stringify({ tables: tablesData }));
-            await redis.set('chiquifutbol_standings_1', JSON.stringify({ tables: tablesData }));
-            console.log("¡Todas las tablas seccionadas y guardadas en Redis con éxito!");
+            const payload = JSON.stringify({ tables: tablesData, stats: statsData });
+            await redis.set('chiquifutbol_standings', payload);
+            await redis.set('chiquifutbol_standings_1', payload);
+            console.log("¡Tablas y estadísticas guardadas en Redis con éxito!");
         } else {
             console.log("No se pudieron extraer las tablas correctamente.");
         }
