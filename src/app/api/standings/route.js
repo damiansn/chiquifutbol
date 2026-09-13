@@ -5,28 +5,16 @@ const redis = new Redis(process.env.REDIS_URL);
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const leagueId = searchParams.get("leagueId");
+    // Forzamos siempre la lectura de la clave principal donde el scraper guarda todo junto ({ tables, stats })
+    let data = await redis.get("chiquifutbol_standings");
 
-    console.log(`Buscando posiciones para leagueId: ${leagueId}`);
-
-    // Probamos primero con la clave específica de la liga
-    let redisKey = leagueId ? `chiquifutbol_standings_${leagueId}` : "chiquifutbol_standings";
-    let data = await redis.get(redisKey);
-
-    // Si no existe, probamos con la clave genérica o buscamos claves disponibles
     if (!data) {
-      console.log(`No se encontró con la clave: ${redisKey}, probando clave genérica...`);
-      data = await redis.get("chiquifutbol_standings");
+      data = await redis.get("chiquifutbol_standings_1");
     }
 
     if (!data) {
-      // Opcional: listar las keys que hay en redis para debuguear en la terminal
-      const keys = await redis.keys("*");
-      console.log("Claves disponibles en Redis:", keys);
-
       return NextResponse.json(
-        { error: `No hay datos en Redis para la clave ${redisKey}` }, 
+        { error: "No hay datos estructurados en Redis." }, 
         { status: 404 }
       );
     }
