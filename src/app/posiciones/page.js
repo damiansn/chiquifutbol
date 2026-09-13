@@ -100,20 +100,20 @@ function StandingsContent() {
                         <td style={{ padding: "10px", fontWeight: "500" }}>{team.name || team.team_name}</td>
                         <td style={{ padding: "10px", textAlign: "center", fontWeight: "bold", color: "#10b981" }}>
                           {isPromedios
-                            ? (team.points ?? "0.000") // Mantiene el string decimal exacto (ej: "1.765")
+                            ? (team.points ?? "0.000") 
                             : Math.round(Number(team.points ?? team.pts ?? 0))}
                         </td>
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
                           {team.played ?? team.pj ?? 0}
                         </td>
                         <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>
-                          {isPromedios ? "-" : (team.goal_difference ?? team.dg ?? 0)}
+                          {isPromedios ? (team.goal_difference ?? 0) : (team.goal_difference ?? team.dg ?? 0)}
                         </td>
-                        {isPromedios && team.seasons && (
+                        {isPromedios && (
                           <>
-                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons[0]}</td>
-                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons[1]}</td>
-                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons[2]}</td>
+                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons?.[0] ?? 0}</td>
+                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons?.[1] ?? 0}</td>
+                            <td style={{ padding: "10px", textAlign: "center", opacity: 0.8 }}>{team.seasons?.[2] ?? 0}</td>
                           </>
                         )}
                       </tr>
