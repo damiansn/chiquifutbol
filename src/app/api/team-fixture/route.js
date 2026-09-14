@@ -25,17 +25,12 @@ export async function GET(request) {
 
     const rawSearch = teamName.toLowerCase().trim();
     const searchTerms = [rawSearch];
-    if (rawSearch.includes('river')) {
-      searchTerms.push('river', 'river plate');
-    } else if (rawSearch.includes('boca')) {
-      searchTerms.push('boca', 'boca juniors');
-    } else if (rawSearch.includes('racing')) {
-      searchTerms.push('racing', 'racing club');
-    } else if (rawSearch.includes('san lorenzo')) {
-      searchTerms.push('san lorenzo');
-    } else if (rawSearch.includes('independiente')) {
-      searchTerms.push('independiente');
-    }
+    if (rawSearch.includes('river')) searchTerms.push('river', 'river plate');
+    if (rawSearch.includes('boca')) searchTerms.push('boca', 'boca juniors');
+    if (rawSearch.includes('racing')) searchTerms.push('racing', 'racing club');
+    if (rawSearch.includes('san lorenzo')) searchTerms.push('san lorenzo');
+    if (rawSearch.includes('independiente')) searchTerms.push('independiente');
+    if (rawSearch.includes('instituto')) searchTerms.push('instituto', 'instituto cordoba', 'instituto de córdoba');
 
     const matches = [];
     const seenMatches = new Set();
@@ -50,9 +45,7 @@ export async function GET(request) {
       const day = String(currentDate.getDate()).padStart(2, '0');
       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
       const year = currentDate.getFullYear();
-      const formattedDateForUrl = `${day}-${month}-${year}`;
-
-      const targetUrl = `https://www.promiedos.com.ar/calendario/${formattedDateForUrl}`;
+      const targetUrl = `https://www.promiedos.com.ar/calendario/${day}-${month}-${year}`;
 
       fetchPromises.push(
         fetch(targetUrl, {
@@ -78,8 +71,8 @@ export async function GET(request) {
       const $ = cheerio.load(html);
       let currentLeagueContext = "Torneo";
 
-      // Buscamos específicamente filas de tablas (tr) o contenedores con clase de partido para evitar solapamientos de elementos anidados
-      $('tr').each((_, el) => {
+      // Restauramos la flexibilidad de búsqueda en contenedores (tr, div, td) para adaptarnos al diseño web de Promiedos
+      $('tr, div, td').each((_, el) => {
         const $el = $(el);
 
         const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
@@ -90,14 +83,12 @@ export async function GET(request) {
         const text = $el.text().replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
 
-        const hasTeam = searchTerms.some(term => {
-          const regex = new RegExp(`\\b${term}\\b`, 'i');
-          return regex.test(lowerText);
-        });
-
+        const hasTeam = searchTerms.some(term => lowerText.includes(term));
         if (!hasTeam) return;
-        if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
-        if (text.length < 5 || text.length > 120) return;
+
+        const hasIndicator = lowerText.includes('vs') || lowerText.includes(' - ') || /\d{2}:\d{2}/.test(text);
+        if (!hasIndicator) return;
+        if (text.length < 5 || text.length > 100) return;
         if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) return;
 
         const timeMatch = text.match(/(\d{2}:\d{2})/);
@@ -108,22 +99,12 @@ export async function GET(request) {
           cleanText = cleanText.replace(timeStr, "").trim();
         }
 
-        const matchedTerm = searchTerms.find(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
-        if (matchedTerm) {
-          const idx = cleanText.toLowerCase().indexOf(matchedTerm);
-          if (idx !== -1 && cleanText.length > 35) {
-            const start = Math.max(0, idx - 20);
-            const end = Math.min(cleanText.length, idx + 35);
-            cleanText = cleanText.substring(start, end);
-          }
-        }
-
         cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
 
-        const hasTeamClean = searchTerms.some(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
+        const hasTeamClean = searchTerms.some(term => cleanText.toLowerCase().includes(term));
         if (hasTeamClean && cleanText.length > 5) {
           
-          // Clave única compuesta por el texto exacto del partido + la fecha analizada
+          // Clave única estricta combinando el texto limpio y la fecha exacta para evitar duplicados
           const matchKey = `${cleanText}-${currentDate.toISOString().split('T')[0]}`.toLowerCase().replace(/\s+/g, ' ').trim();
           if (seenMatches.has(matchKey)) return;
           seenMatches.add(matchKey);
@@ -147,7 +128,7 @@ export async function GET(request) {
     nextWeekDate.setDate(targetDate.getDate() + 7);
     const nextDateParam = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
 
-    return NextResponse.json({
+   return NextResponse.json({
       matches,
       nextDateParam
     });
