@@ -3,19 +3,43 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
-// Función auxiliar fuera del componente para evitar recrearla en cada render/map
-// Función auxiliar fuera del componente para formatear la fecha correctamente
+// Función auxiliar para calcular la fecha real basada en el día de la semana que manda Promiedos
 const formatFullDateTime = (dateStr, timeStr) => {
   if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
   
   const cleanDate = dateStr.trim();
   const lowerDate = cleanDate.toLowerCase();
   
-  // Si Promiedos devuelve directamente el día de la semana en texto
-  const diasSemana = ["lunes", "martes", "miércoles", "miercoles", "jueves", "viernes", "sábados", "sabados", "sabado", "sábado", "domingo"];
-  if (diasSemana.includes(lowerDate)) {
-    const capitalized = cleanDate.charAt(0).toUpperCase() + cleanDate.slice(1);
-    return timeStr ? `${capitalized} - ${timeStr} hs` : `Próximo ${capitalized}`;
+  // Mapeo de días de la semana a números (0: Domingo, 1: Lunes, ..., 6: Sábado)
+  const daysMap = {
+    "domingo": 0,
+    "lunes": 1,
+    "martes": 2,
+    "miércoles": 3, "miercoles": 3,
+    "jueves": 4,
+    "viernes": 5,
+    "sábado": 6, "sabado": 6, "sábados": 6, "sabados": 6
+  };
+
+  if (daysMap.hasOwnProperty(lowerDate)) {
+    const targetDayIndex = daysMap[lowerDate];
+    const today = new Date();
+    const currentDayIndex = today.getDay();
+    
+    // Calcular cuántos días faltan para ese día de la semana (si ya pasó esta semana, cae en la próxima)
+    let diff = targetDayIndex - currentDayIndex;
+    if (diff <= 0) {
+      diff += 7; // Si es hoy o ya pasó en la semana actual, tomamos el próximo
+    }
+
+    const calculatedDate = new Date();
+    calculatedDate.setDate(today.getDate() + diff);
+
+    const options = { weekday: 'long', day: 'numeric', month: 'short' };
+    const formattedDate = calculatedDate.toLocaleDateString('es-AR', options);
+    const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+    
+    return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
   }
 
   try {
@@ -23,8 +47,8 @@ const formatFullDateTime = (dateStr, timeStr) => {
     if (!isNaN(parsedDate)) {
       const options = { weekday: 'long', day: 'numeric', month: 'short' };
       const formattedDate = parsedDate.toLocaleDateString('es-AR', options);
-      const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-      return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
+      const capitalized = formattedDate.toLocaleLowerCase() === formattedDate ? formattedDate : formattedDate; // mantiene formato
+      return timeStr ? `${capitalized.charAt(0).toUpperCase() + capitalized.slice(1)} - ${timeStr} hs` : capitalized.charAt(0).toUpperCase() + capitalized.slice(1);
     }
   } catch (e) {
     // Fallback si falla
