@@ -27,7 +27,6 @@ export async function GET(request) {
     const month = String(targetDate.getMonth() + 1).padStart(2, '0');
     const year = targetDate.getFullYear();
     const formattedDateForUrl = `${day}-${month}-${year}`;
-    const displayDate = `${day}/${month}`; // Formato corto para mostrar
 
     const targetUrl = `https://www.promiedos.com.ar/calendario/${formattedDateForUrl}`;
 
@@ -49,20 +48,21 @@ export async function GET(request) {
     const seenTexts = new Set();
     const searchLower = teamName.toLowerCase().trim();
 
-    // Variable para rastrear la fecha del calendario actual en la página
-    let currentDateContext = displayDate;
+    let currentDateContext = `${day}/${month}`;
 
-    // Recorremos los elementos clave de la estructura de Promiedos (incluyendo títulos de fecha y filas de partidos)
-    $('tr, div, h3, h2').each((_, el) => {
+    // Recorremos los bloques principales del calendario de Promiedos (generalmente agrupados por fecha/tabla)
+    // Buscamos contenedores o filas para mantener el hilo de la fecha actual y los partidos de ese día.
+    $('tr, div').each((_, el) => {
       const $el = $(el);
       const text = $el.text().replace(/\s+/g, ' ').trim();
 
-      // Si el elemento es un encabezado o contenedor de fecha en el calendario, actualizamos el contexto
-      if ($el.is('h2, h3') || ($el.is('td') && $el.hasClass('fecha-calendario')) || (text.length > 5 && text.length < 30 && /(lunes|martes|miércoles|jueves|viernes|sábado|domingo)/i.test(text))) {
+      // Detectar si el elemento es un encabezado de fecha en Promiedos (ej: "Miércoles 16 de Septiembre" o similar)
+      if ($el.is('h2, h3') || $el.hasClass('fecha-calendario') || ($el.is('div') && /(lunes|martes|miércoles|jueves|viernes|sábado|domingo)/i.test(text) && text.length < 40)) {
         currentDateContext = text;
         return;
       }
 
+      // Si es una fila de partido, evaluamos si contiene al equipo buscado
       const rowText = text;
       const rowLower = rowText.toLowerCase();
 
@@ -70,19 +70,28 @@ export async function GET(request) {
         rowLower.includes(searchLower) &&
         (rowLower.includes('vs') || rowLower.includes('-')) &&
         rowText.length > 4 &&
-        rowText.length < 120 &&
+        rowText.length < 150 &&
         !seenTexts.has(rowText)
       ) {
-        if ($el.children().length < 5) {
+        // Asegurarnos de que no sea un contenedor muy amplio
+        if ($el.children().length < 8) {
           seenTexts.add(rowText);
 
-          // Extraemos la hora sin requerir que esté estrictamente al principio (busca cualquier patrón HH:MM)
+          // Buscar hora (HH:MM) tanto en el texto completo de la fila como en elementos específicos de horario
           const timeMatch = rowText.match(/(\d{2}:\d{2})/);
-          const timeStr = timeMatch ? timeMatch[1] : "";
+          let timeStr = timeMatch ? timeMatch + " hs" : "";
+          
+          if (!timeStr) {
+            const possibleTime = $el.find('.hora, .horario, span').filter((_, sub) => /\d{2}:\d{2}/.test($(sub).text())).text();
+            if (possibleTime) {
+              const matchSub = possibleTime.match(/(\d{2}:\d{2})/);
+              if (matchSub) timeStr = matchSub + " hs";
+            }
+          }
 
           matches.push({
             rawText: rowText,
-            date: currentDateContext, // Muestra la fecha detectada en el calendario o el fallback
+            date: currentDateContext,
             time: timeStr
           });
         }
@@ -98,7 +107,7 @@ export async function GET(request) {
       nextDateParam
     });
 
-  }     catch (error) {
+  } catch (error) {
     console.error("Error en team-fixture API:", error);
     return NextResponse.json({ error: error.message || "Error interno del servidor" }, { status: 500 });
   }
