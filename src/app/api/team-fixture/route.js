@@ -50,11 +50,10 @@ export async function GET(request) {
 
     let currentLeagueContext = "Torneo";
 
-    // En Promiedos, los partidos individuales en el calendario suelen listarse en filas (tr) o elementos específicos con estructura de enfrentamiento
-    $('tr').each((_, el) => {
+    // Recorremos tanto filas como celdas o divs pequeños para capturar el bloque del partido
+    $('tr, td, div').each((_, el) => {
       const $el = $(el);
 
-      // Capturar la categoría o torneo actual de la sección
       const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
       if (tituliga) {
         currentLeagueContext = tituliga.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim();
@@ -63,45 +62,45 @@ export async function GET(request) {
       const text = $el.text().replace(/\s+/g, ' ').trim();
       const lowerText = text.toLowerCase();
 
-      // Validar que la fila contenga al equipo buscado y algún indicador de partido ('vs' o '-')
-      if (lowerText.includes(searchLower) && (lowerText.includes('vs') || lowerText.includes('-'))) {
+      // Buscamos que contenga el equipo y la palabra "vs" (o guión), cuidando que no sea un bloque gigantesco de toda la página
+      if (lowerText.includes(searchLower) && (lowerText.includes('vs') || lowerText.includes(' - ')) && text.length > 5 && text.length < 120) {
         if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
           return;
         }
 
-        // Extraer los equipos involucrados de forma limpia utilizando partición por 'vs' o '-'
-        // Buscamos la subcadena exacta que contiene al equipo para aislarla del resto de los partidos de la celda
-        const parts = text.split(/(?:vs|-)/i);
-        for (let i = 0; i < parts.length; i++) {
-          const currentPart = parts[i].toLowerCase();
-          if (currentPart.includes(searchLower) && i > 0 && i < parts.length) {
-            // Reconstruimos el partido individual: [Equipo Izquierda] VS [Equipo Derecha]
-            const teamA = parts[i - 1].replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\s]/g, "").trim().split(' ').pop(); 
-            // Para asegurar nombres limpios, extraemos las últimas palabras lógicas o acotamos el bloque
-            
-            // Alternativa más directa: Limpiar todo el bloque de texto que contenga ambos contendientes
-            let candidateMatch = `${parts[i - 1].trim()} VS ${parts[i].trim()}`;
-            // Limpiamos basuras de horarios pegados al nombre
-            candidateMatch = candidateMatch.replace(/(\d{2}:\d{2})/g, '').replace(/\s+/g, ' ').trim();
+        // Extraemos la hora si la tiene
+        const timeMatch = text.match(/(\d{2}:\d{2})/);
+        const timeStr = timeMatch ? timeMatch[1] : "";
 
-            if (candidateMatch.toLowerCase().includes(searchLower) && candidateMatch.length < 40 && candidateMatch.length > 5) {
-              const matchKey = `${candidateMatch}-${targetDate.toDateString()}`;
-              if (seenMatches.has(matchKey)) continue;
-              seenMatches.add(matchKey);
+        // Limpiamos el texto para dejar solo el cruce (ej: "Banfield VS Barracas Central")
+        let cleanText = text;
+        if (timeStr) {
+          cleanText = cleanText.replace(timeStr, "");
+        }
 
-              const timeMatch = text.match(/(\d{2}:\d{2})/);
-              const timeStr = timeMatch ? timeMatch[1] : "";
+        // Si el texto sigue siendo largo porque agarró elementos adyacentes, intentamos recortar alrededor del equipo buscado
+        const teamIndex = cleanText.toLowerCase().indexOf(searchLower);
+        if (teamIndex !== -1 && cleanText.length > 40) {
+          // Tomamos un fragmento prudente de 35 caracteres a la izquierda y derecha del nombre del equipo
+          const start = Math.max(0, teamIndex - 25);
+          const end = Math.min(cleanText.length, teamIndex + 35);
+          cleanText = cleanText.substring(start, end);
+        }
 
-              matches.push({
-                id: Math.random().toString(36).substring(2, 9),
-                rawText: candidateMatch,
-                league: currentLeagueContext || "Torneo",
-                date: targetDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }),
-                time: timeStr
-              });
-              break;
-            }
-          }
+        cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, "").trim();
+
+        if (cleanText.toLowerCase().includes(searchLower) && cleanText.length > 5) {
+          const matchKey = `${cleanText}-${targetDate.toDateString()}`;
+          if (seenMatches.has(matchKey)) return;
+          seenMatches.add(matchKey);
+
+          matches.push({
+            id: Math.random().toString(36).substring(2, 9),
+            rawText: cleanText,
+            league: currentLeagueContext || "Torneo",
+            date: targetDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }),
+            time: timeStr
+          });
         }
       }
     });
