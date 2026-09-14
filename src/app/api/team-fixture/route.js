@@ -10,93 +10,96 @@ export async function GET(request) {
       return NextResponse.json({ error: "Falta el parámetro 'team'" }, { status: 400 });
     }
 
-    const searchNormalized = teamName.toLowerCase().trim();
+    const rawSearch = teamName.toLowerCase().trim();
+    const searchTerms = [rawSearch];
+    
+    // Sinónimos y abreviaturas comunes para matchear con los nombres acortados de Promiedos
+    if (rawSearch.includes('river')) searchTerms.push('river', 'river plate');
+    if (rawSearch.includes('boca')) searchTerms.push('boca', 'boca jrs.', 'boca juniors');
+    if (rawSearch.includes('racing')) searchTerms.push('racing', 'racing club');
+    if (rawSearch.includes('san lorenzo')) searchTerms.push('san lorenzo');
+    if (rawSearch.includes('independiente')) searchTerms.push('independiente', 'independiente riv.');
+    if (rawSearch.includes('instituto')) searchTerms.push('instituto');
+    if (rawSearch.includes('banfield')) searchTerms.push('banfield');
+    if (rawSearch.includes('barracas')) searchTerms.push('barracas', 'barracas central');
+    if (rawSearch.includes('tucuman')) searchTerms.push('atl. tucumán', 'atletico tucuman');
+    if (rawSearch.includes('central') && !rawSearch.includes('cordoba')) searchTerms.push('rosario central', 'central');
 
-    // 1. Hacemos un fetch a la home de Promiedos para descubrir dinámicamente el link exacto del equipo (con su hash)
-    const homeRes = await fetch("https://www.promiedos.com.ar/", {
+    // Apuntamos directo a la URL de la liga que me pasaste
+    const targetUrl = "https://www.promiedos.com.ar/league/liga-profesional/hc";
+
+    const res = await fetch(targetUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       },
-      next: { revalidate: 300 }
+      next: { revalidate: 60 }
     });
 
-    if (!homeRes.ok) {
-      throw new Error("No se pudo conectar con Promiedos para buscar el equipo");
+    if (!res.ok) {
+      throw new Error("No se pudo conectar con la página de la liga en Promiedos");
     }
 
-    const homeHtml = await homeRes.text();
-    const $home = cheerio.load(homeHtml);
-
-    let teamRelativeUrl = "";
-
-    // Buscamos en todos los links que contengan '/team/'
-    $home('a[href*="/team/"]').each((_, el) => {
-      const $el = $home(el);
-      const nameText = $el.text().toLowerCase().trim();
-      const href = $el.attr('href');
-
-      // Si el texto del link coincide con el equipo que buscas (o contiene parte clave)
-      if (nameText && (nameText === searchNormalized || searchNormalized.includes(nameText) || nameText.includes(searchNormalized))) {
-        teamRelativeUrl = href;
-        return false; // rompe el each si encuentra coincidencia exacta
-      }
-    });
-
-    // Fallback por si el equipo no está listado en la home de hoy (armamos una ruta base o avisamos)
-    if (!teamRelativeUrl) {
-      return NextResponse.json({ 
-        matches: [], 
-        error: "El equipo no se encuentra en los partidos activos de hoy para autodetectar su enlace." 
-      });
-    }
-
-    const teamUrl = `https://www.promiedos.com.ar${teamRelativeUrl}`;
-
-    // 2. Hacemos fetch a la página específica y limpia del equipo
-    const teamRes = await fetch(teamUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      },
-      next: { revalidate: 300 }
-    });
-
-    if (!teamRes.ok) {
-      throw new Error("No se pudo obtener el fixture del equipo");
-    }
-
-    const teamHtml = await teamRes.text();
-    const $ = cheerio.load(teamHtml);
+    const html = await res.text();
+    const $ = cheerio.load(html);
     const matches = [];
+    const seenMatches = new Set();
 
-    // 3. Recorremos la tabla ordenada de "Próximos Partidos"
+    let currentDayContext = "Próximos partidos";
+
+    // Recorremos los bloques de la tabla de la fecha
+    // En esta estructura hay cabeceras de día (ej: "Vie 11/09", "Sáb 12/09") y filas de partidos
     $('tr').each((_, el) => {
       const $el = $(el);
+
+      // Detectamos si la fila es un encabezado de día
+      const rowText = $el.text().replace(/\s+/g, ' ').trim();
+      
+      // Si la fila tiene pinta de fecha (ej: "Vie 11/09" o "Sáb"), actualizamos el contexto del día
+      if ($el.find('td').length === 1 || rowText.length < 15 && (rowText.includes('/') || /^(vie|sáb|dom|lun|mar|mié|jue)/i.test(rowText))) {
+        currentDayContext = rowText;
+        return;
+      }
+
+      // Buscamos las filas de partidos que contienen los equipos y el resultado u horario
       const cols = $el.find('td');
+      if (cols.length >= 3) {
+        const fullRowText = $el.text().replace(/\s+/g, ' ').trim();
+        const lowerText = fullRowText.toLowerCase();
 
-      if (cols.length >= 4) {
-        const dia = $(cols[0]).text().trim(); // Ej: 19/09
-        const condicion = $(cols[1]).text().trim(); // Ej: V o L
-        const rival = $(cols[2]).text().trim(); // Ej: Gimnasia
-        const hora = $(cols[3]).text().trim(); // Ej: 14:30
+        // Validamos que el equipo buscado esté en la fila
+        const hasTeam = searchTerms.some(term => {
+          const regex = new RegExp(`\\b${term}\\b`, 'i');
+          return regex.test(lowerText);
+        });
 
-        // Validamos que sea una fila de partido real
-        if (dia.includes('/') && hora.includes(':')) {
-          const textoEnfrentamiento = condicion === 'V' 
-            ? `${teamName.toUpperCase()} (Visita) vs ${rival}` 
-            : `${teamName.toUpperCase()} (Local) vs ${rival}`;
+        if (!hasTeam) return;
 
-          matches.push({
-            id: Math.random().toString(36).substring(2, 9),
-            rawText: textoEnfrentamiento,
-            league: `Fixture de ${teamName}`,
-            date: dia,
-            time: hora
-          });
-        }
+        // Verificamos que sea un partido (suele tener guiones de resultado, 'vs' o estados como 'Final', 'ET', o un horario HH:MM)
+        const hasIndicator = lowerText.includes('-') || lowerText.includes('vs') || /\d{2}:\d{2}/.test(fullRowText);
+        if (!hasIndicator) return;
+        if (fullRowText.includes("Res.") || lowerText.includes("reserva")) return;
+
+        // Extraemos el horario o estado si existe
+        const timeMatch = fullRowText.match(/(\d{2}:\d{2})/) || fullRowText.match(/(Final|ET|PT|ST)/i);
+        const timeStr = timeMatch ? timeMatch[1] : "A confirmar";
+
+        const cleanText = fullRowText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\s:-]+/g, " ").replace(/\s+/g, ' ').trim();
+
+        const matchKey = `${cleanText}-${currentDayContext}`.toLowerCase();
+        if (seenMatches.has(matchKey)) return;
+        seenMatches.add(matchKey);
+
+        matches.push({
+          id: Math.random().toString(36).substring(2, 9),
+          rawText: cleanText,
+          league: "Liga Profesional",
+          date: currentDayContext,
+          time: timeStr
+        });
       }
     });
 
-    // Limitamos a los primeros 2 partidos para mantener la página rápida y on-demand como pediste
+    // Limitamos a los primeros 2 partidos para mantener la página liviana y rápida
     const limitedMatches = matches.slice(0, 2);
 
     return NextResponse.json({
