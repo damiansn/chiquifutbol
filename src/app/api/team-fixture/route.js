@@ -48,18 +48,33 @@ export async function GET(request) {
     const seenTexts = new Set();
     const searchLower = teamName.toLowerCase().trim();
 
-    let currentDateContext = `${day}/${month}`;
+    // Variable de seguimiento temporal para avanzar de manera estricta y cronológica
+    let trackingDate = new Date(targetDate);
+    let lastDayIndex = trackingDate.getDay();
 
-    // Recorremos los bloques principales del calendario de Promiedos (generalmente agrupados por fecha/tabla)
-    // Buscamos contenedores o filas para mantener el hilo de la fecha actual y los partidos de ese día.
+    const daysMap = {
+      "domingo": 0, "lunes": 1, "martes": 2, "miércoles": 3, "miercoles": 3,
+      "jueves": 4, "viernes": 5, "sábado": 6, "sabado": 6, "sábados": 6, "sabados": 6
+    };
+
+    // Recorremos los elementos buscando los bloques de fecha o filas de partidos
     $('tr, div').each((_, el) => {
       const $el = $(el);
       const text = $el.text().replace(/\s+/g, ' ').trim();
+      const lowerText = text.toLowerCase();
 
-      // Detectar si el elemento es un encabezado de fecha en Promiedos (ej: "Miércoles 16 de Septiembre" o similar)
-      if ($el.is('h2, h3') || $el.hasClass('fecha-calendario') || ($el.is('div') && /(lunes|martes|miércoles|jueves|viernes|sábado|domingo)/i.test(text) && text.length < 40)) {
-        currentDateContext = text;
-        return;
+      // Detectar si el elemento es un encabezado de fecha en Promiedos
+      for (const [dayName, dayIndex] of Object.entries(daysMap)) {
+        if (lowerText.includes(dayName) && text.length < 50 && !$el.find('table, tr').length) {
+          // Si encontramos un indicador de día, calculamos el salto respecto al día anterior
+          let diff = dayIndex - lastDayIndex;
+          if (diff < 0) diff += 7; // Si el día de la semana es menor, avanzamos a la semana siguiente
+          if (diff > 0) {
+            trackingDate.setDate(trackingDate.getDate() + diff);
+            lastDayIndex = dayIndex;
+          }
+          break;
+        }
       }
 
       // Si es una fila de partido, evaluamos si contiene al equipo buscado
@@ -73,26 +88,30 @@ export async function GET(request) {
         rowText.length < 150 &&
         !seenTexts.has(rowText)
       ) {
-        // Asegurarnos de que no sea un contenedor muy amplio
         if ($el.children().length < 8) {
           seenTexts.add(rowText);
 
-          // Buscar hora (HH:MM) tanto en el texto completo de la fila como en elementos específicos de horario
+          // Buscar hora (HH:MM)
           const timeMatch = rowText.match(/(\d{2}:\d{2})/);
-          let timeStr = timeMatch ? timeMatch + " hs" : "";
+          let timeStr = timeMatch ? timeMatch[1] : "";
           
           if (!timeStr) {
             const possibleTime = $el.find('.hora, .horario, span').filter((_, sub) => /\d{2}:\d{2}/.test($(sub).text())).text();
             if (possibleTime) {
               const matchSub = possibleTime.match(/(\d{2}:\d{2})/);
-              if (matchSub) timeStr = matchSub + " hs";
+              if (matchSub) timeStr = matchSub[1];
             }
           }
 
+          // Formatear la fecha real calculada de forma limpia para el cliente (Ej: "Miércoles, 16 sept")
+          const options = { weekday: 'long', day: 'numeric', month: 'short' };
+          const formattedDateStr = trackingDate.toLocaleDateString('es-AR', options);
+          const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
+
           matches.push({
             rawText: rowText,
-            date: currentDateContext,
-            time: timeStr
+            date: capitalizedDate,
+            time: timeStr ? `${timeStr} hs` : ""
           });
         }
       }
