@@ -1,136 +1,81 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 
+// Diccionario rápido con los links directos de los equipos en Promiedos
+const teamUrls = {
+  "banfield": "https://www.promiedos.com.ar/team/banfield/ihi",
+  "atletico tucuman": "https://www.promiedos.com.ar/team/atletico-tucuman/gbfc",
+  "boca juniors": "https://www.promiedos.com.ar/team/boca-juniors/...", // sumás los que necesites
+  "river plate": "https://www.promiedos.com.ar/team/river-plate/...",
+};
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const teamName = searchParams.get("team");
-    const dateParam = searchParams.get("date");
 
     if (!teamName) {
       return NextResponse.json({ error: "Falta el parámetro 'team'" }, { status: 400 });
     }
 
-    let targetDate = new Date();
-    if (dateParam) {
-      const parts = dateParam.split("-");
-      if (parts.length === 3) {
-        if (parts[0].length === 4) {
-          targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
-        } else {
-          targetDate = new Date(parts[2], parts[1] - 1, parts[0]);
+    const normalizedTeam = teamName.toLowerCase().trim();
+    const targetUrl = teamUrls[normalizedTeam];
+
+    if (!targetUrl) {
+      return NextResponse.json({ error: "Equipo no encontrado en el diccionario" }, { status: 404 });
+    }
+
+    const res = await fetch(targetUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      next: { revalidate: 300 } // Caché de 5 minutos para que vuele
+    });
+
+    if (!res.ok) {
+      throw new Error("No se pudo obtener la página del equipo en Promiedos");
+    }
+
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    const matches = [];
+
+    // Recorremos directamente las filas de la tabla de próximos partidos
+    // Buscamos la tabla que contenga el título o sección de "Próximos Partidos"
+    $('tr').each((_, el) => {
+      const $el = $(el);
+      const cols = $el.find('td');
+
+      // Las filas de partidos tienen celdas específicas (Día, L/V, Equipo, Hora)
+      if (cols.length >= 4) {
+        const dia = $(cols[0]).text().trim(); // Ej: 19/09
+        const condicion = $(cols[1]).text().trim(); // Ej: V o L
+        const rival = $(cols[2]).text().trim(); // Ej: Gimnasia
+        const hora = $(cols[3]).text().trim(); // Ej: 14:30
+
+        // Validamos que parezca una fecha y hora real
+        if (dia.includes('/') && hora.includes(':')) {
+          const textoEnfrentamiento = condicion === 'V' 
+            ? `${normalizedTeam.toUpperCase()} (Visita) vs ${rival}` 
+            : `${normalizedTeam.toUpperCase()} (Local) vs ${rival}`;
+
+          matches.push({
+            id: Math.random().toString(36).substring(2, 9),
+            rawText: textoEnfrentamiento,
+            league: `Fixture de ${teamName}`,
+            date: dia,
+            time: hora
+          });
         }
       }
-    }
+    });
 
-    const rawSearch = teamName.toLowerCase().trim();
-    const searchTerms = [rawSearch];
-    if (rawSearch.includes('river')) searchTerms.push('river', 'river plate');
-    if (rawSearch.includes('boca')) searchTerms.push('boca', 'boca juniors');
-    if (rawSearch.includes('racing')) searchTerms.push('racing', 'racing club');
-    if (rawSearch.includes('san lorenzo')) searchTerms.push('san lorenzo');
-    if (rawSearch.includes('independiente')) searchTerms.push('independiente');
-    if (rawSearch.includes('instituto')) searchTerms.push('instituto', 'instituto cordoba');
-    if (rawSearch.includes('banfield')) searchTerms.push('banfield');
-    if (rawSearch.includes('barracas')) searchTerms.push('barracas', 'barracas central');
-
-    const matches = [];
-    const seenMatches = new Set();
-
-    const daysToFetch = 7;
-    const fetchPromises = [];
-
-    for (let i = 0; i < daysToFetch; i++) {
-      const currentDate = new Date(targetDate);
-      currentDate.setDate(targetDate.getDate() + i);
-
-      const day = String(currentDate.getDate()).padStart(2, '0');
-      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-      const year = currentDate.getFullYear();
-      const targetUrl = `https://www.promiedos.com.ar/calendario/${day}-${month}-${year}`;
-
-      fetchPromises.push(
-        fetch(targetUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-          },
-          next: { revalidate: 60 }
-        })
-        .then(async (res) => {
-          if (!res.ok) return null;
-          const html = await res.text();
-          return { html, currentDate };
-        })
-        .catch(() => null)
-      );
-    }
-
-    const results = await Promise.all(fetchPromises);
-
-    for (const result of results) {
-      if (!result) continue;
-      const { html, currentDate } = result;
-      const $ = cheerio.load(html);
-
-      // Buscamos elementos que contengan texto de enfrentamientos ("vs" o "-")
-      $('div, td, span').each((_, el) => {
-        const $el = $(el);
-        const text = $el.text().replace(/\s+/g, ' ').trim();
-        const lowerText = text.toLowerCase();
-
-        // Debe contener un enfrentamiento
-        if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
-        
-        // Debe contener el equipo buscado
-        const hasTeam = searchTerms.some(term => {
-          const regex = new RegExp(`\\b${term}\\b`, 'i');
-          return regex.test(lowerText);
-        });
-
-        if (!hasTeam) return;
-        if (text.length < 5 || text.length > 100) return;
-        if (text.includes("Res.") || text.includes("Reserva")) return;
-
-        // Intentamos encontrar el horario buscando en el elemento padre o contenedor inmediato
-        const parentText = $el.parent().text();
-        const timeMatch = parentText.match(/(\d{2}:\d{2})/);
-        const timeStr = timeMatch ? timeMatch[1] : "";
-
-        // Contexto de liga (buscando hacia arriba o en elementos previos)
-        const tituliga = $el.closest('table').find('.tituliga').text().trim() || 
-                         $el.prevAll('.tituliga').first().text().trim() || 
-                         "Liga Profesional / Calendario";
-        
-        let cleanText = text.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
-
-        const matchKey = `${cleanText}-${currentDate.toISOString().split('T')[0]}`.toLowerCase();
-        if (seenMatches.has(matchKey)) return;
-        seenMatches.add(matchKey);
-
-        const options = { weekday: 'long', day: 'numeric', month: 'short' };
-        const formattedDateStr = currentDate.toLocaleDateString('es-AR', options);
-        const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
-
-        matches.push({
-          id: Math.random().toString(36).substring(2, 9),
-          rawText: cleanText,
-          league: tituliga.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim() || "Calendario",
-          date: capitalizedDate,
-          time: timeStr
-        });
-      });
-    }
-
-    const nextWeekDate = new Date(targetDate);
-    nextWeekDate.setDate(targetDate.getDate() + 7);
-    const nextDateParam = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
-
-    // Limitamos a 2 partidos para mantener la página liviana como solicitaste
+    // Devolvemos los próximos partidos ordenados (limitado a los primeros 2 o los que prefieras)
     const limitedMatches = matches.slice(0, 2);
 
     return NextResponse.json({
       matches: limitedMatches,
-      nextDateParam
+      nextDateParam: null // Acá ya no hace falta paginar por semana porque te da todo el fixture directo
     });
 
   } catch (error) {
