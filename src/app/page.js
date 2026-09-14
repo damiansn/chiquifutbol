@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
 export default function Home() {
@@ -18,6 +18,10 @@ export default function Home() {
   const [teamFixtureData, setTeamFixtureData] = useState([]);
   const [nextFetchDate, setNextFetchDate] = useState(null);
   const [loadingFixture, setLoadingFixture] = useState(false);
+
+  // Referencia para cerrar el buscador al hacer clic fuera
+  const searchContainerRef = useRef(null);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const fetchMatches = async (date = selectedDate) => {
     try {
@@ -43,6 +47,15 @@ export default function Home() {
         console.error(e);
       }
     }
+
+    // Listener para cerrar sugerencias al hacer clic fuera
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleDateChange = (newDate) => {
@@ -88,6 +101,7 @@ export default function Home() {
     setSelectedTeamFilter(item);
     setTeamSearchQuery(item.teamName);
     setShowFullFixture(false);
+    setIsSearchFocused(false);
   };
 
   const handleClearTeamFilter = () => {
@@ -165,7 +179,6 @@ export default function Home() {
   return (
     <main style={{ maxWidth: "950px", width: "100%", margin: "0 auto", padding: "20px" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "20px" }}>
-        
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img 
             src="/logo.svg" 
@@ -185,7 +198,7 @@ export default function Home() {
         </button>
       </header>
 
-      {/* Selector de Fecha (Ayer, Hoy, Mañana) */}
+      {/* Selector de Fecha */}
       <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "16px" }}>
         {[
           { id: "ayer", label: "Ayer" },
@@ -212,14 +225,16 @@ export default function Home() {
       </div>
 
       {/* Buscador de Equipos */}
-      <div style={{ position: "relative", marginBottom: "16px", maxWidth: "450px", margin: "0 auto 16px auto" }}>
+      <div ref={searchContainerRef} style={{ position: "relative", marginBottom: "16px", maxWidth: "450px", margin: "0 auto 16px auto" }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <input
             type="text"
             placeholder="🔍 Buscar equipo (ej. River, Boca, Talleres)..."
             value={teamSearchQuery}
+            onFocus={() => setIsSearchFocused(true)}
             onChange={(e) => {
               setTeamSearchQuery(e.target.value);
+              setIsSearchFocused(true);
               if (!e.target.value) handleClearTeamFilter();
             }}
             style={{
@@ -254,7 +269,7 @@ export default function Home() {
         </div>
 
         {/* Sugerencias desplegables del Buscador */}
-        {filteredSuggestions.length > 0 && !selectedTeamFilter && (
+        {isSearchFocused && filteredSuggestions.length > 0 && !selectedTeamFilter && (
           <div style={{
             position: "absolute",
             top: "100%",
@@ -271,7 +286,7 @@ export default function Home() {
           }}>
             {filteredSuggestions.map((item, idx) => (
               <div
-                key={`${item.teamName}-${idx}`}
+                key={`${item.teamName}-${item.leagueId}-${idx}`}
                 onClick={() => handleSelectTeam(item)}
                 style={{
                   padding: "10px 14px",
@@ -317,7 +332,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Contenedor del Fixture Progresivo (Carga por semanas) */}
+      {/* Contenedor del Fixture Progresivo (MODAL) */}
       {showFullFixture && (
         <div style={{ border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px", padding: "16px", marginBottom: "24px", background: "rgba(128,128,128,0.02)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "8px" }}>
@@ -331,38 +346,54 @@ export default function Home() {
             <p style={{ textAlign: "center", opacity: 0.6, padding: "10px" }}>No se encontraron partidos próximos en este rango.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem" }}>
-              {teamFixtureData.map((match, i) => (
-                <div key={i} style={{ 
-                  display: "flex", 
-                  justifyContent: "space-between", 
-                  alignItems: "center", 
-                  padding: "10px 12px", 
-                  marginBottom: "8px",
-                  background: "rgba(128,128,128,0.04)", 
-                  border: "1px solid rgba(128,128,128,0.1)",
-                  borderRadius: "6px",
-                  gap: "12px"
-                }}>
-                  {/* Texto del partido */}
-                  <span style={{ fontWeight: "500", flex: 1, color: "#fff", fontSize: "0.95rem" }}>
-                    {match.rawText}
-                  </span>
-                  
-                  {/* Contenedor para Fecha y Hora */}
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
-                    {match.date && (
-                      <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "3px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
-                        📅 {match.date}
-                      </span>
-                    )}
-                    {match.time && (
-                      <span style={{ background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", padding: "3px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
-                        ⏰ {match.time}
-                      </span>
-                    )}
+              {teamFixtureData.map((match, i) => {
+                // Parseo avanzado para unificar fecha completa + hora de forma robusta
+                const formatFullDateTime = (dateStr, timeStr) => {
+                  if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
+                  try {
+                    // Intenta formatear la fecha que venga en el match (ej: YYYY-MM-DD o similar)
+                    const parsedDate = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);
+                    if (!isNaN(parsedDate)) {
+                      const options = { weekday: 'long', day: 'numeric', month: 'short' };
+                      const formattedDate = parsedDate.toLocaleDateString('es-AR', options);
+                      // Capitalizar la primera letra del día
+                      const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+                      return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
+                    }
+                  } catch (e) {
+                    // Si falla el parseo nativo, devolvemos los strings combinados limpiamente
+                  }
+                  return timeStr ? `${dateStr} (${timeStr})` : dateStr;
+                };
+
+                const fullDateTimeDisplay = formatFullDateTime(match.date, match.time);
+
+                return (
+                  <div key={match.id || `fixture-${i}`} style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center", 
+                    padding: "10px 12px", 
+                    marginBottom: "8px",
+                    background: "rgba(128,128,128,0.04)", 
+                    border: "1px solid rgba(128,128,128,0.1)",
+                    borderRadius: "6px",
+                    gap: "12px"
+                  }}>
+                    <span style={{ fontWeight: "500", flex: 1, color: "#fff", fontSize: "0.95rem" }}>
+                      {match.rawText}
+                    </span>
+                    
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
+                      {fullDateTimeDisplay && (
+                        <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "4px 10px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
+                          📅 {fullDateTimeDisplay}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -389,7 +420,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Barra de Filtros */}
+      {/* Barra de Filtros de Ligas */}
       {!selectedTeamFilter && leagues.length > 0 && (
         <div style={{ marginBottom: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
@@ -452,7 +483,6 @@ export default function Home() {
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           {filteredLeagues.map((league) => (
             <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", overflow: "hidden" }}>
-              
               <div style={{ background: "rgba(16, 185, 129, 0.15)", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
                 <Link 
                   href={`/posiciones?leagueId=${league.id}&name=${encodeURIComponent(league.name)}`}
@@ -498,7 +528,6 @@ export default function Home() {
 
                     return (
                       <div key={game.id} style={{ display: "flex", borderBottom: "1px solid rgba(128,128,128,0.15)", fontSize: "0.9rem" }}>
-                        
                         <div style={{ width: "95px", background: "rgba(128,128,128,0.06)", borderRight: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", textAlign: "center", fontWeight: "600", fontSize: "0.75rem", flexShrink: 0 }}>
                           {isLive && (
                             <span style={{ color: "#ef4444", fontWeight: "bold" }}>
@@ -514,15 +543,12 @@ export default function Home() {
                         </div>
 
                         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                          
                           <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", justifyContent: "space-between" }}>
-                            
                             <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", textAlign: "right" }}>
                               <span style={{ fontWeight: 500 }}>{teamA.name}</span>
                             </div>
 
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", fontWeight: "bold", fontSize: "1.1rem", gap: "8px", minWidth: "120px", textAlign: "center" }}>
-                              
                               {teamA.red_cards > 0 && (
                                 <div style={{ display: "flex", gap: "2px" }}>
                                   {Array.from({ length: teamA.red_cards }).map((_, i) => (
@@ -542,13 +568,11 @@ export default function Home() {
                                   ))}
                                 </div>
                               )}
-
                             </div>
 
                             <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "10px", textAlign: "left" }}>
                               <span style={{ fontWeight: 500 }}>{teamB.name}</span>
                             </div>
-
                           </div>
 
                           {hasGoals && (
@@ -561,7 +585,6 @@ export default function Home() {
                               </div>
                             </div>
                           )}
-
                         </div>
 
                         <div style={{ width: "160px", background: "rgba(128,128,128,0.04)", borderLeft: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px", textAlign: "center", fontSize: "0.75rem", opacity: 0.7, flexShrink: 0 }}>
@@ -571,7 +594,6 @@ export default function Home() {
                             <span style={{ opacity: 0.4 }}>-</span>
                           )}
                         </div>
-
                       </div>
                     );
                   })}
