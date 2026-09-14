@@ -27,8 +27,8 @@ export async function GET(request) {
     const month = String(targetDate.getMonth() + 1).padStart(2, '0');
     const year = targetDate.getFullYear();
     const formattedDateForUrl = `${day}-${month}-${year}`;
+    const displayDate = `${day}/${month}`; // Formato corto para mostrar
 
-    // Probamos consultando la ruta de calendario específica
     const targetUrl = `https://www.promiedos.com.ar/calendario/${formattedDateForUrl}`;
 
     const response = await fetch(targetUrl, {
@@ -49,13 +49,11 @@ export async function GET(request) {
     const seenTexts = new Set();
     const searchLower = teamName.toLowerCase().trim();
 
-    // Recorremos cualquier fila o contenedor de texto para asegurar que capturemos el partido
-    $('tr, div, li, span').each((_, el) => {
+    $('tr, div, li').each((_, el) => {
       const $el = $(el);
       const rowText = $el.text().replace(/\s+/g, ' ').trim();
       const rowLower = rowText.toLowerCase();
 
-      // Buscamos que contenga el equipo y algún indicador de partido sin ser un texto gigante de menús
       if (
         rowLower.includes(searchLower) &&
         (rowLower.includes('vs') || rowLower.includes('-')) &&
@@ -63,18 +61,22 @@ export async function GET(request) {
         rowText.length < 120 &&
         !seenTexts.has(rowText)
       ) {
-        // Evitamos que tome elementos contenedores repetidos muy grandes
         if ($el.children().length < 5) {
           seenTexts.add(rowText);
+
+          // Intentamos extraer una hora si el texto empieza con formato HH:MM (ej: "15:00")
+          const timeMatch = rowText.match(/^(\d{2}:\d{2})/);
+          const timeStr = timeMatch ? timeMatch[1] : "";
+
           matches.push({
             rawText: rowText,
-            date: formattedDateForUrl
+            date: displayDate,
+            time: timeStr
           });
         }
       }
     });
 
-    // Siguiente fecha (sumar 7 días)
     const nextWeekDate = new Date(targetDate);
     nextWeekDate.setDate(targetDate.getDate() + 7);
     const nextDateParam = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
