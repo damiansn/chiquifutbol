@@ -8,9 +8,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const [selectedDate, setSelectedDate] = useState("today"); 
+  const [selectedDate, setSelectedDate] = useState("today"); // 'ayer', 'today', 'manana'
   const [hiddenLeagues, setHiddenLeagues] = useState([]);
 
+  // Estados para búsqueda de equipos y fixture progresivo
   const [teamSearchQuery, setTeamSearchQuery] = useState("");
   const [selectedTeamFilter, setSelectedTeamFilter] = useState(null);
   const [showFullFixture, setShowFullFixture] = useState(false);
@@ -52,6 +53,7 @@ export default function Home() {
     fetchMatches(newDate);
   };
 
+  // Recopilar todos los equipos disponibles en los partidos de la fecha actual
   const allTeamsWithMatches = useMemo(() => {
     if (!data?.leagues) return [];
     const list = [];
@@ -96,6 +98,7 @@ export default function Home() {
     setNextFetchDate(null);
   };
 
+  // Función para cargar el fixture por semanas desde la API
   const loadTeamFixture = async (teamName, dateStr = null, append = false) => {
     setLoadingFixture(true);
     try {
@@ -162,6 +165,7 @@ export default function Home() {
   return (
     <main style={{ maxWidth: "950px", width: "100%", margin: "0 auto", padding: "20px" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "16px", marginBottom: "20px" }}>
+        
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img 
             src="/logo.svg" 
@@ -181,6 +185,7 @@ export default function Home() {
         </button>
       </header>
 
+      {/* Selector de Fecha (Ayer, Hoy, Mañana) */}
       <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "16px" }}>
         {[
           { id: "ayer", label: "Ayer" },
@@ -197,7 +202,8 @@ export default function Home() {
               padding: "8px 20px",
               borderRadius: "8px",
               fontWeight: "600",
-              cursor: "pointer"
+              cursor: "pointer",
+              transition: "all 0.2s ease"
             }}
           >
             {tab.label}
@@ -205,11 +211,12 @@ export default function Home() {
         ))}
       </div>
 
+      {/* Buscador de Equipos */}
       <div style={{ position: "relative", marginBottom: "16px", maxWidth: "450px", margin: "0 auto 16px auto" }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <input
             type="text"
-            placeholder="🔍 Buscar equipo..."
+            placeholder="🔍 Buscar equipo (ej. River, Boca, Talleres)..."
             value={teamSearchQuery}
             onChange={(e) => {
               setTeamSearchQuery(e.target.value);
@@ -229,20 +236,52 @@ export default function Home() {
           {selectedTeamFilter && (
             <button
               onClick={handleClearTeamFilter}
-              style={{ background: "#ef4444", color: "#fff", border: "none", padding: "0 14px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}
+              style={{
+                background: "#ef4444",
+                color: "#fff",
+                border: "none",
+                padding: "0 14px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "0.8rem"
+              }}
+              title="Limpiar filtro"
             >
               ✕
             </button>
           )}
         </div>
 
+        {/* Sugerencias desplegables del Buscador */}
         {filteredSuggestions.length > 0 && !selectedTeamFilter && (
-          <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#18181b", border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px", marginTop: "4px", maxHeight: "200px", overflowY: "auto", zIndex: 50 }}>
+          <div style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "var(--background, #18181b)",
+            border: "1px solid rgba(128,128,128,0.3)",
+            borderRadius: "8px",
+            marginTop: "4px",
+            maxHeight: "200px",
+            overflowY: "auto",
+            zIndex: 50,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+          }}>
             {filteredSuggestions.map((item, idx) => (
               <div
                 key={`${item.teamName}-${idx}`}
                 onClick={() => handleSelectTeam(item)}
-                style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid rgba(128,128,128,0.1)", display: "flex", justifyContent: "space-between" }}
+                style={{
+                  padding: "10px 14px",
+                  cursor: "pointer",
+                  borderBottom: "1px solid rgba(128,128,128,0.1)",
+                  fontSize: "0.85rem",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
               >
                 <span style={{ fontWeight: "600" }}>{item.teamName}</span>
                 <span style={{ opacity: 0.6, fontSize: "0.75rem" }}>{item.leagueName}</span>
@@ -252,6 +291,7 @@ export default function Home() {
         )}
       </div>
 
+      {/* Botón para ver más fechas del equipo seleccionado */}
       {selectedTeamFilter && (
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
           <button
@@ -261,13 +301,23 @@ export default function Home() {
                 loadTeamFixture(selectedTeamFilter.teamName);
               }
             }}
-            style={{ background: "#3b82f6", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: "600", cursor: "pointer" }}
+            style={{
+              background: "#3b82f6",
+              color: "#fff",
+              border: "none",
+              padding: "8px 16px",
+              borderRadius: "6px",
+              fontWeight: "600",
+              cursor: "pointer",
+              fontSize: "0.85rem"
+            }}
           >
             📅 Ver más fechas de {selectedTeamFilter.teamName} hacia adelante
           </button>
         </div>
       )}
 
+      {/* Contenedor del Fixture Progresivo (Carga por semanas) */}
       {showFullFixture && (
         <div style={{ border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px", padding: "16px", marginBottom: "24px", background: "rgba(128,128,128,0.02)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "8px" }}>
@@ -280,31 +330,10 @@ export default function Home() {
           ) : teamFixtureData.length === 0 ? (
             <p style={{ textAlign: "center", opacity: 0.6, padding: "10px" }}>No se encontraron partidos próximos en este rango.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem" }}>
               {teamFixtureData.map((match, i) => (
-                <div key={i} style={{ 
-                  display: "flex", 
-                  justifyContent: "space-between", 
-                  alignItems: "center", 
-                  padding: "10px 14px", 
-                  borderBottom: "1px dashed rgba(128,128,128,0.15)", 
-                  background: "rgba(128,128,128,0.04)", 
-                  borderRadius: "4px",
-                  fontSize: "0.85rem",
-                  gap: "10px"
-                }}>
-                  <span style={{ fontWeight: "500", flex: 1 }}>{match.rawText}</span>
-                  
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
-                    <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "bold" }}>
-                      📅 {match.date}
-                    </span>
-                    {match.time && (
-                      <span style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "bold" }}>
-                        ⏰ {match.time}
-                      </span>
-                    )}
-                  </div>
+                <div key={i} style={{ padding: "8px 10px", borderBottom: "1px dashed rgba(128,128,128,0.15)", background: "rgba(128,128,128,0.04)", borderRadius: "4px" }}>
+                  <span>{match.rawText}</span>
                 </div>
               ))}
             </div>
@@ -333,51 +362,196 @@ export default function Home() {
         </div>
       )}
 
+      {/* Barra de Filtros */}
       {!selectedTeamFilter && leagues.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "24px" }}>
-          {leagues.map((league) => {
-            const isHidden = hiddenLeagues.includes(league.id);
-            return (
-              <button
-                key={league.id}
-                onClick={() => toggleLeagueFilter(league.id)}
-                style={{
-                  background: isHidden ? "rgba(128,128,128,0.08)" : "rgba(16, 185, 129, 0.12)",
-                  color: isHidden ? "inherit" : "#10b981",
-                  border: "1px solid rgba(128,128,128,0.2)",
-                  padding: "6px 12px",
-                  borderRadius: "9999px",
-                  cursor: "pointer",
-                  textDecoration: isHidden ? "line-through" : "none"
-                }}
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", opacity: 0.6, letterSpacing: "0.5px" }}>
+              Filtrar Ligas
+            </span>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button 
+                onClick={hideAllLeagues}
+                style={{ background: "none", border: "none", fontSize: "0.75rem", color: "#ef4444", cursor: "pointer", fontWeight: "600" }}
               >
-                {league.name}
+                Ocultar todas
               </button>
-            );
-          })}
+              <span style={{ opacity: 0.3 }}>|</span>
+              <button 
+                onClick={showAllLeagues}
+                style={{ background: "none", border: "none", fontSize: "0.75rem", color: "#10b981", cursor: "pointer", fontWeight: "600" }}
+              >
+                Mostrar todas
+              </button>
+            </div>
+          </div>
+          
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {leagues.map((league) => {
+              const isHidden = hiddenLeagues.includes(league.id);
+              return (
+                <button
+                  key={league.id}
+                  onClick={() => toggleLeagueFilter(league.id)}
+                  style={{
+                    background: isHidden ? "rgba(128,128,128,0.08)" : "rgba(16, 185, 129, 0.12)",
+                    color: isHidden ? "inherit" : "#10b981",
+                    border: isHidden ? "1px solid rgba(128,128,128,0.2)" : "1px solid rgba(16, 185, 129, 0.3)",
+                    padding: "6px 12px",
+                    borderRadius: "9999px",
+                    fontSize: "0.8rem",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    opacity: isHidden ? 0.5 : 1,
+                    textDecoration: isHidden ? "line-through" : "none",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  {league.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {loading ? (
-        <p style={{ textAlign: "center", padding: "40px" }}>Cargando partidos...</p>
+        <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", minHeight: "200px" }}>
+          <p style={{ opacity: 0.7 }}>Cargando partidos...</p>
+        </div>
       ) : filteredLeagues.length === 0 ? (
-        <p style={{ textAlign: "center", padding: "40px" }}>No hay partidos para mostrar.</p>
+        <p style={{ textAlign: "center", opacity: 0.6, padding: "40px" }}>No hay torneos seleccionados o partidos para mostrar en esta fecha.</p>
       ) : (
-        filteredLeagues.map((league) => (
-          <div key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", marginBottom: "16px", overflow: "hidden" }}>
-            <div style={{ background: "rgba(16, 185, 129, 0.15)", padding: "10px 16px" }}>
-              <Link href={`/posiciones?leagueId=${league.id}`} style={{ color: "#10b981", fontWeight: "bold", textDecoration: "none" }}>
-                🏆 {league.name}
-              </Link>
-            </div>
-            {league.games.map((game) => (
-              <div key={game.id} style={{ display: "flex", padding: "10px 16px", borderBottom: "1px solid rgba(128,128,128,0.1)", justifyContent: "space-between" }}>
-                <span>{game.teams[0]?.name} vs {game.teams[1]?.name}</span>
-                <span>{game.scores ? `${game.scores[0]} - ${game.scores[1]}` : game.start_time}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {filteredLeagues.map((league) => (
+            <section key={league.id} style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", overflow: "hidden" }}>
+              
+              <div style={{ background: "rgba(16, 185, 129, 0.15)", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
+                <Link 
+                  href={`/posiciones?leagueId=${league.id}&name=${encodeURIComponent(league.name)}`}
+                  style={{ color: "#10b981", padding: "10px 16px", fontWeight: "bold", fontSize: "0.9rem", display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none" }}
+                  title="Ver tabla de posiciones"
+                >
+                  <span>🏆 {league.name} ({league.country_name})</span>
+                  <span style={{ fontSize: "0.75rem", fontWeight: "normal", opacity: 0.8 }}>Ver posiciones ↗</span>
+                </Link>
               </div>
-            ))}
-          </div>
-        ))
+
+              <div>
+                {league.games
+                  .filter(game => {
+                    if (!selectedTeamFilter) return true;
+                    return game.teams.some(t => t.name.toLowerCase() === selectedTeamFilter.teamName.toLowerCase());
+                  })
+                  .map((game) => {
+                    const isLive = game.status.enum === 2;
+                    const isFinished = game.status.enum === 3;
+                    const isProgrammed = game.status.enum === 1;
+
+                    const teamA = game.teams[0] || {};
+                    const teamB = game.teams[1] || {};
+                    const scoreA = game.scores ? game.scores[0] : "-";
+                    const scoreB = game.scores ? game.scores[1] : "-";
+                    const goalsA = teamA.goals || [];
+                    const goalsB = teamB.goals || [];
+
+                    const formatGoals = (goalsList) => {
+                      return goalsList.map((g) => {
+                        const time = g.time_to_display || `${g.time}'`;
+                        const name = g.player_name || g.player_sname;
+                        const pen = g.goal_type === "Pen" ? " (Pen)" : "";
+                        return `${time} ${name}${pen}`;
+                      }).join("; ");
+                    };
+
+                    const strGoalsA = formatGoals(goalsA);
+                    const strGoalsB = formatGoals(goalsB);
+                    const hasGoals = strGoalsA !== "" || strGoalsB !== "";
+                    const tvList = game.tv_networks ? game.tv_networks.map((tv) => tv.name).join(", ") : "";
+
+                    return (
+                      <div key={game.id} style={{ display: "flex", borderBottom: "1px solid rgba(128,128,128,0.15)", fontSize: "0.9rem" }}>
+                        
+                        <div style={{ width: "95px", background: "rgba(128,128,128,0.06)", borderRight: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", textAlign: "center", fontWeight: "600", fontSize: "0.75rem", flexShrink: 0 }}>
+                          {isLive && (
+                            <span style={{ color: "#ef4444", fontWeight: "bold" }}>
+                              {game.game_time_status_to_display || "EN VIVO"}
+                            </span>
+                          )}
+                          {isFinished && (
+                            <span style={{ opacity: 0.7 }}>Finalizado</span>
+                          )}
+                          {isProgrammed && (
+                            <span style={{ color: "#3b82f6" }}>{game.start_time}</span>
+                          )}
+                        </div>
+
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                          
+                          <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", justifyContent: "space-between" }}>
+                            
+                            <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", textAlign: "right" }}>
+                              <span style={{ fontWeight: 500 }}>{teamA.name}</span>
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", fontWeight: "bold", fontSize: "1.1rem", gap: "8px", minWidth: "120px", textAlign: "center" }}>
+                              
+                              {teamA.red_cards > 0 && (
+                                <div style={{ display: "flex", gap: "2px" }}>
+                                  {Array.from({ length: teamA.red_cards }).map((_, i) => (
+                                    <span key={`red-a-${i}`} style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title="Expulsado"></span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <span style={{ color: isLive ? "#ef4444" : "inherit" }}>{scoreA}</span>
+                              <span style={{ opacity: 0.4 }}>–</span>
+                              <span style={{ color: isLive ? "#ef4444" : "inherit" }}>{scoreB}</span>
+
+                              {teamB.red_cards > 0 && (
+                                <div style={{ display: "flex", gap: "2px" }}>
+                                  {Array.from({ length: teamB.red_cards }).map((_, i) => (
+                                    <span key={`red-b-${i}`} style={{ background: "#ef4444", width: "7px", height: "11px", display: "inline-block", borderRadius: "1px", flexShrink: 0 }} title="Expulsado"></span>
+                                  ))}
+                                </div>
+                              )}
+
+                            </div>
+
+                            <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "10px", textAlign: "left" }}>
+                              <span style={{ fontWeight: 500 }}>{teamB.name}</span>
+                            </div>
+
+                          </div>
+
+                          {hasGoals && (
+                            <div style={{ display: "flex", borderTop: "1px dashed rgba(128,128,128,0.15)", fontSize: "0.75rem", opacity: 0.75, background: "rgba(128,128,128,0.02)" }}>
+                              <div style={{ flex: 1, padding: "6px 16px", textAlign: "right", borderRight: "1px dashed rgba(128,128,128,0.15)" }}>
+                                {strGoalsA}
+                              </div>
+                              <div style={{ flex: 1, padding: "6px 16px", textAlign: "left" }}>
+                                {strGoalsB}
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+
+                        <div style={{ width: "160px", background: "rgba(128,128,128,0.04)", borderLeft: "1px solid rgba(128,128,128,0.15)", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 12px", textAlign: "center", fontSize: "0.75rem", opacity: 0.7, flexShrink: 0 }}>
+                          {tvList ? (
+                            <span>📺 {tvList}</span>
+                          ) : (
+                            <span style={{ opacity: 0.4 }}>-</span>
+                          )}
+                        </div>
+
+                      </div>
+                    );
+                  })}
+              </div>
+            </section>
+          ))}
+        </div>
       )}
     </main>
   );
