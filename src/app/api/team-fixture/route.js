@@ -23,13 +23,24 @@ export async function GET(request) {
       }
     }
 
-    const searchLower = teamName.toLowerCase().trim();
+    let searchLower = teamName.toLowerCase().trim();
+    // Normalizaciones comunes para equipos (ej: "river" -> "river plate")
+    const teamAliases = {
+      "river": "river plate",
+      "boca": "boca juniors",
+      "san lorenzo": "san lorenzo",
+      "racing": "racing club",
+      "independiente": "independiente"
+    };
+    if (teamAliases[searchLower]) {
+      searchLower = teamAliases[searchLower];
+    }
+
     const matches = [];
     const seenMatches = new Set();
 
-    // Rango de búsqueda: analizamos los próximos 10 días a partir de la fecha seleccionada
-    // para que aparezca el partido sin importar si juega hoy exacto o la semana que viene.
-    const daysToFetch = 10;
+    // Ventana de días a buscar para asegurar que tome el partido próximo del equipo
+    const daysToFetch = 8;
     const fetchPromises = [];
 
     for (let i = 0; i < daysToFetch; i++) {
@@ -101,7 +112,8 @@ export async function GET(request) {
           cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, "").trim();
 
           if (cleanText.toLowerCase().includes(searchLower) && cleanText.length > 5) {
-            const matchKey = `${cleanText}-${currentDate.toDateString()}`;
+            // Clave única basada puramente en el texto limpio del partido para evitar duplicados globales
+            const matchKey = cleanText.toLowerCase().replace(/\s+/g, ' ').trim();
             if (seenMatches.has(matchKey)) return;
             seenMatches.add(matchKey);
 
