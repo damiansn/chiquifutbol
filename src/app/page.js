@@ -10,7 +10,6 @@ const formatFullDateTime = (dateStr, timeStr) => {
   const cleanDate = dateStr.trim();
   
   try {
-    // Si ya viene con formato de fecha completo o estándar
     const parsedDate = new Date(cleanDate.includes("T") ? cleanDate : `${cleanDate}T00:00:00`);
     if (!isNaN(parsedDate)) {
       const options = { weekday: 'long', day: 'numeric', month: 'short' };
@@ -19,7 +18,7 @@ const formatFullDateTime = (dateStr, timeStr) => {
       return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
     }
   } catch (e) {
-    // Si es solo texto plano (como el día de la semana que manda Promiedos)
+    // Si es solo texto plano
   }
   
   return timeStr ? `${cleanDate} - ${timeStr} hs` : cleanDate;
@@ -120,8 +119,9 @@ export default function Home() {
   const handleSelectTeam = (item) => {
     setSelectedTeamFilter(item);
     setTeamSearchQuery(item.teamName);
-    setShowFullFixture(false);
+    setShowFullFixture(true);
     setIsSearchFocused(false);
+    loadTeamFixture(item.teamName);
   };
 
   const handleClearTeamFilter = () => {
@@ -142,10 +142,16 @@ export default function Home() {
       if (!res.ok) throw new Error("Error al obtener el fixture");
       const json = await res.json();
 
+      const newMatches = json.matches || [];
+
       if (append) {
-        setTeamFixtureData(prev => [...prev, ...(json.matches || [])]);
+        setTeamFixtureData(prev => {
+          const existingIds = new Set(prev.map(m => m.id || `${m.date}-${m.rawText}`));
+          const filteredNew = newMatches.filter(m => !existingIds.has(m.id || `${m.date}-${m.rawText}`));
+          return [...prev, ...filteredNew];
+        });
       } else {
-        setTeamFixtureData(json.matches || []);
+        setTeamFixtureData(newMatches);
       }
       
       setNextFetchDate(json.nextDateParam);
@@ -191,7 +197,7 @@ export default function Home() {
   }
 
   const leagues = data?.leagues || [];
-  const filteredLeagues = selectedTeamFilter 
+  const filteredLeagues = selectedTeamFilter && selectedTeamFilter.leagueId
     ? leagues.filter(l => l.id === selectedTeamFilter.leagueId)
     : leagues.filter((league) => !hiddenLeagues.includes(league.id));
 
@@ -243,18 +249,24 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Buscador de Equipos */}
+      {/* Buscador Universal de Equipos */}
       <div ref={searchContainerRef} style={{ position: "relative", marginBottom: "16px", maxWidth: "450px", margin: "0 auto 16px auto" }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <input
             type="text"
-            placeholder="🔍 Buscar equipo (ej. River, Boca, Talleres)..."
+            placeholder="🔍 Buscar cualquier equipo (ej. River, Boca...)"
             value={teamSearchQuery}
             onFocus={() => setIsSearchFocused(true)}
             onChange={(e) => {
               setTeamSearchQuery(e.target.value);
               setIsSearchFocused(true);
               if (!e.target.value) handleClearTeamFilter();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && teamSearchQuery.trim()) {
+                const teamName = teamSearchQuery.trim();
+                handleSelectTeam({ teamName, leagueName: "Búsqueda Global", leagueId: null });
+              }
             }}
             style={{
               width: "100%",
@@ -287,8 +299,8 @@ export default function Home() {
           )}
         </div>
 
-        {/* Sugerencias desplegables del Buscador */}
-        {isSearchFocused && filteredSuggestions.length > 0 && !selectedTeamFilter && (
+        {/* Sugerencias desplegables del Buscador Universal */}
+        {isSearchFocused && teamSearchQuery.trim() && (
           <div style={{
             position: "absolute",
             top: "100%",
@@ -298,11 +310,31 @@ export default function Home() {
             border: "1px solid rgba(128,128,128,0.3)",
             borderRadius: "8px",
             marginTop: "4px",
-            maxHeight: "200px",
+            maxHeight: "220px",
             overflowY: "auto",
             zIndex: 50,
             boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
           }}>
+            {/* Opción para buscar globalmente cualquier equipo escrito */}
+            <div
+              onClick={() => {
+                const teamName = teamSearchQuery.trim();
+                handleSelectTeam({ teamName, leagueName: "Búsqueda Global", leagueId: null });
+              }}
+              style={{
+                padding: "12px 14px",
+                cursor: "pointer",
+                borderBottom: filteredSuggestions.length > 0 ? "1px solid rgba(128,128,128,0.15)" : "none",
+                fontSize: "0.9rem",
+                fontWeight: "bold",
+                color: "#3b82f6",
+                background: "rgba(59, 130, 246, 0.08)"
+              }}
+            >
+              🔍 Buscar fixture completo de "{teamSearchQuery.trim()}"
+            </div>
+
+            {/* Sugerencias de equipos que jugaron en la fecha actual */}
             {filteredSuggestions.map((item, idx) => (
               <div
                 key={`${item.teamName}-${item.leagueId}-${idx}`}
@@ -318,15 +350,15 @@ export default function Home() {
                 }}
               >
                 <span style={{ fontWeight: "600" }}>{item.teamName}</span>
-                <span style={{ opacity: 0.6, fontSize: "0.75rem" }}>{item.leagueName}</span>
+                <span style={{ opacity: 0.6, fontSize: "0.75rem" }}>{item.leagueName} (Hoy)</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Botón para ver más fechas del equipo seleccionado */}
-      {selectedTeamFilter && (
+      {/* Botón para abrir el fixture del equipo seleccionado */}
+      {selectedTeamFilter && !showFullFixture && (
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
           <button
             onClick={() => {
@@ -346,7 +378,7 @@ export default function Home() {
               fontSize: "0.85rem"
             }}
           >
-            📅 Ver más fechas de {selectedTeamFilter.teamName} hacia adelante
+            📅 Ver calendario de {selectedTeamFilter.teamName}
           </button>
         </div>
       )}
@@ -362,7 +394,7 @@ export default function Home() {
           {teamFixtureData.length === 0 && loadingFixture ? (
             <p style={{ textAlign: "center", opacity: 0.6, padding: "20px" }}>Buscando partidos...</p>
           ) : teamFixtureData.length === 0 ? (
-            <p style={{ textAlign: "center", opacity: 0.6, padding: "10px" }}>No se encontraron partidos próximos en este rango.</p>
+            <p style={{ textAlign: "center", opacity: 0.6, padding: "10px" }}>No se encontraron partidos próximos para este equipo.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem" }}>
               {teamFixtureData.map((match, i) => {
@@ -371,7 +403,7 @@ export default function Home() {
                 return (
                   <div key={match.id || `fixture-${i}`} style={{ 
                     display: "flex", 
-                    flexDirection: "column", // Cambiado a columna para acomodar la liga
+                    flexDirection: "column", 
                     padding: "10px 12px", 
                     marginBottom: "8px",
                     background: "rgba(128,128,128,0.04)", 
@@ -379,7 +411,6 @@ export default function Home() {
                     borderRadius: "6px",
                     gap: "8px"
                   }}>
-                    {/* Etiqueta del Torneo/Copa */}
                     {match.league && (
                        <span style={{ fontSize: "0.75rem", color: "#3b82f6", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                           🏆 {match.league}
@@ -505,7 +536,7 @@ export default function Home() {
               <div>
                 {league.games
                   .filter(game => {
-                    if (!selectedTeamFilter) return true;
+                    if (!selectedTeamFilter || !selectedTeamFilter.leagueId) return true;
                     return game.teams.some(t => t.name.toLowerCase() === selectedTeamFilter.teamName.toLowerCase());
                   })
                   .map((game) => {
