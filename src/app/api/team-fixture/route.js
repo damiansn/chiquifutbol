@@ -72,58 +72,52 @@ export async function GET(request) {
       const { html, currentDate } = result;
       const $ = cheerio.load(html);
 
-      // Buscamos cualquier elemento pequeño o fila que contenga texto de partidos para no descartar partidos de reserva
-      $('div, tr, td').each((_, el) => {
+      // Buscamos elementos que contengan texto de enfrentamientos ("vs" o "-")
+      $('div, td, span').each((_, el) => {
         const $el = $(el);
-
-        const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim() || $el.closest('table').find('.tituliga').text().trim();
-        const leagueContext = tituliga ? tituliga.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim() : "Calendario";
-
         const text = $el.text().replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
 
+        // Debe contener un enfrentamiento
+        if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
+        
+        // Debe contener el equipo buscado
         const hasTeam = searchTerms.some(term => {
           const regex = new RegExp(`\\b${term}\\b`, 'i');
           return regex.test(lowerText);
         });
 
         if (!hasTeam) return;
-        if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
-        if (!/\d{2}:\d{2}/.test(text)) return;
-        if (text.length < 5 || text.length > 150) return;
+        if (text.length < 5 || text.length > 100) return;
+        if (text.includes("Res.") || text.includes("Reserva")) return;
 
-        const timeMatch = text.match(/(\d{2}:\d{2})/);
+        // Intentamos encontrar el horario buscando en el elemento padre o contenedor inmediato
+        const parentText = $el.parent().text();
+        const timeMatch = parentText.match(/(\d{2}:\d{2})/);
         const timeStr = timeMatch ? timeMatch[1] : "";
 
-        let cleanText = text;
-        if (timeStr) {
-          cleanText = cleanText.replace(timeStr, "").trim();
-        }
+        // Contexto de liga (buscando hacia arriba o en elementos previos)
+        const tituliga = $el.closest('table').find('.tituliga').text().trim() || 
+                         $el.prevAll('.tituliga').first().text().trim() || 
+                         "Liga Profesional / Calendario";
+        
+        let cleanText = text.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
 
-        cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
+        const matchKey = `${cleanText}-${currentDate.toISOString().split('T')[0]}`.toLowerCase();
+        if (seenMatches.has(matchKey)) return;
+        seenMatches.add(matchKey);
 
-        const hasTeamClean = searchTerms.some(term => {
-          const regex = new RegExp(`\\b${term}\\b`, 'i');
-          return regex.test(cleanText);
+        const options = { weekday: 'long', day: 'numeric', month: 'short' };
+        const formattedDateStr = currentDate.toLocaleDateString('es-AR', options);
+        const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
+
+        matches.push({
+          id: Math.random().toString(36).substring(2, 9),
+          rawText: cleanText,
+          league: tituliga.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim() || "Calendario",
+          date: capitalizedDate,
+          time: timeStr
         });
-
-        if (hasTeamClean && cleanText.length > 5) {
-          const matchKey = `${cleanText}-${currentDate.toISOString().split('T')[0]}`.toLowerCase().replace(/\s+/g, ' ').trim();
-          if (seenMatches.has(matchKey)) return;
-          seenMatches.add(matchKey);
-
-          const options = { weekday: 'long', day: 'numeric', month: 'short' };
-          const formattedDateStr = currentDate.toLocaleDateString('es-AR', options);
-          const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
-
-          matches.push({
-            id: Math.random().toString(36).substring(2, 9),
-            rawText: cleanText,
-            league: leagueContext || "Calendario",
-            date: capitalizedDate,
-            time: timeStr
-          });
-        }
       });
     }
 
@@ -131,6 +125,7 @@ export async function GET(request) {
     nextWeekDate.setDate(targetDate.getDate() + 7);
     const nextDateParam = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
 
+    // Limitamos a 2 partidos para mantener la página liviana como solicitaste
     const limitedMatches = matches.slice(0, 2);
 
     return NextResponse.json({
