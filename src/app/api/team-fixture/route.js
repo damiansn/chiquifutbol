@@ -37,7 +37,7 @@ export async function GET(request) {
     const matches = [];
     const seenMatches = new Set();
 
-    // Limitamos la ventana de búsqueda a exactamente 7 días a partir de la fecha seleccionada para que sea rápido y liviano
+    // Consultamos los 7 días de la vista del calendario
     const daysToFetch = 7;
     const fetchPromises = [];
 
@@ -72,16 +72,14 @@ export async function GET(request) {
       if (!result) continue;
       const { html, currentDate } = result;
       const $ = cheerio.load(html);
-      let currentLeagueContext = "Torneo";
 
-      // Analizamos los bloques de filas para extraer con precisión los partidos del día
-      $('tr').each((_, el) => {
+      // Como se ve en la imagen, barremos los bloques de texto o celdas que contienen la información de los encuentros
+      $('div, td').each((_, el) => {
         const $el = $(el);
 
-        const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
-        if (tituliga) {
-          currentLeagueContext = tituliga.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim();
-        }
+        // Buscamos la liga a la que pertenece el partido dentro de su bloque o hacia arriba
+        const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim() || $el.closest('table').find('.tituliga').text().trim();
+        const leagueContext = tituliga ? tituliga.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim() : "Calendario";
 
         const text = $el.text().replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
@@ -92,9 +90,11 @@ export async function GET(request) {
         });
 
         if (!hasTeam) return;
+        // Un partido en este calendario siempre tiene un horario (ej 14:30) y un enfrentamiento (VS o -)
         if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
+        if (!/\d{2}:\d{2}/.test(text)) return;
         if (text.length < 5 || text.length > 120) return;
-        if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) return;
+        if (text.includes(" Res.") || leagueContext.toLowerCase().includes("reserva")) return;
 
         const timeMatch = text.match(/(\d{2}:\d{2})/);
         const timeStr = timeMatch ? timeMatch[1] : "";
@@ -104,21 +104,14 @@ export async function GET(request) {
           cleanText = cleanText.replace(timeStr, "").trim();
         }
 
-        const matchedTerm = searchTerms.find(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
-        if (matchedTerm) {
-          const idx = cleanText.toLowerCase().indexOf(matchedTerm);
-          if (idx !== -1 && cleanText.length > 35) {
-            const start = Math.max(0, idx - 20);
-            const end = Math.min(cleanText.length, idx + 35);
-            cleanText = cleanText.substring(start, end);
-          }
-        }
-
         cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
 
-        const hasTeamClean = searchTerms.some(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
+        const hasTeamClean = searchTerms.some(term => {
+          const regex = new RegExp(`\\b${term}\\b`, 'i');
+          return regex.test(cleanText);
+        });
+
         if (hasTeamClean && cleanText.length > 5) {
-          
           const matchKey = `${cleanText}-${currentDate.toISOString().split('T')[0]}`.toLowerCase().replace(/\s+/g, ' ').trim();
           if (seenMatches.has(matchKey)) return;
           seenMatches.add(matchKey);
@@ -130,7 +123,7 @@ export async function GET(request) {
           matches.push({
             id: Math.random().toString(36).substring(2, 9),
             rawText: cleanText,
-            league: currentLeagueContext || "Torneo",
+            league: leagueContext || "Calendario",
             date: capitalizedDate,
             time: timeStr
           });
@@ -138,12 +131,11 @@ export async function GET(request) {
       });
     }
 
-    // Calculamos el parámetro para la próxima semana (exactamente 7 días después de la fecha consultada)
     const nextWeekDate = new Date(targetDate);
     nextWeekDate.setDate(targetDate.getDate() + 7);
     const nextDateParam = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
 
-    // Limitamos la respuesta a un máximo de 2 partidos para cumplir con el rendimiento on-demand que pediste
+    // Limitamos a 2 partidos por carga para mantener la página ágil como pediste
     const limitedMatches = matches.slice(0, 2);
 
     return NextResponse.json({
