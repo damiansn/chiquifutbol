@@ -28,6 +28,7 @@ export async function GET(request) {
     const year = targetDate.getFullYear();
     const formattedDateForUrl = `${day}-${month}-${year}`;
 
+    // Apuntamos al calendario general o principal para asegurar que traiga la grilla completa
     const targetUrl = `https://www.promiedos.com.ar/calendario/${formattedDateForUrl}`;
 
     const response = await fetch(targetUrl, {
@@ -48,88 +49,56 @@ export async function GET(request) {
     const seenTexts = new Set();
     const searchLower = teamName.toLowerCase().trim();
 
-    // Variables de seguimiento de contexto
-    let trackingDate = new Date(targetDate);
-    let lastDayIndex = trackingDate.getDay();
-    let currentLeagueContext = "Torneo"; // Valor por defecto
+    let currentLeagueContext = "Torneo";
 
-    const daysMap = {
-      "domingo": 0, "lunes": 1, "martes": 2, "miércoles": 3, "miercoles": 3,
-      "jueves": 4, "viernes": 5, "sábado": 6, "sabado": 6, "sábados": 6, "sabados": 6
-    };
-
-    // Recorremos los elementos buscando bloques de fecha, ligas o filas de partidos
-    $('tr, div, table').each((_, el) => {
+    // Recorremos de forma más específica las tablas de partidos de Promiedos
+    $('table tr, div').each((_, el) => {
       const $el = $(el);
+      
+      // Detectar título de liga
+      if ($el.hasClass('tituliga') || $el.find('.tituliga').length > 0) {
+        const leagueText = $el.text().trim();
+        if (leagueText) {
+          currentLeagueContext = leagueText.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim();
+        }
+        return;
+      }
+
       const text = $el.text().replace(/\s+/g, ' ').trim();
       const lowerText = text.toLowerCase();
 
-      // 1. Detectar encabezado de Liga/Torneo
-      // Promiedos suele usar divs con clases específicas o th para el título del torneo
-      if ($el.hasClass('tituliga') || $el.find('.tituliga').length > 0 || $el.is('th[colspan="4"]')) {
-         const leagueText = $el.text().trim();
-         if (leagueText && leagueText.length < 60) {
-             currentLeagueContext = leagueText.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim();
-         }
-         return;
-      }
-
-      // 2. Detectar encabezado de fecha
-      for (const [dayName, dayIndex] of Object.entries(daysMap)) {
-        if (lowerText.includes(dayName) && text.length < 50 && !$el.find('table, tr').length) {
-          let diff = dayIndex - lastDayIndex;
-          if (diff < 0) diff += 7; 
-          if (diff > 0) {
-            trackingDate.setDate(trackingDate.getDate() + diff);
-            lastDayIndex = dayIndex;
-          }
-          break;
-        }
-      }
-
-      // 3. Evaluar si es una fila de partido
-      const rowText = text;
-      const rowLower = rowText.toLowerCase();
-
+      // Buscamos si el texto incluye el equipo buscado y estructura de partido
       if (
-        rowLower.includes(searchLower) &&
-        (rowLower.includes('vs') || rowLower.includes('-')) &&
-        rowText.length > 4 &&
-        rowText.length < 150 &&
-        !seenTexts.has(rowText)
+        lowerText.includes(searchLower) &&
+        (lowerText.includes('vs') || lowerText.includes('-')) &&
+        text.length > 4 &&
+        text.length < 200 &&
+        !seenTexts.has(text)
       ) {
-        // --- FILTRO: Excluir partidos de Reserva ---
-        // Verificamos si la fila contiene " Res." o si el torneo actual dice "Reserva"
-        if (rowText.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
-            return; // Saltamos este partido
+        // Filtrar reservas si el usuario busca partidos oficiales de primera
+        if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
+          return;
         }
 
-        if ($el.children().length < 8) {
-          seenTexts.add(rowText);
+        seenTexts.add(text);
 
-          // Buscar hora (HH:MM)
-          const timeMatch = rowText.match(/(\d{2}:\d{2})/);
-          let timeStr = timeMatch ? timeMatch[1] : "";
-          
-          if (!timeStr) {
-            const possibleTime = $el.find('.hora, .horario, span').filter((_, sub) => /\d{2}:\d{2}/.test($(sub).text())).text();
-            if (possibleTime) {
-              const matchSub = possibleTime.match(/(\d{2}:\d{2})/);
-              if (matchSub) timeStr = matchSub[1];
-            }
-          }
+        // Extraer hora si existe (formato HH:MM)
+        const timeMatch = text.match(/(\d{2}:\d{2})/);
+        const timeStr = timeMatch ? timeMatch[1] : "";
 
-          const options = { weekday: 'long', day: 'numeric', month: 'short' };
-          const formattedDateStr = trackingDate.toLocaleDateString('es-AR', options);
-          const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
-
-          matches.push({
-            rawText: rowText,
-            date: capitalizedDate,
-            time: timeStr ? `${timeStr} hs` : "",
-            league: currentLeagueContext // Agregamos la competición al objeto
-          });
+        // Intentar separar equipos de forma prolija si Promiedos los une en una sola cadena
+        let cleanRow = text;
+        if (timeStr) {
+          cleanRow = cleanRow.replace(timeStr, "").trim();
         }
+
+        matches.push({
+          id: Math.random().toString(36).substring(2, 9),
+          rawText: cleanRow,
+          league: currentLeagueContext,
+          date: targetDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }),
+          time: timeStr
+        });
       }
     });
 
