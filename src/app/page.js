@@ -4,16 +4,18 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
 // Función auxiliar fuera del componente para evitar recrearla en cada render/map
+// Función auxiliar fuera del componente para formatear la fecha correctamente
 const formatFullDateTime = (dateStr, timeStr) => {
   if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
   
   const cleanDate = dateStr.trim();
+  const lowerDate = cleanDate.toLowerCase();
   
-  // Si Promiedos devuelve un día suelto (ej: "miércoles", "domingo", "viernes")
-  const isDayNameOnly = cleanDate.length < 15 && !cleanDate.includes("/") && !cleanDate.includes("-");
-  if (isDayNameOnly) {
-    const capitalizedDay = cleanDate.charAt(0).toUpperCase() + cleanDate.slice(1);
-    return timeStr ? `${capitalizedDay} - ${timeStr} hs` : capitalizedDay;
+  // Si Promiedos devuelve directamente el día de la semana en texto
+  const diasSemana = ["lunes", "martes", "miércoles", "miercoles", "jueves", "viernes", "sábados", "sabados", "sabado", "sábado", "domingo"];
+  if (diasSemana.includes(lowerDate)) {
+    const capitalized = cleanDate.charAt(0).toUpperCase() + cleanDate.slice(1);
+    return timeStr ? `${capitalized} - ${timeStr} hs` : `Próximo ${capitalized}`;
   }
 
   try {
@@ -25,7 +27,7 @@ const formatFullDateTime = (dateStr, timeStr) => {
       return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
     }
   } catch (e) {
-    // Si falla el parseo, caemos al texto plano
+    // Fallback si falla
   }
   
   return timeStr ? `${cleanDate} (${timeStr})` : cleanDate;
