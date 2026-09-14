@@ -5,17 +5,16 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const teamName = searchParams.get("team");
-    const dateParam = searchParams.get("date"); // Formato YYYY-MM-DD o DD-MM-YYYY
+    const dateParam = searchParams.get("date");
 
     if (!teamName) {
       return NextResponse.json({ error: "Falta el parámetro 'team'" }, { status: 400 });
     }
 
-    // Determinamos la fecha de inicio a consultar
     let targetDate = new Date();
     if (dateParam) {
-      if (dateParam.includes("-")) {
-        const parts = dateParam.split("-");
+      const parts = dateParam.split("-");
+      if (parts.length === 3) {
         if (parts[0].length === 4) {
           targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
         } else {
@@ -24,15 +23,12 @@ export async function GET(request) {
       }
     }
 
-    if (isNaN(targetDate.getTime())) {
-      targetDate = new Date();
-    }
-
     const day = String(targetDate.getDate()).padStart(2, '0');
     const month = String(targetDate.getMonth() + 1).padStart(2, '0');
     const year = targetDate.getFullYear();
     const formattedDateForUrl = `${day}-${month}-${year}`;
 
+    // Probamos consultando la ruta de calendario específica
     const targetUrl = `https://www.promiedos.com.ar/calendario/${formattedDateForUrl}`;
 
     const response = await fetch(targetUrl, {
@@ -43,7 +39,7 @@ export async function GET(request) {
     });
 
     if (!response.ok) {
-      throw new Error("No se pudo obtener la información del calendario externo.");
+      throw new Error("No se pudo obtener la información del calendario.");
     }
 
     const html = await response.text();
@@ -53,42 +49,35 @@ export async function GET(request) {
     const seenTexts = new Set();
     const searchLower = teamName.toLowerCase().trim();
 
-    // Buscamos específicamente en filas de tablas o elementos que representen partidos reales
-    // En Promiedos, los partidos suelen estar dentro de tablas o filas con clases específicas de encuentros
-    $('tr, .match, .item, li').each((_, el) => {
+    // Recorremos cualquier fila o contenedor de texto para asegurar que capturemos el partido
+    $('tr, div, li, span').each((_, el) => {
       const $el = $(el);
-      
-      // Evitamos elementos que contengan menús gigantes o secciones de navegación
-      if ($el.find('a[href*="ligas"], nav, header').length > 0 && !$el.find('.vs, td').length) {
-        return;
-      }
-
       const rowText = $el.text().replace(/\s+/g, ' ').trim();
       const rowLower = rowText.toLowerCase();
 
-      // Validamos que contenga el equipo buscado, que tenga formato de partido (ej: "VS" o "-") y una longitud lógica
-      const isMatchRow = (rowLower.includes('vs') || rowLower.includes('-')) && 
-                         rowLower.includes(searchLower) && 
-                         rowText.length > 5 && 
-                         rowText.length < 150; // Evita bloques enormes de texto
-
-      if (isMatchRow && !seenTexts.has(rowText)) {
-        seenTexts.add(rowText);
-        matches.push({
-          rawText: rowText,
-          date: formattedDateForUrl
-        });
+      // Buscamos que contenga el equipo y algún indicador de partido sin ser un texto gigante de menús
+      if (
+        rowLower.includes(searchLower) &&
+        (rowLower.includes('vs') || rowLower.includes('-')) &&
+        rowText.length > 4 &&
+        rowText.length < 120 &&
+        !seenTexts.has(rowText)
+      ) {
+        // Evitamos que tome elementos contenedores repetidos muy grandes
+        if ($el.children().length < 5) {
+          seenTexts.add(rowText);
+          matches.push({
+            rawText: rowText,
+            date: formattedDateForUrl
+          });
+        }
       }
     });
 
-    // Calculamos la fecha para la siguiente semana (sumamos 7 días)
+    // Siguiente fecha (sumar 7 días)
     const nextWeekDate = new Date(targetDate);
     nextWeekDate.setDate(targetDate.getDate() + 7);
-    
-    const nextYear = nextWeekDate.getFullYear();
-    const nextMonth = String(nextWeekDate.getMonth() + 1).padStart(2, '0');
-    const nextDay = String(nextWeekDate.getDate()).padStart(2, '0');
-    const nextDateParam = `${nextYear}-${nextMonth}-${nextDay}`;
+    const nextDateParam = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
 
     return NextResponse.json({
       matches,
