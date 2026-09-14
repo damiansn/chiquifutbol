@@ -28,7 +28,6 @@ export async function GET(request) {
     const year = targetDate.getFullYear();
     const formattedDateForUrl = `${day}-${month}-${year}`;
 
-    // Apuntamos al calendario general o principal para asegurar que traiga la grilla completa
     const targetUrl = `https://www.promiedos.com.ar/calendario/${formattedDateForUrl}`;
 
     const response = await fetch(targetUrl, {
@@ -51,11 +50,10 @@ export async function GET(request) {
 
     let currentLeagueContext = "Torneo";
 
-    // Recorremos de forma más específica las tablas de partidos de Promiedos
-    $('table tr, div').each((_, el) => {
+    // Buscamos elementos más específicos o celdas individuales para evitar mezclas
+    $('td, div, tr').each((_, el) => {
       const $el = $(el);
       
-      // Detectar título de liga
       if ($el.hasClass('tituliga') || $el.find('.tituliga').length > 0) {
         const leagueText = $el.text().trim();
         if (leagueText) {
@@ -67,34 +65,41 @@ export async function GET(request) {
       const text = $el.text().replace(/\s+/g, ' ').trim();
       const lowerText = text.toLowerCase();
 
-      // Buscamos si el texto incluye el equipo buscado y estructura de partido
+      // Verificamos que contenga el equipo y un enfrentamiento (VS o guion)
       if (
         lowerText.includes(searchLower) &&
         (lowerText.includes('vs') || lowerText.includes('-')) &&
         text.length > 4 &&
-        text.length < 200 &&
-        !seenTexts.has(text)
+        text.length < 300
       ) {
-        // Filtrar reservas si el usuario busca partidos oficiales de primera
         if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
           return;
         }
 
-        seenTexts.add(text);
+        // Si el texto acumuló varios partidos, intentamos aislar la parte exacta donde aparece el equipo
+        let isolatedText = text;
+        const vsIndex = text.toLowerCase().indexOf(searchLower);
+        if (vsIndex !== -1 && text.length > 60) {
+          // Recortamos un fragmento seguro alrededor del nombre del equipo (ej: 40 caracteres antes y después)
+          const start = Math.max(0, vsIndex - 30);
+          const end = Math.min(text.length, vsIndex + 50);
+          isolatedText = text.substring(start, end);
+        }
 
-        // Extraer hora si existe (formato HH:MM)
-        const timeMatch = text.match(/(\d{2}:\d{2})/);
+        if (seenTexts.has(isolatedText)) return;
+        seenTexts.add(isolatedText);
+
+        // Extraer hora (HH:MM)
+        const timeMatch = isolatedText.match(/(\d{2}:\d{2})/);
         const timeStr = timeMatch ? timeMatch[1] : "";
 
-        // Intentar separar equipos de forma prolija si Promiedos los une en una sola cadena
-        let cleanRow = text;
-        if (timeStr) {
-          cleanRow = cleanRow.replace(timeStr, "").trim();
-        }
+        let cleanRow = isolatedText.replace(/(\d{2}:\d{2})/, "").trim();
+        // Limpieza extra de caracteres extraños al inicio o final
+        cleanRow = cleanRow.replace(/^[^a-zA-ZÁÉÍÓÚáéíóúñÑ]+/, "").replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+$/, "");
 
         matches.push({
           id: Math.random().toString(36).substring(2, 9),
-          rawText: cleanRow,
+          rawText: cleanRow || text,
           league: currentLeagueContext,
           date: targetDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }),
           time: timeStr
