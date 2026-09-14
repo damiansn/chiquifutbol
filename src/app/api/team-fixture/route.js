@@ -79,26 +79,26 @@ export async function GET(request) {
     const $ = cheerio.load(html);
     const matches = [];
 
-    // Recorremos las filas de la tabla dentro de la página exclusiva del equipo
+    // Recorremos las filas de las tablas del fixture del equipo
     $("table tr").each((_, el) => {
       const $el = $(el);
-      const fullRowText = $el.text().replace(/\s+/g, ' ').trim();
-      
-      if (!fullRowText) return;
+      const cols = $el.find("td");
 
-      // Buscamos filas que tengan estructura de partido (por lo general contienen fechas o barras, ej: "Dom 15/09" o guiones)
-      const hasContent = $el.find('td').length >= 2;
-      if (!hasContent) return;
-
-      // Filtramos filas que ya pasaron (opcional, o nos quedamos con las que tengan formato de fecha/hora futura)
-      matches.push({
-        id: Math.random().toString(36).substring(2, 9),
-        rawText: fullRowText,
-      });
+      // Validamos que la fila tenga celdas suficientes para ser un partido válido
+      if (cols.length >= 2) {
+        const fullRowText = $el.text().replace(/\s+/g, " ").trim();
+        
+        if (fullRowText) {
+          matches.push({
+            id: Math.random().toString(36).substring(2, 9),
+            rawText: fullRowText,
+          });
+        }
+      }
     });
 
     return NextResponse.json({
-      matches: matches.slice(0, 5), // Devolvemos las primeras filas encontradas en su sección de fixture
+      matches: matches.slice(0, 10), // Devolvemos un poco más de margen (primeros 10 registros útiles)
       nextDateParam: null
     });
 
