@@ -348,23 +348,30 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem" }}>
               {teamFixtureData.map((match, i) => {
                 // Parseo avanzado para unificar fecha completa + hora de forma robusta
-                const formatFullDateTime = (dateStr, timeStr) => {
-                  if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
-                  try {
-                    // Intenta formatear la fecha que venga en el match (ej: YYYY-MM-DD o similar)
-                    const parsedDate = new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`);
-                    if (!isNaN(parsedDate)) {
-                      const options = { weekday: 'long', day: 'numeric', month: 'short' };
-                      const formattedDate = parsedDate.toLocaleDateString('es-AR', options);
-                      // Capitalizar la primera letra del día
-                      const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-                      return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
-                    }
-                  } catch (e) {
-                    // Si falla el parseo nativo, devolvemos los strings combinados limpiamente
+                // Reemplaza esta función dentro del map del fixture en page.js:
+              const formatFullDateTime = (dateStr, timeStr) => {
+                if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
+                
+                // Si viene un día suelto (ej: "miércoles", "domingo")
+                const cleanDate = dateStr.trim();
+                if (cleanDate.length < 15 && !cleanDate.includes("/") && !cleanDate.includes("-")) {
+                  return timeStr ? `${cleanDate.charAt(0).toUpperCase() + cleanDate.slice(1)} - ${timeStr} hs` : cleanDate;
+                }
+
+                try {
+                  const parsedDate = new Date(cleanDate.includes("T") ? cleanDate : `${cleanDate}T00:00:00`);
+                  if (!isNaN(parsedDate)) {
+                    const options = { weekday: 'long', day: 'numeric', month: 'short' };
+                    const formattedDate = parsedDate.toLocaleDateString('es-AR', options);
+                    const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+                    return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
                   }
-                  return timeStr ? `${dateStr} (${timeStr})` : dateStr;
-                };
+                } catch (e) {
+                  // fallback
+                }
+                
+                return timeStr ? `${cleanDate} (${timeStr})` : cleanDate;
+              };
 
                 const fullDateTimeDisplay = formatFullDateTime(match.date, match.time);
 
