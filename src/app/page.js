@@ -3,14 +3,15 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
-// Función auxiliar para calcular la fecha real basada en el día de la semana que manda Promiedos
+// Función auxiliar para calcular fechas de forma secuencial y progresiva en el fixture
+let lastProcessedDate = null; // Mantiene la referencia temporal entre renders del listado
+
 const formatFullDateTime = (dateStr, timeStr) => {
   if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
   
   const cleanDate = dateStr.trim();
   const lowerDate = cleanDate.toLowerCase();
   
-  // Mapeo de días de la semana a números (0: Domingo, 1: Lunes, ..., 6: Sábado)
   const daysMap = {
     "domingo": 0,
     "lunes": 1,
@@ -24,19 +25,30 @@ const formatFullDateTime = (dateStr, timeStr) => {
   if (daysMap.hasOwnProperty(lowerDate)) {
     const targetDayIndex = daysMap[lowerDate];
     const today = new Date();
-    const currentDayIndex = today.getDay();
     
-    // Calcular cuántos días faltan para ese día de la semana (si ya pasó esta semana, cae en la próxima)
-    let diff = targetDayIndex - currentDayIndex;
-    if (diff <= 0) {
-      diff += 7; // Si es hoy o ya pasó en la semana actual, tomamos el próximo
+    if (!lastProcessedDate) {
+      // Primer partido de la lista: calculamos el más cercano hacia adelante desde hoy
+      let currentDayIndex = today.getDay();
+      let diff = targetDayIndex - currentDayIndex;
+      if (diff < 0) diff += 7; // Si ya pasó esta semana, va a la próxima
+      
+      lastProcessedDate = new Date();
+      lastProcessedDate.setDate(today.getDate() + diff);
+    } else {
+      // Partidos siguientes: avanzamos desde la última fecha procesada
+      let currentDayIndex = lastProcessedDate.getDay();
+      let diff = targetDayIndex - currentDayIndex;
+      if (diff <= 0) {
+        diff += 7; // Si el día es igual o anterior en la semana, pasó a la siguiente semana
+      }
+      
+      let nextDate = new Date(lastProcessedDate);
+      nextDate.setDate(lastProcessedDate.getDate() + diff);
+      lastProcessedDate = nextDate;
     }
 
-    const calculatedDate = new Date();
-    calculatedDate.setDate(today.getDate() + diff);
-
     const options = { weekday: 'long', day: 'numeric', month: 'short' };
-    const formattedDate = calculatedDate.toLocaleDateString('es-AR', options);
+    const formattedDate = lastProcessedDate.toLocaleDateString('es-AR', options);
     const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
     
     return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
@@ -45,13 +57,14 @@ const formatFullDateTime = (dateStr, timeStr) => {
   try {
     const parsedDate = new Date(cleanDate.includes("T") ? cleanDate : `${cleanDate}T00:00:00`);
     if (!isNaN(parsedDate)) {
+      lastProcessedDate = parsedDate; // Sincronizamos la referencia si viene fecha fija
       const options = { weekday: 'long', day: 'numeric', month: 'short' };
       const formattedDate = parsedDate.toLocaleDateString('es-AR', options);
-      const capitalized = formattedDate.toLocaleLowerCase() === formattedDate ? formattedDate : formattedDate; // mantiene formato
-      return timeStr ? `${capitalized.charAt(0).toUpperCase() + capitalized.slice(1)} - ${timeStr} hs` : capitalized.charAt(0).toUpperCase() + capitalized.slice(1);
+      const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+      return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
     }
   } catch (e) {
-    // Fallback si falla
+    // Fallback
   }
   
   return timeStr ? `${cleanDate} (${timeStr})` : cleanDate;
