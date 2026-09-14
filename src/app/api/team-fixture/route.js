@@ -5,7 +5,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const teamName = searchParams.get("team");
-    const dateParam = searchParams.get("date"); // Formato esperado: YYYY-MM-DD o DD-MM-YYYY
+    const dateParam = searchParams.get("date"); // Formato YYYY-MM-DD o DD-MM-YYYY
 
     if (!teamName) {
       return NextResponse.json({ error: "Falta el parámetro 'team'" }, { status: 400 });
@@ -14,14 +14,11 @@ export async function GET(request) {
     // Determinamos la fecha de inicio a consultar
     let targetDate = new Date();
     if (dateParam) {
-      // Si viene en formato YYYY-MM-DD o DD-MM-YYYY intentamos parsearlo
       if (dateParam.includes("-")) {
         const parts = dateParam.split("-");
         if (parts[0].length === 4) {
-          // YYYY-MM-DD
           targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
         } else {
-          // DD-MM-YYYY
           targetDate = new Date(parts[2], parts[1] - 1, parts[0]);
         }
       }
@@ -31,13 +28,11 @@ export async function GET(request) {
       targetDate = new Date();
     }
 
-    // Formateamos a DD-MM-YYYY para la URL de Promiedos que me pasaste
     const day = String(targetDate.getDate()).padStart(2, '0');
     const month = String(targetDate.getMonth() + 1).padStart(2, '0');
     const year = targetDate.getFullYear();
     const formattedDateForUrl = `${day}-${month}-${year}`;
 
-    // Construimos la URL exacta del calendario
     const targetUrl = `https://www.promiedos.com.ar/calendario/${formattedDateForUrl}`;
 
     const response = await fetch(targetUrl, {
@@ -56,16 +51,28 @@ export async function GET(request) {
 
     const matches = [];
     const seenTexts = new Set();
+    const searchLower = teamName.toLowerCase().trim();
 
-    // Buscamos filas o bloques donde figuren los partidos en la página de calendario
-    $('tr, .fila-partido, .partido-calendario, .match, div').each((_, el) => {
-      const rowText = $(el).text().replace(/\s+/g, ' ').trim();
+    // Buscamos específicamente en filas de tablas o elementos que representen partidos reales
+    // En Promiedos, los partidos suelen estar dentro de tablas o filas con clases específicas de encuentros
+    $('tr, .match, .item, li').each((_, el) => {
+      const $el = $(el);
       
-      if (
-        rowText.toLowerCase().includes(teamName.toLowerCase()) && 
-        rowText.length > 5 && 
-        !seenTexts.has(rowText)
-      ) {
+      // Evitamos elementos que contengan menús gigantes o secciones de navegación
+      if ($el.find('a[href*="ligas"], nav, header').length > 0 && !$el.find('.vs, td').length) {
+        return;
+      }
+
+      const rowText = $el.text().replace(/\s+/g, ' ').trim();
+      const rowLower = rowText.toLowerCase();
+
+      // Validamos que contenga el equipo buscado, que tenga formato de partido (ej: "VS" o "-") y una longitud lógica
+      const isMatchRow = (rowLower.includes('vs') || rowLower.includes('-')) && 
+                         rowLower.includes(searchLower) && 
+                         rowText.length > 5 && 
+                         rowText.length < 150; // Evita bloques enormes de texto
+
+      if (isMatchRow && !seenTexts.has(rowText)) {
         seenTexts.add(rowText);
         matches.push({
           rawText: rowText,
