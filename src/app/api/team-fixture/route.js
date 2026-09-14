@@ -49,9 +49,21 @@ export async function GET(request) {
     const seenTexts = new Set();
     const searchLower = teamName.toLowerCase().trim();
 
-    $('tr, div, li').each((_, el) => {
+    // Variable para rastrear la fecha del calendario actual en la página
+    let currentDateContext = displayDate;
+
+    // Recorremos los elementos clave de la estructura de Promiedos (incluyendo títulos de fecha y filas de partidos)
+    $('tr, div, h3, h2').each((_, el) => {
       const $el = $(el);
-      const rowText = $el.text().replace(/\s+/g, ' ').trim();
+      const text = $el.text().replace(/\s+/g, ' ').trim();
+
+      // Si el elemento es un encabezado o contenedor de fecha en el calendario, actualizamos el contexto
+      if ($el.is('h2, h3') || ($el.is('td') && $el.hasClass('fecha-calendario')) || (text.length > 5 && text.length < 30 && /(lunes|martes|miércoles|jueves|viernes|sábado|domingo)/i.test(text))) {
+        currentDateContext = text;
+        return;
+      }
+
+      const rowText = text;
       const rowLower = rowText.toLowerCase();
 
       if (
@@ -64,13 +76,13 @@ export async function GET(request) {
         if ($el.children().length < 5) {
           seenTexts.add(rowText);
 
-          // Intentamos extraer una hora si el texto empieza con formato HH:MM (ej: "15:00")
-          const timeMatch = rowText.match(/^(\d{2}:\d{2})/);
+          // Extraemos la hora sin requerir que esté estrictamente al principio (busca cualquier patrón HH:MM)
+          const timeMatch = rowText.match(/(\d{2}:\d{2})/);
           const timeStr = timeMatch ? timeMatch[1] : "";
 
           matches.push({
             rawText: rowText,
-            date: displayDate,
+            date: currentDateContext, // Muestra la fecha detectada en el calendario o el fallback
             time: timeStr
           });
         }
@@ -86,7 +98,7 @@ export async function GET(request) {
       nextDateParam
     });
 
-  } catch (error) {
+  }     catch (error) {
     console.error("Error en team-fixture API:", error);
     return NextResponse.json({ error: error.message || "Error interno del servidor" }, { status: 500 });
   }
