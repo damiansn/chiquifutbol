@@ -43,6 +43,7 @@ async function sincronizarDatos() {
                 const res = await fetch('https://api.promiedos.com.ar/games/yesterday');
                 return await res.json();
             } catch (e) {
+                // Fallback por si la API usa otra ruta, intentamos extraer del DOM o usar ruta alternativa
                 return { error: e.message };
             }
         });
@@ -65,6 +66,7 @@ async function sincronizarDatos() {
             await redis.set('chiquifutbol_matches_manana', JSON.stringify(partidosManana));
             console.log("¡Partidos de MAÑANA sincronizados en Redis!");
         }
+
 
         // 2. Sincronizar la URL de la Liga Profesional (Tablas y Estadísticas)
         console.log("Consultando tablas y estadísticas completas...");
@@ -97,14 +99,15 @@ async function sincronizarDatos() {
                 const tableText = table.innerText.toLowerCase();
                 
                 let isPromedioTable = title.toLowerCase().includes('promedio') || 
-                                      title.toLowerCase().includes('relegation') || 
-                                      tableText.includes('prom') || 
-                                      headers.some(h => h.includes('prom'));
+                                    title.toLowerCase().includes('relegation') || 
+                                    tableText.includes('prom') || 
+                                    headers.some(h => h.includes('prom'));
 
                 if (isPromedioTable) {
                     title = "PROMEDIOS";
                 }
 
+                // Omitir si es una tabla clara de estadísticas dentro del loop de posiciones
                 if (tableText.includes('goles') || tableText.includes('asistencia') || tableText.includes('amarillas')) {
                     return; 
                 }
@@ -181,7 +184,7 @@ async function sincronizarDatos() {
             return groupedTables;
         });
 
-        // Extraer Estadísticas Personales
+        // Extraer Estadísticas Personales con tolerancia a títulos y nombres limpios
         const statsData = await page.evaluate(() => {
             const statBlocks = [];
             const tables = document.querySelectorAll('table');
@@ -189,6 +192,8 @@ async function sincronizarDatos() {
             tables.forEach((table, index) => {
                 const rows = table.querySelectorAll('tr');
                 if (rows.length < 2) return;
+
+                // Descartar si es una tabla gigante (posiciones principales)
                 if (rows.length > 15) return;
 
                 let titleText = "";
@@ -218,6 +223,7 @@ async function sincronizarDatos() {
                     const cols = row.querySelectorAll('td');
                     if (cols.length >= 2) {
                         let playerName = "";
+                        // Buscar la celda que contenga texto de nombre (evitando números de posición puros)
                         for (let c = 0; c < cols.length; c++) {
                             const txt = cols[c]?.innerText?.trim() || "";
                             if (txt.length > 2 && isNaN(txt) && !txt.toLowerCase().includes('jugador') && !txt.toLowerCase().includes('equipo')) {
@@ -226,6 +232,7 @@ async function sincronizarDatos() {
                             }
                         }
 
+                        // Buscar el valor numérico de la estadística (suele estar en la última columna)
                         let statValue = NaN;
                         for (let c = cols.length - 1; c >= 0; c--) {
                             const valStr = cols[c]?.innerText?.trim().replace(',', '.');
@@ -268,10 +275,8 @@ async function sincronizarDatos() {
         console.error("Error durante el proceso con Puppeteer:", error);
     } finally {
         await browser.close();
-        // Cerramos la conexión de Redis al terminar el script para que no quede colgando
-        await redis.quit();
     }
 }
 
-// Ejecución directa (ideal para GitHub Actions)
 sincronizarDatos();
+setInterval(sincronizarDatos, 60000);
