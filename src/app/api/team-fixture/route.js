@@ -30,12 +30,15 @@ export async function GET(request) {
     if (rawSearch.includes('racing')) searchTerms.push('racing', 'racing club');
     if (rawSearch.includes('san lorenzo')) searchTerms.push('san lorenzo');
     if (rawSearch.includes('independiente')) searchTerms.push('independiente');
-    if (rawSearch.includes('instituto')) searchTerms.push('instituto', 'instituto cordoba', 'instituto de córdoba');
+    if (rawSearch.includes('instituto')) searchTerms.push('instituto', 'instituto cordoba');
+    if (rawSearch.includes('banfield')) searchTerms.push('banfield');
+    if (rawSearch.includes('barracas')) searchTerms.push('barracas', 'barracas central');
 
     const matches = [];
     const seenMatches = new Set();
 
-    const daysToFetch = 10;
+    // Limitamos la ventana de búsqueda a exactamente 7 días a partir de la fecha seleccionada para que sea rápido y liviano
+    const daysToFetch = 7;
     const fetchPromises = [];
 
     for (let i = 0; i < daysToFetch; i++) {
@@ -71,8 +74,8 @@ export async function GET(request) {
       const $ = cheerio.load(html);
       let currentLeagueContext = "Torneo";
 
-      // Restauramos la flexibilidad de búsqueda en contenedores (tr, div, td) para adaptarnos al diseño web de Promiedos
-      $('tr, div, td').each((_, el) => {
+      // Analizamos los bloques de filas para extraer con precisión los partidos del día
+      $('tr').each((_, el) => {
         const $el = $(el);
 
         const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
@@ -83,12 +86,14 @@ export async function GET(request) {
         const text = $el.text().replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
 
-        const hasTeam = searchTerms.some(term => lowerText.includes(term));
-        if (!hasTeam) return;
+        const hasTeam = searchTerms.some(term => {
+          const regex = new RegExp(`\\b${term}\\b`, 'i');
+          return regex.test(lowerText);
+        });
 
-        const hasIndicator = lowerText.includes('vs') || lowerText.includes(' - ') || /\d{2}:\d{2}/.test(text);
-        if (!hasIndicator) return;
-        if (text.length < 5 || text.length > 100) return;
+        if (!hasTeam) return;
+        if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
+        if (text.length < 5 || text.length > 120) return;
         if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) return;
 
         const timeMatch = text.match(/(\d{2}:\d{2})/);
@@ -99,12 +104,21 @@ export async function GET(request) {
           cleanText = cleanText.replace(timeStr, "").trim();
         }
 
+        const matchedTerm = searchTerms.find(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
+        if (matchedTerm) {
+          const idx = cleanText.toLowerCase().indexOf(matchedTerm);
+          if (idx !== -1 && cleanText.length > 35) {
+            const start = Math.max(0, idx - 20);
+            const end = Math.min(cleanText.length, idx + 35);
+            cleanText = cleanText.substring(start, end);
+          }
+        }
+
         cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
 
-        const hasTeamClean = searchTerms.some(term => cleanText.toLowerCase().includes(term));
+        const hasTeamClean = searchTerms.some(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
         if (hasTeamClean && cleanText.length > 5) {
           
-          // Clave única estricta combinando el texto limpio y la fecha exacta para evitar duplicados
           const matchKey = `${cleanText}-${currentDate.toISOString().split('T')[0]}`.toLowerCase().replace(/\s+/g, ' ').trim();
           if (seenMatches.has(matchKey)) return;
           seenMatches.add(matchKey);
@@ -124,12 +138,16 @@ export async function GET(request) {
       });
     }
 
+    // Calculamos el parámetro para la próxima semana (exactamente 7 días después de la fecha consultada)
     const nextWeekDate = new Date(targetDate);
     nextWeekDate.setDate(targetDate.getDate() + 7);
     const nextDateParam = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
 
-   return NextResponse.json({
-      matches,
+    // Limitamos la respuesta a un máximo de 2 partidos para cumplir con el rendimiento on-demand que pediste
+    const limitedMatches = matches.slice(0, 2);
+
+    return NextResponse.json({
+      matches: limitedMatches,
       nextDateParam
     });
 
