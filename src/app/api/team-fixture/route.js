@@ -48,27 +48,37 @@ export async function GET(request) {
     const seenTexts = new Set();
     const searchLower = teamName.toLowerCase().trim();
 
-    // Variable de seguimiento temporal para avanzar de manera estricta y cronológica
+    // Variables de seguimiento de contexto
     let trackingDate = new Date(targetDate);
     let lastDayIndex = trackingDate.getDay();
+    let currentLeagueContext = "Torneo"; // Valor por defecto
 
     const daysMap = {
       "domingo": 0, "lunes": 1, "martes": 2, "miércoles": 3, "miercoles": 3,
       "jueves": 4, "viernes": 5, "sábado": 6, "sabado": 6, "sábados": 6, "sabados": 6
     };
 
-    // Recorremos los elementos buscando los bloques de fecha o filas de partidos
-    $('tr, div').each((_, el) => {
+    // Recorremos los elementos buscando bloques de fecha, ligas o filas de partidos
+    $('tr, div, table').each((_, el) => {
       const $el = $(el);
       const text = $el.text().replace(/\s+/g, ' ').trim();
       const lowerText = text.toLowerCase();
 
-      // Detectar si el elemento es un encabezado de fecha en Promiedos
+      // 1. Detectar encabezado de Liga/Torneo
+      // Promiedos suele usar divs con clases específicas o th para el título del torneo
+      if ($el.hasClass('tituliga') || $el.find('.tituliga').length > 0 || $el.is('th[colspan="4"]')) {
+         const leagueText = $el.text().trim();
+         if (leagueText && leagueText.length < 60) {
+             currentLeagueContext = leagueText.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim();
+         }
+         return;
+      }
+
+      // 2. Detectar encabezado de fecha
       for (const [dayName, dayIndex] of Object.entries(daysMap)) {
         if (lowerText.includes(dayName) && text.length < 50 && !$el.find('table, tr').length) {
-          // Si encontramos un indicador de día, calculamos el salto respecto al día anterior
           let diff = dayIndex - lastDayIndex;
-          if (diff < 0) diff += 7; // Si el día de la semana es menor, avanzamos a la semana siguiente
+          if (diff < 0) diff += 7; 
           if (diff > 0) {
             trackingDate.setDate(trackingDate.getDate() + diff);
             lastDayIndex = dayIndex;
@@ -77,7 +87,7 @@ export async function GET(request) {
         }
       }
 
-      // Si es una fila de partido, evaluamos si contiene al equipo buscado
+      // 3. Evaluar si es una fila de partido
       const rowText = text;
       const rowLower = rowText.toLowerCase();
 
@@ -88,6 +98,12 @@ export async function GET(request) {
         rowText.length < 150 &&
         !seenTexts.has(rowText)
       ) {
+        // --- FILTRO: Excluir partidos de Reserva ---
+        // Verificamos si la fila contiene " Res." o si el torneo actual dice "Reserva"
+        if (rowText.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
+            return; // Saltamos este partido
+        }
+
         if ($el.children().length < 8) {
           seenTexts.add(rowText);
 
@@ -103,7 +119,6 @@ export async function GET(request) {
             }
           }
 
-          // Formatear la fecha real calculada de forma limpia para el cliente (Ej: "Miércoles, 16 sept")
           const options = { weekday: 'long', day: 'numeric', month: 'short' };
           const formattedDateStr = trackingDate.toLocaleDateString('es-AR', options);
           const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
@@ -111,7 +126,8 @@ export async function GET(request) {
           matches.push({
             rawText: rowText,
             date: capitalizedDate,
-            time: timeStr ? `${timeStr} hs` : ""
+            time: timeStr ? `${timeStr} hs` : "",
+            league: currentLeagueContext // Agregamos la competición al objeto
           });
         }
       }

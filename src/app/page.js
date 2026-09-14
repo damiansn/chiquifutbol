@@ -371,25 +371,33 @@ export default function Home() {
                 return (
                   <div key={match.id || `fixture-${i}`} style={{ 
                     display: "flex", 
-                    justifyContent: "space-between", 
-                    alignItems: "center", 
+                    flexDirection: "column", // Cambiado a columna para acomodar la liga
                     padding: "10px 12px", 
                     marginBottom: "8px",
                     background: "rgba(128,128,128,0.04)", 
                     border: "1px solid rgba(128,128,128,0.1)",
                     borderRadius: "6px",
-                    gap: "12px"
+                    gap: "8px"
                   }}>
-                    <span style={{ fontWeight: "500", flex: 1, color: "#fff", fontSize: "0.95rem" }}>
-                      {match.rawText}
-                    </span>
+                    {/* Etiqueta del Torneo/Copa */}
+                    {match.league && (
+                       <span style={{ fontSize: "0.75rem", color: "#3b82f6", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          🏆 {match.league}
+                       </span>
+                    )}
                     
-                    <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
-                      {fullDateTimeDisplay && (
-                        <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "4px 10px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
-                          📅 {fullDateTimeDisplay}
-                        </span>
-                      )}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                      <span style={{ fontWeight: "500", flex: 1, color: "#fff", fontSize: "0.95rem" }}>
+                        {match.rawText}
+                      </span>
+                      
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
+                        {fullDateTimeDisplay && (
+                          <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "4px 10px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
+                            📅 {fullDateTimeDisplay}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
