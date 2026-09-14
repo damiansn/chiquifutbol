@@ -24,8 +24,6 @@ export async function GET(request) {
     }
 
     const rawSearch = teamName.toLowerCase().trim();
-    
-    // Diccionario de sinónimos para asegurar nombres cortos y largos
     const searchTerms = [rawSearch];
     if (rawSearch.includes('river')) {
       searchTerms.push('river', 'river plate');
@@ -42,7 +40,6 @@ export async function GET(request) {
     const matches = [];
     const seenMatches = new Set();
 
-    // Ventana de días a buscar hacia adelante
     const daysToFetch = 10;
     const fetchPromises = [];
 
@@ -81,8 +78,8 @@ export async function GET(request) {
       const $ = cheerio.load(html);
       let currentLeagueContext = "Torneo";
 
-      // Buscamos en elementos de bloque lógicos para capturar el partido con seguridad
-      $('tr, div, td').each((_, el) => {
+      // Buscamos específicamente filas de tablas (tr) o contenedores con clase de partido para evitar solapamientos de elementos anidados
+      $('tr').each((_, el) => {
         const $el = $(el);
 
         const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
@@ -93,10 +90,12 @@ export async function GET(request) {
         const text = $el.text().replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
 
-        // Verificar si contiene alguno de los términos buscados y algún separador de partido
-        const hasTeam = searchTerms.some(term => lowerText.includes(term));
-        if (!hasTeam) return;
+        const hasTeam = searchTerms.some(term => {
+          const regex = new RegExp(`\\b${term}\\b`, 'i');
+          return regex.test(lowerText);
+        });
 
+        if (!hasTeam) return;
         if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
         if (text.length < 5 || text.length > 120) return;
         if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) return;
@@ -109,8 +108,7 @@ export async function GET(request) {
           cleanText = cleanText.replace(timeStr, "").trim();
         }
 
-        // Aislar los nombres alrededor del equipo para recortar texto basura
-        const matchedTerm = searchTerms.find(term => cleanText.toLowerCase().includes(term));
+        const matchedTerm = searchTerms.find(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
         if (matchedTerm) {
           const idx = cleanText.toLowerCase().indexOf(matchedTerm);
           if (idx !== -1 && cleanText.length > 35) {
@@ -122,10 +120,11 @@ export async function GET(request) {
 
         cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
 
-        const hasTeamClean = searchTerms.some(term => cleanText.toLowerCase().includes(term));
+        const hasTeamClean = searchTerms.some(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
         if (hasTeamClean && cleanText.length > 5) {
-          // Clave única basada en el texto limpio para evitar duplicados absolutos
-          const matchKey = cleanText.toLowerCase().replace(/\s+/g, ' ').trim();
+          
+          // Clave única compuesta por el texto exacto del partido + la fecha analizada
+          const matchKey = `${cleanText}-${currentDate.toISOString().split('T')[0]}`.toLowerCase().replace(/\s+/g, ' ').trim();
           if (seenMatches.has(matchKey)) return;
           seenMatches.add(matchKey);
 
