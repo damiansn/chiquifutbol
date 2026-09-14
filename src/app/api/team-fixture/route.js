@@ -12,38 +12,34 @@ export async function GET(request) {
       return NextResponse.json({ error: "Falta el parámetro 'team'" }, { status: 400 });
     }
 
-    // Consultamos los partidos en vivo/hoy cacheados en Redis por tu sincronizador
-    const rawMatches = await redis.get('chiquifutbol_matches_v2');
-    
-    if (!rawMatches) {
-      return NextResponse.json({ matches: [], error: "No hay partidos sincronizados en este momento." });
+    // Leemos directo de Redis (los partidos de hoy sincronizados cada 1 min)
+    const cachedData = await redis.get('chiquifutbol_matches_v2');
+
+    if (!cachedData) {
+      return NextResponse.json({ matches: [], error: "No hay partidos en vivo sincronizados." });
     }
 
-    const data = JSON.parse(rawMatches);
+    const data = JSON.parse(cachedData);
     const searchNormalized = teamName.toLowerCase().trim();
     const matchesFound = [];
 
-    // Recorremos la estructura JSON que devuelve la API de Promiedos desde Redis
-    // (Asume la estructura habitual de Ligas y Partidos de Promiedos)
-    const leagues = data.leagues || data.torneos || [];
+    // Estructura segura para recorrer los partidos que trae tu API de Promiedos desde Redis
+    const leagues = data.leagues || data.torneos || data.jugos || [];
 
     leagues.forEach(league => {
       const games = league.games || league.partidos || [];
       games.forEach(game => {
-        // Extraemos nombres de local y visitante con seguridad
-        const localName = (game.local?.name || game.local || "").toString().toLowerCase();
-        const visitanteName = (game.visitante?.name || game.visitante || "").toString().toLowerCase();
+        const local = (game.local?.name || game.local || "").toString().toLowerCase();
+        const visitante = (game.visitante?.name || game.visitante || "").toString().toLowerCase();
 
-        if (localName.includes(searchNormalized) || visitanteName.includes(searchNormalized)) {
+        if (local.includes(searchNormalized) || visitante.includes(searchNormalized)) {
           matchesFound.push({
             id: game.id || Math.random().toString(36).substring(2, 9),
-            rawText: `${game.local?.name || game.local} vs ${game.visitante?.name || game.visitante}`,
-            league: league.name || league.torneo || "Liga Profesional",
-            date: "Hoy",
-            time: game.time || game.status || "En juego",
+            team: game.local?.name || game.local,
+            rival: game.visitante?.name || game.visitante,
             scoreLocal: game.local?.score ?? "",
             scoreVisitante: game.visitante?.score ?? "",
-            status: game.status || ""
+            status: game.status || game.time || "En juego"
           });
         }
       });
@@ -55,10 +51,9 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error("Error al consultar Redis en route.js:", error);
+    console.error("Error en la búsqueda por equipo:", error);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   } finally {
-    // Cerramos la conexión de Redis para evitar fugas de memoria en cada request
     await redis.quit();
   }
 }
