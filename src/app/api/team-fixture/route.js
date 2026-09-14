@@ -25,8 +25,7 @@ export async function GET(request) {
 
     const rawSearch = teamName.toLowerCase().trim();
     
-    // Lista de términos flexibles para asegurar que encuentre equipos como River, Boca, etc., 
-    // sin importar si en la web figuran con nombre corto o completo.
+    // Diccionario de sinónimos para asegurar nombres cortos y largos
     const searchTerms = [rawSearch];
     if (rawSearch.includes('river')) {
       searchTerms.push('river', 'river plate');
@@ -43,7 +42,7 @@ export async function GET(request) {
     const matches = [];
     const seenMatches = new Set();
 
-    // Ventana de búsqueda de días
+    // Ventana de días a buscar hacia adelante
     const daysToFetch = 10;
     const fetchPromises = [];
 
@@ -82,8 +81,8 @@ export async function GET(request) {
       const $ = cheerio.load(html);
       let currentLeagueContext = "Torneo";
 
-      // Nos enfocamos estrictamente en las filas de partidos (tr) para evitar duplicaciones y arrastre de celdas sueltas
-      $('tr').each((_, el) => {
+      // Buscamos en elementos de bloque lógicos para capturar el partido con seguridad
+      $('tr, div, td').each((_, el) => {
         const $el = $(el);
 
         const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
@@ -94,22 +93,13 @@ export async function GET(request) {
         const text = $el.text().replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
 
-        // Validar si la fila contiene alguno de los términos del equipo buscado
-        const matchesSearch = searchTerms.some(term => {
-          const regex = new RegExp(`\\b${term}\\b`, 'i');
-          return regex.test(lowerText);
-        });
+        // Verificar si contiene alguno de los términos buscados y algún separador de partido
+        const hasTeam = searchTerms.some(term => lowerText.includes(term));
+        if (!hasTeam) return;
 
-        if (!matchesSearch) return;
-
-        // Validar que la fila sea realmente un partido (debe tener indicador de vs, guion o horario)
-        if (!lowerText.includes('vs') && !lowerText.includes(' - ') && !/\d{2}:\d{2}/.test(text)) {
-          return;
-        }
-
-        if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
-          return;
-        }
+        if (!lowerText.includes('vs') && !lowerText.includes(' - ')) return;
+        if (text.length < 5 || text.length > 120) return;
+        if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) return;
 
         const timeMatch = text.match(/(\d{2}:\d{2})/);
         const timeStr = timeMatch ? timeMatch[1] : "";
@@ -119,14 +109,23 @@ export async function GET(request) {
           cleanText = cleanText.replace(timeStr, "").trim();
         }
 
+        // Aislar los nombres alrededor del equipo para recortar texto basura
+        const matchedTerm = searchTerms.find(term => cleanText.toLowerCase().includes(term));
+        if (matchedTerm) {
+          const idx = cleanText.toLowerCase().indexOf(matchedTerm);
+          if (idx !== -1 && cleanText.length > 35) {
+            const start = Math.max(0, idx - 20);
+            const end = Math.min(cleanText.length, idx + 35);
+            cleanText = cleanText.substring(start, end);
+          }
+        }
+
         cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
 
-        // Verificar que el equipo siga estando presente luego de la limpieza y que tenga longitud lógica de partido
-        const hasTeamInClean = searchTerms.some(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
-        if (hasTeamInClean && cleanText.length > 5 && cleanText.length < 80) {
-          
-          // Clave única atada a la fecha exacta del bucle para evitar duplicar partidos entre días o dentro de la misma página
-          const matchKey = `${cleanText}-${currentDate.toDateString()}`.toLowerCase();
+        const hasTeamClean = searchTerms.some(term => cleanText.toLowerCase().includes(term));
+        if (hasTeamClean && cleanText.length > 5) {
+          // Clave única basada en el texto limpio para evitar duplicados absolutos
+          const matchKey = cleanText.toLowerCase().replace(/\s+/g, ' ').trim();
           if (seenMatches.has(matchKey)) return;
           seenMatches.add(matchKey);
 
