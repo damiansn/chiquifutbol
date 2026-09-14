@@ -7,7 +7,7 @@ import Link from "next/link";
 function StandingsContent() {
   const searchParams = useSearchParams();
   const leagueId = searchParams.get("leagueId");
-  const leagueName = searchParams.get("name") || "Tabla de Posiciones";
+  const leagueName = searchParams.get("name") || "Partidos del Día";
 
   const [standings, setStandings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,7 @@ function StandingsContent() {
         const url = leagueId ? `/api/standings?leagueId=${leagueId}` : `/api/standings`;
         const res = await fetch(url);
         
-        if (!res.ok) throw new Error("No se pudieron cargar las posiciones");
+        if (!res.ok) throw new Error("No se pudieron cargar los datos");
         
         const data = await res.json();
         setStandings(data);
@@ -35,7 +35,7 @@ function StandingsContent() {
   }, [leagueId]);
 
   if (loading) {
-    return <div style={{ padding: "40px", textAlign: "center", color: "inherit" }}>Cargando posiciones...</div>;
+    return <div style={{ padding: "40px", textAlign: "center", color: "inherit" }}>Cargando partidos...</div>;
   }
 
   let tablesList = standings?.tables || [];
@@ -80,10 +80,10 @@ function StandingsContent() {
     <main style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "15px" }}>
         <h1 style={{ fontSize: "1.3rem", fontWeight: "bold", margin: 0 }}>
-          📊 {decodeURIComponent(leagueName)}
+          ⚽ {decodeURIComponent(leagueName)}
         </h1>
         <Link href="/" style={{ color: "#10b981", textDecoration: "none", fontWeight: "600" }}>
-          ← Volver a partidos
+          ← Volver al inicio
         </Link>
       </header>
 
@@ -102,7 +102,7 @@ function StandingsContent() {
                   <thead>
                     <tr style={{ background: "rgba(16, 185, 129, 0.15)", textAlign: "left", color: "#10b981" }}>
                       <th style={{ padding: "10px", width: "40px", textAlign: "center" }}>#</th>
-                      <th style={{ padding: "10px" }}>Equipo</th>
+                      <th style={{ padding: "10px" }}>Equipo / Detalle</th>
                       {isPromedios ? (
                         <>
                           <th style={{ padding: "10px", textAlign: "center" }}>Prom</th>
@@ -165,7 +165,7 @@ function StandingsContent() {
         })
       ) : (
         <div style={{ border: "1px solid rgba(128,128,128,0.2)", borderRadius: "8px", padding: "30px", textAlign: "center", opacity: 0.6 }}>
-          {error ? `Error: ${error}` : "No hay datos estructurados todavía."}
+          {error ? `Error: ${error}` : "No hay partidos estructurados todavía."}
         </div>
       )}
 
@@ -201,7 +201,7 @@ function StandingsContent() {
   );
 }
 
-export default function StandingsPage() {
+export default function MatchesPage() {
   return (
     <Suspense fallback={<div style={{ padding: "40px", textAlign: "center" }}>Cargando...</div>}>
       <StandingsContent />
