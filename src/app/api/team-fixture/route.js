@@ -23,24 +23,28 @@ export async function GET(request) {
       }
     }
 
-    let searchLower = teamName.toLowerCase().trim();
-    // Normalizaciones comunes para equipos (ej: "river" -> "river plate")
-    const teamAliases = {
-      "river": "river plate",
-      "boca": "boca juniors",
-      "san lorenzo": "san lorenzo",
-      "racing": "racing club",
-      "independiente": "independiente"
-    };
-    if (teamAliases[searchLower]) {
-      searchLower = teamAliases[searchLower];
+    const rawSearch = teamName.toLowerCase().trim();
+    
+    // Lista de términos flexibles para asegurar que encuentre equipos como River, Boca, etc., 
+    // sin importar si en la web figuran con nombre corto o completo.
+    const searchTerms = [rawSearch];
+    if (rawSearch.includes('river')) {
+      searchTerms.push('river', 'river plate');
+    } else if (rawSearch.includes('boca')) {
+      searchTerms.push('boca', 'boca juniors');
+    } else if (rawSearch.includes('racing')) {
+      searchTerms.push('racing', 'racing club');
+    } else if (rawSearch.includes('san lorenzo')) {
+      searchTerms.push('san lorenzo');
+    } else if (rawSearch.includes('independiente')) {
+      searchTerms.push('independiente');
     }
 
     const matches = [];
     const seenMatches = new Set();
 
-    // Ventana de días a buscar para asegurar que tome el partido próximo del equipo
-    const daysToFetch = 8;
+    // Ventana de búsqueda de días
+    const daysToFetch = 10;
     const fetchPromises = [];
 
     for (let i = 0; i < daysToFetch; i++) {
@@ -78,7 +82,8 @@ export async function GET(request) {
       const $ = cheerio.load(html);
       let currentLeagueContext = "Torneo";
 
-      $('tr, td, div').each((_, el) => {
+      // Nos enfocamos estrictamente en las filas de partidos (tr) para evitar duplicaciones y arrastre de celdas sueltas
+      $('tr').each((_, el) => {
         const $el = $(el);
 
         const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
@@ -89,46 +94,53 @@ export async function GET(request) {
         const text = $el.text().replace(/\s+/g, ' ').trim();
         const lowerText = text.toLowerCase();
 
-        if (lowerText.includes(searchLower) && (lowerText.includes('vs') || lowerText.includes(' - ')) && text.length > 5 && text.length < 120) {
-          if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
-            return;
-          }
+        // Validar si la fila contiene alguno de los términos del equipo buscado
+        const matchesSearch = searchTerms.some(term => {
+          const regex = new RegExp(`\\b${term}\\b`, 'i');
+          return regex.test(lowerText);
+        });
 
-          const timeMatch = text.match(/(\d{2}:\d{2})/);
-          const timeStr = timeMatch ? timeMatch[1] : "";
+        if (!matchesSearch) return;
 
-          let cleanText = text;
-          if (timeStr) {
-            cleanText = cleanText.replace(timeStr, "");
-          }
+        // Validar que la fila sea realmente un partido (debe tener indicador de vs, guion o horario)
+        if (!lowerText.includes('vs') && !lowerText.includes(' - ') && !/\d{2}:\d{2}/.test(text)) {
+          return;
+        }
 
-          const teamIndex = cleanText.toLowerCase().indexOf(searchLower);
-          if (teamIndex !== -1 && cleanText.length > 40) {
-            const start = Math.max(0, teamIndex - 25);
-            const end = Math.min(cleanText.length, teamIndex + 35);
-            cleanText = cleanText.substring(start, end);
-          }
+        if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
+          return;
+        }
 
-          cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, "").trim();
+        const timeMatch = text.match(/(\d{2}:\d{2})/);
+        const timeStr = timeMatch ? timeMatch[1] : "";
 
-          if (cleanText.toLowerCase().includes(searchLower) && cleanText.length > 5) {
-            // Clave única basada puramente en el texto limpio del partido para evitar duplicados globales
-            const matchKey = cleanText.toLowerCase().replace(/\s+/g, ' ').trim();
-            if (seenMatches.has(matchKey)) return;
-            seenMatches.add(matchKey);
+        let cleanText = text;
+        if (timeStr) {
+          cleanText = cleanText.replace(timeStr, "").trim();
+        }
 
-            const options = { weekday: 'long', day: 'numeric', month: 'short' };
-            const formattedDateStr = currentDate.toLocaleDateString('es-AR', options);
-            const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
+        cleanText = cleanText.replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\sVS-]+/g, " ").replace(/\s+/g, ' ').trim();
 
-            matches.push({
-              id: Math.random().toString(36).substring(2, 9),
-              rawText: cleanText,
-              league: currentLeagueContext || "Torneo",
-              date: capitalizedDate,
-              time: timeStr
-            });
-          }
+        // Verificar que el equipo siga estando presente luego de la limpieza y que tenga longitud lógica de partido
+        const hasTeamInClean = searchTerms.some(term => new RegExp(`\\b${term}\\b`, 'i').test(cleanText));
+        if (hasTeamInClean && cleanText.length > 5 && cleanText.length < 80) {
+          
+          // Clave única atada a la fecha exacta del bucle para evitar duplicar partidos entre días o dentro de la misma página
+          const matchKey = `${cleanText}-${currentDate.toDateString()}`.toLowerCase();
+          if (seenMatches.has(matchKey)) return;
+          seenMatches.add(matchKey);
+
+          const options = { weekday: 'long', day: 'numeric', month: 'short' };
+          const formattedDateStr = currentDate.toLocaleDateString('es-AR', options);
+          const capitalizedDate = formattedDateStr.charAt(0).toUpperCase() + formattedDateStr.slice(1);
+
+          matches.push({
+            id: Math.random().toString(36).substring(2, 9),
+            rawText: cleanText,
+            league: currentLeagueContext || "Torneo",
+            date: capitalizedDate,
+            time: timeStr
+          });
         }
       });
     }
