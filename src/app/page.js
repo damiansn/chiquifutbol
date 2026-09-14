@@ -332,8 +332,35 @@ export default function Home() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem" }}>
               {teamFixtureData.map((match, i) => (
-                <div key={i} style={{ padding: "8px 10px", borderBottom: "1px dashed rgba(128,128,128,0.15)", background: "rgba(128,128,128,0.04)", borderRadius: "4px" }}>
-                  <span>{match.rawText}</span>
+                <div key={i} style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center", 
+                  padding: "10px 12px", 
+                  marginBottom: "8px",
+                  background: "rgba(128,128,128,0.04)", 
+                  border: "1px solid rgba(128,128,128,0.1)",
+                  borderRadius: "6px",
+                  gap: "12px"
+                }}>
+                  {/* Texto del partido */}
+                  <span style={{ fontWeight: "500", flex: 1, color: "#fff", fontSize: "0.95rem" }}>
+                    {match.rawText}
+                  </span>
+                  
+                  {/* Contenedor para Fecha y Hora */}
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
+                    {match.date && (
+                      <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "3px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
+                        📅 {match.date}
+                      </span>
+                    )}
+                    {match.time && (
+                      <span style={{ background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", padding: "3px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
+                        ⏰ {match.time}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
