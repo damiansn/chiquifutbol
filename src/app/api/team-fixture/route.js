@@ -13,8 +13,8 @@ export async function GET(request) {
 
     let targetDate = new Date();
     if (dateParam) {
-      const parts = dateParam.partes || dateParam.split("-");
-      if (parts && parts.length === 3) {
+      const parts = dateParam.split("-");
+      if (parts.length === 3) {
         if (parts[0].length === 4) {
           targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
         } else {
@@ -50,12 +50,12 @@ export async function GET(request) {
 
     let currentLeagueContext = "Torneo";
 
-    // Recorremos específicamente filas de tablas o elementos que representan partidos individuales
+    // En Promiedos, los partidos individuales en el calendario suelen listarse en filas (tr) o elementos específicos con estructura de enfrentamiento
     $('tr').each((_, el) => {
       const $el = $(el);
 
-      // Detectar título de liga si la fila lo contiene
-      const tituliga = $el.find('.tituliga').text().trim();
+      // Capturar la categoría o torneo actual de la sección
+      const tituliga = $el.find('.tituliga').text().trim() || $el.prevAll('.tituliga').first().text().trim();
       if (tituliga) {
         currentLeagueContext = tituliga.replace(/Partidos de (hoy|mañana|ayer|la fecha)/gi, '').trim();
       }
@@ -63,40 +63,45 @@ export async function GET(request) {
       const text = $el.text().replace(/\s+/g, ' ').trim();
       const lowerText = text.toLowerCase();
 
-      // Buscamos que la fila pertenezca al equipo y tenga un enfrentamiento 'vs'
+      // Validar que la fila contenga al equipo buscado y algún indicador de partido ('vs' o '-')
       if (lowerText.includes(searchLower) && (lowerText.includes('vs') || lowerText.includes('-'))) {
         if (text.includes(" Res.") || currentLeagueContext.toLowerCase().includes("reserva")) {
           return;
         }
 
-        // Regex para capturar de manera limpia el patrón de un partido (Ej: "Equipo A VS Equipo B" o variantes con hora)
-        // Buscamos bloques que contengan el nombre del equipo buscado junto a su rival
-        const matchRegex = new RegExp(`([^0-9]{3,25}?(?:vs|-)[^0-9]{3,25}?)`, 'gi');
-        const founds = text.match(matchRegex);
+        // Extraer los equipos involucrados de forma limpia utilizando partición por 'vs' o '-'
+        // Buscamos la subcadena exacta que contiene al equipo para aislarla del resto de los partidos de la celda
+        const parts = text.split(/(?:vs|-)/i);
+        for (let i = 0; i < parts.length; i++) {
+          const currentPart = parts[i].toLowerCase();
+          if (currentPart.includes(searchLower) && i > 0 && i < parts.length) {
+            // Reconstruimos el partido individual: [Equipo Izquierda] VS [Equipo Derecha]
+            const teamA = parts[i - 1].replace(/[^a-zA-ZÁÉÍÓÚáéíóúñÑ0-9\s]/g, "").trim().split(' ').pop(); 
+            // Para asegurar nombres limpios, extraemos las últimas palabras lógicas o acotamos el bloque
+            
+            // Alternativa más directa: Limpiar todo el bloque de texto que contenga ambos contendientes
+            let candidateMatch = `${parts[i - 1].trim()} VS ${parts[i].trim()}`;
+            // Limpiamos basuras de horarios pegados al nombre
+            candidateMatch = candidateMatch.replace(/(\d{2}:\d{2})/g, '').replace(/\s+/g, ' ').trim();
 
-        if (founds) {
-          founds.forEach(matchBlock => {
-            const cleanMatch = matchBlock.trim();
-            if (cleanMatch.toLowerCase().includes(searchLower) && cleanMatch.length < 50 && cleanMatch.length > 6) {
-              
-              // Evitar duplicados exactos
-              const matchKey = `${cleanMatch}-${targetDate.toDateString()}`;
-              if (seenMatches.has(matchKey)) return;
+            if (candidateMatch.toLowerCase().includes(searchLower) && candidateMatch.length < 40 && candidateMatch.length > 5) {
+              const matchKey = `${candidateMatch}-${targetDate.toDateString()}`;
+              if (seenMatches.has(matchKey)) continue;
               seenMatches.add(matchKey);
 
-              // Extraer hora si existe en el texto general de la fila
               const timeMatch = text.match(/(\d{2}:\d{2})/);
               const timeStr = timeMatch ? timeMatch[1] : "";
 
               matches.push({
                 id: Math.random().toString(36).substring(2, 9),
-                rawText: cleanMatch,
-                league: currentLeagueContext,
+                rawText: candidateMatch,
+                league: currentLeagueContext || "Torneo",
                 date: targetDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }),
                 time: timeStr
               });
+              break;
             }
-          });
+          }
         }
       }
     });
