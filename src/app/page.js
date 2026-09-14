@@ -3,6 +3,34 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
+// Función auxiliar fuera del componente para evitar recrearla en cada render/map
+const formatFullDateTime = (dateStr, timeStr) => {
+  if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
+  
+  const cleanDate = dateStr.trim();
+  
+  // Si Promiedos devuelve un día suelto (ej: "miércoles", "domingo", "viernes")
+  const isDayNameOnly = cleanDate.length < 15 && !cleanDate.includes("/") && !cleanDate.includes("-");
+  if (isDayNameOnly) {
+    const capitalizedDay = cleanDate.charAt(0).toUpperCase() + cleanDate.slice(1);
+    return timeStr ? `${capitalizedDay} - ${timeStr} hs` : capitalizedDay;
+  }
+
+  try {
+    const parsedDate = new Date(cleanDate.includes("T") ? cleanDate : `${cleanDate}T00:00:00`);
+    if (!isNaN(parsedDate)) {
+      const options = { weekday: 'long', day: 'numeric', month: 'short' };
+      const formattedDate = parsedDate.toLocaleDateString('es-AR', options);
+      const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+      return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
+    }
+  } catch (e) {
+    // Si falla el parseo, caemos al texto plano
+  }
+  
+  return timeStr ? `${cleanDate} (${timeStr})` : cleanDate;
+};
+
 export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +76,6 @@ export default function Home() {
       }
     }
 
-    // Listener para cerrar sugerencias al hacer clic fuera
     const handleClickOutside = (event) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
         setIsSearchFocused(false);
@@ -66,7 +93,6 @@ export default function Home() {
     fetchMatches(newDate);
   };
 
-  // Recopilar todos los equipos disponibles en los partidos de la fecha actual
   const allTeamsWithMatches = useMemo(() => {
     if (!data?.leagues) return [];
     const list = [];
@@ -112,7 +138,6 @@ export default function Home() {
     setNextFetchDate(null);
   };
 
-  // Función para cargar el fixture por semanas desde la API
   const loadTeamFixture = async (teamName, dateStr = null, append = false) => {
     setLoadingFixture(true);
     try {
@@ -337,7 +362,7 @@ export default function Home() {
         <div style={{ border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px", padding: "16px", marginBottom: "24px", background: "rgba(128,128,128,0.02)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", borderBottom: "1px solid rgba(128,128,128,0.2)", paddingBottom: "8px" }}>
             <h3 style={{ margin: 0, fontSize: "1rem" }}>Calendario: {selectedTeamFilter?.teamName}</h3>
-            <button onClick={() => setShowFullFixture(false)} style={{ background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>Cerrar [X]</button>
+            <button onClick={() => setShowFullFixture(false)} style={{ background: "none", border: "none", cursor: "pointer", fontWeight: "bold", color: "inherit" }}>Cerrar [X]</button>
           </div>
           
           {teamFixtureData.length === 0 && loadingFixture ? (
@@ -347,32 +372,6 @@ export default function Home() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem" }}>
               {teamFixtureData.map((match, i) => {
-                // Parseo avanzado para unificar fecha completa + hora de forma robusta
-                // Reemplaza esta función dentro del map del fixture en page.js:
-              const formatFullDateTime = (dateStr, timeStr) => {
-                if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
-                
-                // Si viene un día suelto (ej: "miércoles", "domingo")
-                const cleanDate = dateStr.trim();
-                if (cleanDate.length < 15 && !cleanDate.includes("/") && !cleanDate.includes("-")) {
-                  return timeStr ? `${cleanDate.charAt(0).toUpperCase() + cleanDate.slice(1)} - ${timeStr} hs` : cleanDate;
-                }
-
-                try {
-                  const parsedDate = new Date(cleanDate.includes("T") ? cleanDate : `${cleanDate}T00:00:00`);
-                  if (!isNaN(parsedDate)) {
-                    const options = { weekday: 'long', day: 'numeric', month: 'short' };
-                    const formattedDate = parsedDate.toLocaleDateString('es-AR', options);
-                    const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-                    return timeStr ? `${capitalized} - ${timeStr} hs` : capitalized;
-                  }
-                } catch (e) {
-                  // fallback
-                }
-                
-                return timeStr ? `${cleanDate} (${timeStr})` : cleanDate;
-              };
-
                 const fullDateTimeDisplay = formatFullDateTime(match.date, match.time);
 
                 return (
