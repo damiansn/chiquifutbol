@@ -27,7 +27,7 @@ const REDIS_KEYS = {
 };
 
 // ==========================================
-// LIGA PARA TABLAS
+// API TABLAS
 // ==========================================
 
 const STANDINGS_URL =
@@ -657,15 +657,33 @@ async function obtenerPartidosDesdePagina(
         responseHandler
     );
 
-    await page.goto(
-        url,
-        {
-            waitUntil: "networkidle2",
-            timeout: 60000
-        }
-    );
+    try {
 
-    await esperarCarga(page);
+        await page.goto(
+            url,
+            {
+                waitUntil: "networkidle2",
+                timeout: 60000
+            }
+        );
+
+        await esperarCarga(page);
+
+    } catch (error) {
+
+        console.log(
+            `Timeout/carga de ${nombreFecha}:`,
+            error.message
+        );
+
+        // Aunque goto haya dado timeout,
+        // intentamos aprovechar lo que haya cargado.
+
+        await new Promise(
+            resolve =>
+                setTimeout(resolve, 3000)
+        );
+    }
 
     const nextData =
         await obtenerNextData(page);
@@ -929,10 +947,10 @@ async function sincronizarPartidos(
 }
 
 // ==========================================
-// EXTRAER NOMBRE DE EQUIPO
+// OBTENER NOMBRE DE EQUIPO
 // ==========================================
 
-function obtenerNombreEquipo(
+function obtenerNombreEquipoTabla(
     team
 ) {
 
@@ -940,20 +958,109 @@ function obtenerNombreEquipo(
         return null;
     }
 
-    return (
-        team.name ??
-        team.team_name ??
-        team.teamName ??
-        team.nombre ??
-        team.club ??
-        team.club_name ??
-        team.equipo ??
-        null
-    );
+    const campos = [
+        "name",
+        "team_name",
+        "teamName",
+        "nombre",
+        "team",
+        "club",
+        "club_name",
+        "equipo",
+        "title"
+    ];
+
+    for (
+        const campo of campos
+    ) {
+
+        if (
+            typeof team[campo] === "string" &&
+            team[campo].trim() !== ""
+        ) {
+
+            return team[campo].trim();
+        }
+    }
+
+    return null;
 }
 
 // ==========================================
-// DETECTAR SI ES EQUIPO DE TABLA
+// NUMERO
+// ==========================================
+
+function obtenerNumero(
+    obj,
+    campos,
+    defecto = 0
+) {
+
+    if (!esObjeto(obj)) {
+        return defecto;
+    }
+
+    for (
+        const campo of campos
+    ) {
+
+        const valor =
+            obj[campo];
+
+        if (
+            valor !== undefined &&
+            valor !== null &&
+            String(valor).trim() !== ""
+        ) {
+
+            const numero =
+                Number(valor);
+
+            if (!Number.isNaN(numero)) {
+                return numero;
+            }
+        }
+    }
+
+    return defecto;
+}
+
+// ==========================================
+// TEXTO
+// ==========================================
+
+function obtenerTexto(
+    obj,
+    campos,
+    defecto = ""
+) {
+
+    if (!esObjeto(obj)) {
+        return defecto;
+    }
+
+    for (
+        const campo of campos
+    ) {
+
+        const valor =
+            obj[campo];
+
+        if (
+            valor !== undefined &&
+            valor !== null &&
+            String(valor).trim() !== ""
+        ) {
+
+            return String(valor).trim();
+        }
+    }
+
+    return defecto;
+}
+
+// ==========================================
+// DETECTAR EQUIPO DE TABLA
 // ==========================================
 
 function pareceEquipoTabla(
@@ -965,33 +1072,69 @@ function pareceEquipoTabla(
     }
 
     const nombre =
-        obtenerNombreEquipo(obj);
+        obtenerNombreEquipoTabla(
+            obj
+        );
 
-    if (
-        typeof nombre !== "string" ||
-        nombre.trim() === ""
-    ) {
+    if (!nombre) {
         return false;
     }
 
-    const tieneDatos =
-        obj.points !== undefined ||
-        obj.pts !== undefined ||
-        obj.puntos !== undefined ||
-        obj.played !== undefined ||
-        obj.pj !== undefined ||
-        obj.games !== undefined ||
-        obj.matches !== undefined ||
-        obj.partidos !== undefined ||
-        obj.goal_difference !== undefined ||
-        obj.goal_diff !== undefined ||
-        obj.dg !== undefined ||
-        obj.difference !== undefined ||
-        obj.position !== undefined ||
-        obj.pos !== undefined ||
-        obj.rank !== undefined;
+    const tienePuntos =
+        [
+            "points",
+            "pts",
+            "puntos",
+            "score"
+        ].some(
+            campo =>
+                obj[campo] !== undefined
+        );
 
-    return tieneDatos;
+    const tienePJ =
+        [
+            "played",
+            "pj",
+            "games",
+            "matches",
+            "partidos"
+        ].some(
+            campo =>
+                obj[campo] !== undefined
+        );
+
+    const tienePosicion =
+        [
+            "position",
+            "pos",
+            "rank",
+            "order"
+        ].some(
+            campo =>
+                obj[campo] !== undefined
+        );
+
+    const tieneGoles =
+        [
+            "goals_for",
+            "gf",
+            "goals_against",
+            "ga",
+            "goal_difference",
+            "goal_diff",
+            "dg",
+            "difference"
+        ].some(
+            campo =>
+                obj[campo] !== undefined
+        );
+
+    return (
+        tienePuntos ||
+        tienePJ ||
+        tienePosicion ||
+        tieneGoles
+    );
 }
 
 // ==========================================
@@ -1001,10 +1144,14 @@ function pareceEquipoTabla(
 function buscarTablasRecursivamente(
     obj,
     resultado = [],
-    ruta = ""
+    ruta = "root",
+    profundidad = 0
 ) {
 
-    if (!esObjeto(obj)) {
+    if (
+        !esObjeto(obj) ||
+        profundidad > 20
+    ) {
         return resultado;
     }
 
@@ -1035,7 +1182,8 @@ function buscarTablasRecursivamente(
             buscarTablasRecursivamente(
                 obj[i],
                 resultado,
-                `${ruta}[${i}]`
+                `${ruta}[${i}]`,
+                profundidad + 1
             );
         }
 
@@ -1043,62 +1191,28 @@ function buscarTablasRecursivamente(
     }
 
     for (
-        const key of Object.keys(obj)
+        const [clave, valor]
+        of Object.entries(obj)
     ) {
 
-        const valor =
-            obj[key];
-
-        if (
-            Array.isArray(valor)
-        ) {
-
-            const equipos =
-                valor.filter(
-                    item =>
-                        pareceEquipoTabla(item)
-                );
-
-            if (
-                equipos.length >= 4
-            ) {
-
-                resultado.push({
-
-                    ruta:
-                        ruta
-                            ? `${ruta}.${key}`
-                            : key,
-
-                    teams:
-                        equipos
-                });
-            }
-        }
-
-        if (
-            esObjeto(valor)
-        ) {
-
-            buscarTablasRecursivamente(
-                valor,
-                resultado,
-                ruta
-                    ? `${ruta}.${key}`
-                    : key
-            );
-        }
+        buscarTablasRecursivamente(
+            valor,
+            resultado,
+            `${ruta}.${clave}`,
+            profundidad + 1
+        );
     }
 
     return resultado;
 }
 
 // ==========================================
-// NORMALIZAR UNA TABLA
+// NORMALIZAR TABLA
 // ==========================================
 
 function normalizarTabla(
-    tabla
+    tabla,
+    indice
 ) {
 
     if (
@@ -1116,88 +1230,175 @@ function normalizarTabla(
             ) => {
 
                 const nombre =
-                    obtenerNombreEquipo(
+                    obtenerNombreEquipoTabla(
                         team
-                    ) ||
-                    "Equipo";
+                    );
+
+                const gf =
+                    obtenerNumero(
+                        team,
+                        [
+                            "goals_for",
+                            "gf",
+                            "favor",
+                            "goals",
+                            "goals_scored"
+                        ]
+                    );
+
+                const ga =
+                    obtenerNumero(
+                        team,
+                        [
+                            "goals_against",
+                            "ga",
+                            "contra",
+                            "goals_conceded"
+                        ]
+                    );
+
+                let diferencia =
+                    obtenerNumero(
+                        team,
+                        [
+                            "goal_difference",
+                            "goal_diff",
+                            "dg",
+                            "difference",
+                            "diff"
+                        ],
+                        null
+                    );
+
+                if (
+                    diferencia === null
+                ) {
+
+                    diferencia =
+                        gf - ga;
+                }
 
                 return {
 
                     id:
-                        team.id ??
-                        team.team_id ??
-                        team.teamId ??
-                        index,
+                        obtenerTexto(
+                            team,
+                            [
+                                "id",
+                                "team_id",
+                                "teamId"
+                            ],
+                            String(index)
+                        ),
 
                     name:
-                        nombre,
+                        nombre ||
+                        "Equipo",
 
                     position:
-                        team.position ??
-                        team.pos ??
-                        team.rank ??
-                        team.order ??
-                        index + 1,
+                        obtenerNumero(
+                            team,
+                            [
+                                "position",
+                                "pos",
+                                "rank",
+                                "order"
+                            ],
+                            index + 1
+                        ),
 
                     points:
-                        team.points ??
-                        team.pts ??
-                        team.puntos ??
-                        0,
+                        obtenerNumero(
+                            team,
+                            [
+                                "points",
+                                "pts",
+                                "puntos",
+                                "score"
+                            ]
+                        ),
 
                     played:
-                        team.played ??
-                        team.pj ??
-                        team.games ??
-                        team.matches ??
-                        team.partidos ??
-                        0,
+                        obtenerNumero(
+                            team,
+                            [
+                                "played",
+                                "pj",
+                                "games",
+                                "matches",
+                                "partidos"
+                            ]
+                        ),
 
                     goals_for:
-                        team.goals_for ??
-                        team.gf ??
-                        team.goals ??
-                        0,
+                        gf,
 
                     goals_against:
-                        team.goals_against ??
-                        team.ga ??
-                        0,
+                        ga,
 
                     goal_difference:
-                        team.goal_difference ??
-                        team.goal_diff ??
-                        team.dg ??
-                        team.difference ??
-                        0,
+                        diferencia,
 
                     wins:
-                        team.wins ??
-                        team.w ??
-                        team.ganados ??
-                        0,
+                        obtenerNumero(
+                            team,
+                            [
+                                "wins",
+                                "won",
+                                "w",
+                                "g",
+                                "ganados"
+                            ]
+                        ),
 
                     draws:
-                        team.draws ??
-                        team.d ??
-                        team.empates ??
-                        0,
+                        obtenerNumero(
+                            team,
+                            [
+                                "draws",
+                                "drawn",
+                                "d",
+                                "e",
+                                "empates"
+                            ]
+                        ),
 
                     losses:
-                        team.losses ??
-                        team.l ??
-                        team.perdidos ??
-                        0,
+                        obtenerNumero(
+                            team,
+                            [
+                                "losses",
+                                "lost",
+                                "l",
+                                "p",
+                                "perdidos"
+                            ]
+                        ),
 
                     promedio:
-                        team.promedio ??
-                        team.average ??
-                        team.avg ??
+                        obtenerNumero(
+                            team,
+                            [
+                                "promedio",
+                                "average",
+                                "avg",
+                                "points_average",
+                                "ratio"
+                            ],
+                            null
+                        ),
+
+                    form:
+                        team.form ??
+                        team.last ??
+                        team.ultimos ??
+                        team.results ??
+                        team.last_results ??
                         null,
 
                     seasons:
                         team.seasons ??
-                        []
+                        null
                 };
             }
         );
@@ -1209,6 +1410,10 @@ function normalizarTabla(
     }
 
     return {
+
+        name:
+            `Tabla ${indice + 1}`,
+
         teams
     };
 }
@@ -1230,7 +1435,8 @@ function eliminarTablasDuplicadas(
 
         if (
             !tabla ||
-            !Array.isArray(tabla.teams)
+            !Array.isArray(tabla.teams) ||
+            tabla.teams.length === 0
         ) {
             continue;
         }
@@ -1240,10 +1446,8 @@ function eliminarTablasDuplicadas(
                 .map(
                     team =>
                         String(
-                            team.id ??
-                            team.team_id ??
-                            team.name ??
-                            team.team_name
+                            team.id ||
+                            team.name
                         )
                 )
                 .join("|");
@@ -1444,7 +1648,6 @@ async function obtenerEstadisticasDOM(
                                         "Sin equipo",
 
                                     value
-
                                 });
                             }
                         );
@@ -1458,7 +1661,6 @@ async function obtenerEstadisticasDOM(
                                 category,
 
                                 players
-
                             });
                         }
                     }
@@ -1468,590 +1670,336 @@ async function obtenerEstadisticasDOM(
             }
         );
 
-    } catch {
+    } catch (error) {
+
+        console.log(
+            "Error leyendo estadísticas DOM:",
+            error.message
+        );
 
         return [];
     }
 }
 
-async function sincronizarTablas(page) {
-  console.log("==========================================");
-  console.log("SINCRONIZANDO TABLAS Y ESTADÍSTICAS");
-  console.log("==========================================");
+// ==========================================
+// SINCRONIZAR TABLAS
+// ==========================================
 
-  const API_TABLAS =
-    "https://api.promiedos.com.ar/league/tables_and_fixtures/hc";
+async function sincronizarTablas(
+    page
+) {
 
-  try {
-    console.log("Consultando API de tablas de Promiedos...");
-
-    // =========================================================
-    // 1. OBTENER TABLAS DESDE LA API REAL
-    // =========================================================
+    console.log("");
+    console.log("==========================================");
+    console.log("SINCRONIZANDO TABLAS Y ESTADÍSTICAS");
+    console.log("==========================================");
 
     let apiData = null;
 
     try {
-      apiData = await page.evaluate(async (url) => {
-        const controller = new AbortController();
 
-        const timeout = setTimeout(() => {
-          controller.abort();
-        }, 20000);
+        console.log(
+            "Consultando API de Promiedos:"
+        );
+
+        console.log(
+            STANDINGS_URL
+        );
+
+        // ======================================
+        // CONSULTAR API DIRECTAMENTE DESDE NODE
+        // ======================================
+
+        const controller =
+            new AbortController();
+
+        const timeout =
+            setTimeout(
+                () => controller.abort(),
+                20000
+            );
 
         try {
-          const response = await fetch(url, {
-            method: "GET",
-            headers: {
-              "Accept": "application/json, text/plain, */*"
-            },
-            credentials: "include",
-            signal: controller.signal
-          });
 
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
+            const response =
+                await fetch(
+                    STANDINGS_URL,
+                    {
+                        method: "GET",
 
-          return await response.json();
+                        headers: {
+                            "Accept":
+                                "application/json, text/plain, */*",
+
+                            "User-Agent":
+                                USER_AGENT
+                        },
+
+                        signal:
+                            controller.signal
+                    }
+                );
+
+            if (
+                !response.ok
+            ) {
+
+                throw new Error(
+                    `HTTP ${response.status}`
+                );
+            }
+
+            apiData =
+                await response.json();
 
         } finally {
-          clearTimeout(timeout);
+
+            clearTimeout(
+                timeout
+            );
         }
-      }, API_TABLAS);
-
-      console.log("API de tablas respondió correctamente.");
-
-    } catch (error) {
-      console.log(
-        "Error consultando API desde el navegador:",
-        error.message
-      );
-    }
-
-    // =========================================================
-    // 2. SI NO FUNCIONÓ FETCH, INTENTAR CON UNA NUEVA PÁGINA
-    // =========================================================
-
-    if (!apiData) {
-      console.log("Intentando acceder a la API directamente...");
-
-      let apiPage = null;
-
-      try {
-        apiPage = await page.browser().newPage();
-
-        await apiPage.setDefaultNavigationTimeout(20000);
-
-        await apiPage.goto(API_TABLAS, {
-          waitUntil: "domcontentloaded",
-          timeout: 20000
-        });
-
-        const texto = await apiPage.evaluate(() => {
-          return document.body.innerText;
-        });
-
-        if (texto && texto.trim().length > 0) {
-          apiData = JSON.parse(texto);
-          console.log("API obtenida mediante navegación directa.");
-        }
-
-      } catch (error) {
-        console.log(
-          "No se pudo acceder directamente a la API:",
-          error.message
-        );
-
-      } finally {
-        if (apiPage) {
-          try {
-            await apiPage.close();
-          } catch {}
-        }
-      }
-    }
-
-    // =========================================================
-    // 3. SI NO TENEMOS DATOS, NO TOCAR REDIS
-    // =========================================================
-
-    if (!apiData) {
-      console.log("NO se pudieron obtener las tablas.");
-      console.log("No se modifica Redis.");
-      return;
-    }
-
-    // =========================================================
-    // 4. MOSTRAR UNA PEQUEÑA PARTE DE LA RESPUESTA
-    // =========================================================
-
-    console.log("");
-    console.log("RESPUESTA DE LA API:");
-    console.log("------------------------------------------");
-
-    try {
-      console.log(
-        JSON.stringify(apiData, null, 2).substring(0, 12000)
-      );
-    } catch {}
-
-    console.log("------------------------------------------");
-
-    // =========================================================
-    // 5. BUSCAR TABLAS DENTRO DE LA RESPUESTA
-    // =========================================================
-
-    const tablasEncontradas = [];
-
-    function esNumero(valor) {
-      return (
-        typeof valor === "number" ||
-        (
-          typeof valor === "string" &&
-          valor.trim() !== "" &&
-          !isNaN(Number(valor))
-        )
-      );
-    }
-
-    function obtenerNombreEquipo(obj) {
-      if (!obj || typeof obj !== "object") return null;
-
-      const campos = [
-        "name",
-        "team_name",
-        "nombre",
-        "team",
-        "club",
-        "club_name",
-        "equipo",
-        "title"
-      ];
-
-      for (const campo of campos) {
-        if (
-          typeof obj[campo] === "string" &&
-          obj[campo].trim().length > 0
-        ) {
-          return obj[campo].trim();
-        }
-      }
-
-      return null;
-    }
-
-    function esEquipoTabla(obj) {
-      if (!obj || typeof obj !== "object") {
-        return false;
-      }
-
-      const nombre = obtenerNombreEquipo(obj);
-
-      if (!nombre) {
-        return false;
-      }
-
-      const camposPuntos = [
-        "points",
-        "pts",
-        "puntos",
-        "score"
-      ];
-
-      const camposPJ = [
-        "played",
-        "pj",
-        "games",
-        "matches",
-        "partidos"
-      ];
-
-      const tienePuntos = camposPuntos.some(
-        campo => esNumero(obj[campo])
-      );
-
-      const tienePJ = camposPJ.some(
-        campo => esNumero(obj[campo])
-      );
-
-      return tienePuntos || tienePJ;
-    }
-
-    function buscarArrays(obj, ruta = "root") {
-      if (!obj || typeof obj !== "object") {
-        return;
-      }
-
-      if (Array.isArray(obj)) {
-
-        const equipos = obj.filter(esEquipoTabla);
-
-        if (equipos.length >= 4) {
-
-          const firma = equipos
-            .map(e => obtenerNombreEquipo(e))
-            .join("|");
-
-          const yaExiste = tablasEncontradas.some(
-            t => t.firma === firma
-          );
-
-          if (!yaExiste) {
-            tablasEncontradas.push({
-              ruta,
-              equipos,
-              firma
-            });
-          }
-        }
-
-        for (let i = 0; i < obj.length; i++) {
-          buscarArrays(obj[i], `${ruta}[${i}]`);
-        }
-
-        return;
-      }
-
-      for (const [clave, valor] of Object.entries(obj)) {
-
-        if (
-          clave === "props" ||
-          clave === "pageProps" ||
-          clave === "menuData"
-        ) {
-          continue;
-        }
-
-        buscarArrays(
-          valor,
-          `${ruta}.${clave}`
-        );
-      }
-    }
-
-    buscarArrays(apiData);
-
-    console.log("");
-    console.log("TABLAS ENCONTRADAS:", tablasEncontradas.length);
-
-    // =========================================================
-    // 6. NORMALIZAR TABLAS
-    // =========================================================
-
-    function numero(obj, campos, defecto = 0) {
-      for (const campo of campos) {
-
-        if (obj[campo] !== undefined && obj[campo] !== null) {
-
-          const valor = Number(obj[campo]);
-
-          if (!isNaN(valor)) {
-            return valor;
-          }
-        }
-      }
-
-      return defecto;
-    }
-
-    function texto(obj, campos, defecto = "") {
-      for (const campo of campos) {
-
-        if (
-          obj[campo] !== undefined &&
-          obj[campo] !== null &&
-          String(obj[campo]).trim() !== ""
-        ) {
-          return String(obj[campo]).trim();
-        }
-      }
-
-      return defecto;
-    }
-
-    const tablas = tablasEncontradas.map((tabla, indice) => {
-
-      const equipos = tabla.equipos.map((equipo, index) => {
-
-        const gf = numero(equipo, [
-          "goals_for",
-          "gf",
-          "favor",
-          "goals",
-          "goals_scored"
-        ]);
-
-        const ga = numero(equipo, [
-          "goals_against",
-          "ga",
-          "contra",
-          "goals_conceded"
-        ]);
-
-        let diferencia = numero(equipo, [
-          "goal_difference",
-          "dg",
-          "difference",
-          "diff",
-          "goal_diff"
-        ], NaN);
-
-        if (isNaN(diferencia)) {
-          diferencia = gf - ga;
-        }
-
-        return {
-          position: numero(equipo, [
-            "position",
-            "pos",
-            "rank",
-            "order"
-          ], index + 1),
-
-          name: obtenerNombreEquipo(equipo),
-
-          id: texto(equipo, [
-            "id",
-            "team_id",
-            "teamId"
-          ]),
-
-          points: numero(equipo, [
-            "points",
-            "pts",
-            "puntos",
-            "score"
-          ]),
-
-          played: numero(equipo, [
-            "played",
-            "pj",
-            "games",
-            "matches",
-            "partidos"
-          ]),
-
-          goals_for: gf,
-
-          goals_against: ga,
-
-          goal_difference: diferencia,
-
-          wins: numero(equipo, [
-            "wins",
-            "won",
-            "g"
-          ]),
-
-          draws: numero(equipo, [
-            "draws",
-            "drawn",
-            "e"
-          ]),
-
-          losses: numero(equipo, [
-            "losses",
-            "lost",
-            "p"
-          ]),
-
-          promedio: numero(equipo, [
-            "promedio",
-            "average",
-            "avg",
-            "points_average",
-            "ratio"
-          ], null),
-
-          form:
-            equipo.form ||
-            equipo.last ||
-            equipo.ultimos ||
-            equipo.results ||
-            equipo.last_results ||
-            null,
-
-          seasons:
-            equipo.seasons ||
-            null
-        };
-      });
-
-      return {
-        name: `Tabla ${indice + 1}`,
-        teams: equipos
-      };
-    });
-
-    // =========================================================
-    // 7. MOSTRAR RESULTADO
-    // =========================================================
-
-    for (let i = 0; i < tablas.length; i++) {
-
-      console.log("");
-      console.log(
-        `TABLA ${i + 1}: ${tablas[i].teams.length} equipos`
-      );
-
-      for (const equipo of tablas[i].teams.slice(0, 5)) {
 
         console.log(
-          `${equipo.position}. ${equipo.name} - ` +
-          `${equipo.points} pts - ` +
-          `${equipo.played} PJ`
+            "API de tablas respondió correctamente."
         );
-      }
-    }
-
-    // =========================================================
-    // 8. ESTADÍSTICAS DE GOLEADORES / ASISTENCIAS
-    // =========================================================
-
-    const stats = [];
-
-    try {
-
-      const tablasDOM = await page.evaluate(() => {
-
-        return Array.from(
-          document.querySelectorAll("table")
-        ).map(table => {
-
-          const filas = Array.from(
-            table.querySelectorAll("tr")
-          );
-
-          return filas.map(fila => {
-
-            return Array.from(
-              fila.querySelectorAll("th, td")
-            ).map(celda => celda.innerText.trim());
-
-          });
-
-        });
-
-      });
-
-      for (const tabla of tablasDOM) {
-
-        if (!tabla.length) continue;
-
-        const textoTabla = JSON.stringify(
-          tabla
-        ).toLowerCase();
-
-        let tipo = null;
-
-        if (
-          textoTabla.includes("goleadores") ||
-          textoTabla.includes("goles")
-        ) {
-          tipo = "goleadores";
-        }
-
-        if (
-          textoTabla.includes("asistencias") ||
-          textoTabla.includes("asistidores")
-        ) {
-          tipo = "asistencias";
-        }
-
-        if (!tipo) continue;
-
-        const players = [];
-
-        for (const fila of tabla) {
-
-          if (!fila || fila.length < 2) {
-            continue;
-          }
-
-          players.push({
-            name: fila[0],
-            team: fila.length >= 3 ? fila[1] : "",
-            value: Number(
-              fila[fila.length - 1]
-                .replace(/[^\d.-]/g, "")
-            ) || 0
-          });
-
-        }
-
-        if (players.length > 0) {
-
-          stats.push({
-            type: tipo,
-            players
-          });
-        }
-      }
 
     } catch (error) {
 
-      console.log(
-        "Error obteniendo estadísticas DOM:",
-        error.message
-      );
+        console.error(
+            "Error consultando API de tablas:",
+            error.message
+        );
+
+        console.log(
+            "No se modifica Redis."
+        );
+
+        return;
     }
 
+    // ==========================================
+    // INFORMACIÓN DE LA RESPUESTA
+    // ==========================================
+
     console.log("");
+    console.log("ESTRUCTURA DE LA API");
+    console.log("------------------------------------------");
+
+    if (
+        Array.isArray(apiData)
+    ) {
+
+        console.log(
+            "Respuesta principal: ARRAY"
+        );
+
+        console.log(
+            "Cantidad:",
+            apiData.length
+        );
+
+    } else if (
+        esObjeto(apiData)
+    ) {
+
+        console.log(
+            "Respuesta principal: OBJETO"
+        );
+
+        console.log(
+            "Claves:",
+            Object.keys(apiData)
+        );
+
+    } else {
+
+        console.log(
+            "Tipo:",
+            typeof apiData
+        );
+    }
+
+    console.log("------------------------------------------");
+
+    // ==========================================
+    // BUSCAR TABLAS
+    // ==========================================
+
+    const encontradas = [];
+
+    buscarTablasRecursivamente(
+        apiData,
+        encontradas
+    );
+
+    console.log("");
+    console.log(
+        "POSIBLES TABLAS ENCONTRADAS:",
+        encontradas.length
+    );
+
+    // ==========================================
+    // NORMALIZAR
+    // ==========================================
+
+    const tablasNormalizadas =
+        encontradas
+            .map(
+                (tabla, indice) =>
+                    normalizarTabla(
+                        tabla,
+                        indice
+                    )
+            )
+            .filter(Boolean);
+
+    // ==========================================
+    // ELIMINAR DUPLICADOS
+    // ==========================================
+
+    const tablas =
+        eliminarTablasDuplicadas(
+            tablasNormalizadas
+        );
+
+    console.log(
+        "TABLAS ÚNICAS:",
+        tablas.length
+    );
+
+    // ==========================================
+    // MOSTRAR TABLAS
+    // ==========================================
+
+    for (
+        let i = 0;
+        i < tablas.length;
+        i++
+    ) {
+
+        console.log("");
+
+        console.log(
+            `TABLA ${i + 1}:`
+        );
+
+        console.log(
+            `Equipos: ${tablas[i].teams.length}`
+        );
+
+        for (
+            const equipo
+            of tablas[i].teams.slice(0, 10)
+        ) {
+
+            console.log(
+
+                `${equipo.position}. ` +
+                `${equipo.name} - ` +
+                `${equipo.points} pts - ` +
+                `${equipo.played} PJ - ` +
+                `${equipo.goals_for} GF - ` +
+                `${equipo.goals_against} GC - ` +
+                `${equipo.goal_difference} DG`
+
+            );
+        }
+    }
+
+    // ==========================================
+    // ESTADÍSTICAS
+    // ==========================================
+
+    let stats = [];
+
+    try {
+
+        stats =
+            await obtenerEstadisticasDOM(
+                page
+            );
+
+    } catch (error) {
+
+        console.log(
+            "No se pudieron obtener estadísticas:",
+            error.message
+        );
+    }
+
+    // ==========================================
+    // RESUMEN
+    // ==========================================
+
+    console.log("");
+    console.log("==========================================");
     console.log("RESUMEN TABLAS");
-    console.log("------------------------------------------");
-    console.log("Tablas:", tablas.length);
-    console.log("Estadísticas:", stats.length);
+    console.log("==========================================");
 
-    // =========================================================
-    // 9. GUARDAR EN REDIS
-    // =========================================================
+    console.log(
+        "Tablas:",
+        tablas.length
+    );
 
-    if (tablas.length === 0) {
+    console.log(
+        "Estadísticas:",
+        stats.length
+    );
 
-      console.log(
-        "NO se encontraron tablas de posiciones."
-      );
+    // ==========================================
+    // SEGURIDAD
+    // ==========================================
 
-      console.log(
-        "No se modifica Redis."
-      );
+    if (
+        tablas.length === 0
+    ) {
 
-      return;
+        console.log("");
+        console.log(
+            "NO se encontraron tablas de posiciones."
+        );
+
+        console.log(
+            "No se modifica Redis."
+        );
+
+        return;
     }
+
+    // ==========================================
+    // GUARDAR REDIS
+    // ==========================================
 
     const resultado = {
-      updatedAt: new Date().toISOString(),
-      source: "api.promiedos.com.ar",
-      tables: tablas,
-      stats
+
+        updatedAt:
+            new Date().toISOString(),
+
+        source:
+            STANDINGS_URL,
+
+        tables:
+            tablas,
+
+        stats
     };
 
     await redis.set(
-      "chiquifutbol_standings",
-      JSON.stringify(resultado)
+        "chiquifutbol_standings",
+        JSON.stringify(
+            resultado
+        )
     );
 
     console.log("");
     console.log(
-      "Redis actualizado correctamente."
+        "Redis actualizado correctamente."
     );
 
     console.log(
-      "Clave: chiquifutbol_standings"
+        "Clave:",
+        "chiquifutbol_standings"
     );
-
-  } catch (error) {
-
-    console.error(
-      "Error sincronizando tablas:",
-      error.message
-    );
-
-    console.log(
-      "No se modifica Redis por seguridad."
-    );
-  }
 }
 
 // ==========================================
@@ -2122,17 +2070,17 @@ async function sincronizarTodo() {
             height: 768
         });
 
-        // --------------------------------------
+        // ======================================
         // PARTIDOS
-        // --------------------------------------
+        // ======================================
 
         await sincronizarPartidos(
             page
         );
 
-        // --------------------------------------
+        // ======================================
         // TABLAS
-        // --------------------------------------
+        // ======================================
 
         await sincronizarTablas(
             page
