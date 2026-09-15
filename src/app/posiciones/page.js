@@ -26,13 +26,7 @@ export default function PosicionesPage() {
       }
 
       const json = await response.json();
-      console.log("==========================================");
-console.log("DEBUG TABLAS DE POSICIONES");
-console.log("==========================================");
-console.log(
-  JSON.stringify(json.tables_groups, null, 2)
-);
-console.log("==========================================");
+
       setData(json);
     } catch (err) {
       console.error(err);
@@ -43,79 +37,103 @@ console.log("==========================================");
   }
 
   // ============================================================
-  // FUNCIONES DE DATOS
+  // COLORES
   // ============================================================
 
-  function obtenerValor(objeto, claves = []) {
-    for (const clave of claves) {
-      if (
-        objeto &&
-        objeto[clave] !== undefined &&
-        objeto[clave] !== null &&
-        objeto[clave] !== ""
-      ) {
-        return objeto[clave];
+  const colores = {
+    verde: "#10b981",
+    verdeSuave: "rgba(16,185,129,0.15)",
+    fondo: "rgba(128,128,128,0.02)",
+    fondoHeader: "rgba(128,128,128,0.08)",
+    fondoFila: "rgba(128,128,128,0.025)",
+    borde: "rgba(128,128,128,0.25)",
+    bordeSuave: "rgba(128,128,128,0.15)",
+    textoSecundario: "rgba(180,180,180,0.75)",
+  };
+
+  // ============================================================
+  // OBTENER TABLAS DE POSICIONES
+  // ============================================================
+
+  function obtenerTablasPosiciones() {
+    if (!Array.isArray(data?.tables_groups)) {
+      return [];
+    }
+
+    const resultado = [];
+
+    data.tables_groups.forEach((grupo) => {
+      if (!Array.isArray(grupo?.tables)) {
+        return;
       }
-    }
 
-    return "";
-  }
+      grupo.tables.forEach((tabla) => {
+        if (!tabla?.table) {
+          return;
+        }
 
-  function normalizarFilas(tabla) {
-    if (!tabla) return [];
+        if (!Array.isArray(tabla.table.rows)) {
+          return;
+        }
 
-    if (Array.isArray(tabla.rows)) {
-      return tabla.rows;
-    }
-
-    if (Array.isArray(tabla.table?.rows)) {
-      return tabla.table.rows;
-    }
-
-    if (Array.isArray(tabla.data?.rows)) {
-      return tabla.data.rows;
-    }
-
-    if (Array.isArray(tabla.data)) {
-      return tabla.data;
-    }
-
-    return [];
-  }
-
-  function obtenerTablas() {
-  console.log("==========================================");
-  console.log("DEBUG tables_groups");
-  console.log("==========================================");
-
-  console.log("tables_groups:");
-  console.log(data?.tables_groups);
-
-  if (Array.isArray(data?.tables_groups)) {
-    data.tables_groups.forEach((grupo, i) => {
-      console.log("------------------------------------------");
-      console.log("GRUPO:", i);
-      console.log("TIPO:", typeof grupo);
-      console.log("CLAVES:", Object.keys(grupo || {}));
-      console.log("CONTENIDO:");
-      console.log(JSON.stringify(grupo, null, 2));
+        resultado.push({
+          torneo: grupo.name || "",
+          nombre: tabla.name || "Tabla",
+          table: tabla.table,
+        });
+      });
     });
+
+    return resultado;
   }
 
-  console.log("==========================================");
+  // ============================================================
+  // OBTENER VALOR DE UNA COLUMNA
+  // ============================================================
 
-  return [];
-}
+  function obtenerValorFila(fila, key) {
+    if (!Array.isArray(fila?.values)) {
+      return "-";
+    }
+
+    const encontrado = fila.values.find(
+      (item) => item?.key === key
+    );
+
+    if (!encontrado) {
+      return "-";
+    }
+
+    return encontrado.value;
+  }
+
+  // ============================================================
+  // OBTENER ESTADISTICAS DE JUGADORES
+  // ============================================================
 
   function obtenerEstadisticasJugadores() {
-    if (!data?.players_statistics) return [];
+    if (!data?.players_statistics) {
+      return [];
+    }
+
+    if (Array.isArray(data.players_statistics.tables)) {
+      return data.players_statistics.tables;
+    }
 
     if (Array.isArray(data.players_statistics)) {
       return data.players_statistics;
     }
 
-    if (Array.isArray(data.players_statistics.tables)) {
-      return data.players_statistics.tables;
+    return [];
+  }
+
+  function obtenerFilasEstadisticas(tabla) {
+    if (Array.isArray(tabla?.rows)) {
+      return tabla.rows;
+    }
+
+    if (Array.isArray(tabla?.table?.rows)) {
+      return tabla.table.rows;
     }
 
     return [];
@@ -125,7 +143,6 @@ console.log("==========================================");
     return (
       fila?.entity?.object?.name ||
       fila?.entity?.object?.sname ||
-      fila?.name ||
       "-"
     );
   }
@@ -143,43 +160,22 @@ console.log("==========================================");
       return fila.values;
     }
 
-    if (Array.isArray(fila?.stats)) {
-      return fila.stats;
-    }
-
     return [];
   }
 
-  function valorComoTexto(valor) {
-    if (valor === null || valor === undefined) return "-";
-
-    if (typeof valor === "object") {
-      if (valor.value !== undefined) {
-        return String(valor.value);
-      }
-
-      return JSON.stringify(valor);
-    }
-
-    return String(valor);
-  }
-
   function obtenerColumnasEstadistica(tabla) {
-    const filas = normalizarFilas(tabla);
-
+    const filas = obtenerFilasEstadisticas(tabla);
     const columnas = [];
 
     filas.forEach((fila) => {
       const valores = obtenerValoresEstadistica(fila);
 
       valores.forEach((item) => {
-        const key = item?.key;
-
         if (
-          key &&
-          !columnas.some((columna) => columna === key)
+          item?.key &&
+          !columnas.includes(item.key)
         ) {
-          columnas.push(key);
+          columnas.push(item.key);
         }
       });
     });
@@ -194,22 +190,26 @@ console.log("==========================================");
       (item) => item?.key === columna
     );
 
-    if (!encontrado) return "-";
+    if (!encontrado) {
+      return "-";
+    }
 
-    return valorComoTexto(encontrado.value);
+    if (Array.isArray(encontrado.value)) {
+      return encontrado.value.join(" ");
+    }
+
+    return encontrado.value;
   }
 
   function tituloColumna(columna) {
     const titulos = {
       Goals: "Goles",
-      Assists: "Asistencias",
+      Assists: "Asist.",
       Matches: "PJ",
       Games: "PJ",
       Minutes: "Min.",
       YellowCards: "Amarillas",
       RedCards: "Rojas",
-      GoalsPerGame: "G/PJ",
-      Average: "Promedio",
       Rating: "Puntaje",
     };
 
@@ -217,39 +217,10 @@ console.log("==========================================");
   }
 
   // ============================================================
-  // ESTILOS
+  // ESTILO DE POSICION
   // ============================================================
 
-  const colores = {
-    verde: "#10b981",
-    verdeSuave: "rgba(16,185,129,0.15)",
-    fondo: "rgba(128,128,128,0.02)",
-    fondoHeader: "rgba(128,128,128,0.08)",
-    fondoFila: "rgba(128,128,128,0.025)",
-    borde: "rgba(128,128,128,0.25)",
-    bordeSuave: "rgba(128,128,128,0.15)",
-    texto: "inherit",
-    textoSecundario: "rgba(180,180,180,0.75)",
-  };
-
-  const tablaTh = {
-    padding: "10px 8px",
-    border: `1px solid ${colores.borde}`,
-    background: colores.fondoHeader,
-    fontSize: "0.78rem",
-    fontWeight: 700,
-    textAlign: "center",
-    whiteSpace: "nowrap",
-  };
-
-  const tablaTd = {
-    padding: "9px 8px",
-    border: `1px solid ${colores.bordeSuave}`,
-    fontSize: "0.86rem",
-    verticalAlign: "middle",
-  };
-
-  function clasePosicion(posicion) {
+  function estiloPosicion(posicion) {
     if (posicion === 1) {
       return {
         background: "rgba(234,179,8,0.15)",
@@ -282,6 +253,104 @@ console.log("==========================================");
   }
 
   // ============================================================
+  // CELDA DE POSICION
+  // ============================================================
+
+  function Posicion({ numero }) {
+    return (
+      <span
+        style={{
+          ...estiloPosicion(numero),
+          width: "30px",
+          height: "30px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "50%",
+          fontWeight: 700,
+          fontSize: "0.8rem",
+        }}
+      >
+        {numero}
+      </span>
+    );
+  }
+
+  // ============================================================
+  // RESULTADOS ULTIMOS PARTIDOS
+  // ============================================================
+
+  function UltimosPartidos({ valores }) {
+    if (!Array.isArray(valores)) {
+      return (
+        <span
+          style={{
+            color: colores.textoSecundario,
+          }}
+        >
+          -
+        </span>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "3px",
+        }}
+      >
+        {valores.map((resultado, index) => {
+          let background = "rgba(128,128,128,0.15)";
+          let color = colores.textoSecundario;
+
+          if (resultado === 1) {
+            background = "rgba(16,185,129,0.18)";
+            color = "#10b981";
+          }
+
+          if (resultado === 2) {
+            background = "rgba(239,68,68,0.18)";
+            color = "#ef4444";
+          }
+
+          if (resultado === 0) {
+            background = "rgba(148,163,184,0.15)";
+            color = "#94a3b8";
+          }
+
+          return (
+            <span
+              key={index}
+              style={{
+                width: "22px",
+                height: "22px",
+                borderRadius: "50%",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background,
+                color,
+                fontSize: "0.65rem",
+                fontWeight: 700,
+              }}
+            >
+              {resultado === 1
+                ? "G"
+                : resultado === 2
+                ? "P"
+                : resultado === 0
+                ? "E"
+                : "-"}
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ============================================================
   // LOADING
   // ============================================================
 
@@ -294,6 +363,7 @@ console.log("==========================================");
           margin: "0 auto",
           padding: "20px",
           minHeight: "100vh",
+          boxSizing: "border-box",
         }}
       >
         <div
@@ -324,6 +394,7 @@ console.log("==========================================");
           margin: "0 auto",
           padding: "20px",
           minHeight: "100vh",
+          boxSizing: "border-box",
         }}
       >
         <div
@@ -357,7 +428,7 @@ console.log("==========================================");
     );
   }
 
-  const tablas = obtenerTablas();
+  const tablas = obtenerTablasPosiciones();
   const estadisticas = obtenerEstadisticasJugadores();
 
   // ============================================================
@@ -484,7 +555,7 @@ console.log("==========================================");
       ====================================================== */}
 
       {tablas.length > 0 && (
-        <section style={{ marginBottom: "28px" }}>
+        <section style={{ marginBottom: "30px" }}>
           <div
             style={{
               marginBottom: "12px",
@@ -504,17 +575,17 @@ console.log("==========================================");
             }}
           >
             {tablas.map((tabla, indiceTabla) => {
-              const filas = normalizarFilas(tabla);
+              const columnas = Array.isArray(
+                tabla.table?.columns
+              )
+                ? tabla.table.columns
+                : [];
 
-              if (!filas.length) return null;
-
-              const nombreTabla =
-                tabla?.name ||
-                tabla?.title ||
-                tabla?.label ||
-                tabla?.table?.name ||
-                tabla?.table?.title ||
-                `Tabla ${indiceTabla + 1}`;
+              const filas = Array.isArray(
+                tabla.table?.rows
+              )
+                ? tabla.table.rows
+                : [];
 
               return (
                 <div
@@ -526,7 +597,7 @@ console.log("==========================================");
                     background: colores.fondo,
                   }}
                 >
-                  {/* CABECERA DE TABLA */}
+                  {/* CABECERA */}
 
                   <div
                     style={{
@@ -536,9 +607,28 @@ console.log("==========================================");
                       color: colores.verde,
                       fontWeight: 700,
                       fontSize: "0.95rem",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "10px",
                     }}
                   >
-                    {nombreTabla}
+                    <span>
+                      {tabla.torneo
+                        ? `${tabla.torneo} — `
+                        : ""}
+                      {tabla.nombre}
+                    </span>
+
+                    <span
+                      style={{
+                        fontSize: "0.72rem",
+                        color: colores.textoSecundario,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {filas.length} equipos
+                    </span>
                   </div>
 
                   {/* TABLA */}
@@ -561,8 +651,12 @@ console.log("==========================================");
                         <tr>
                           <th
                             style={{
-                              ...tablaTh,
+                              padding: "10px 8px",
+                              border: `1px solid ${colores.borde}`,
+                              background: colores.fondoHeader,
                               width: "55px",
+                              textAlign: "center",
+                              fontSize: "0.78rem",
                             }}
                           >
                             #
@@ -570,111 +664,50 @@ console.log("==========================================");
 
                           <th
                             style={{
-                              ...tablaTh,
+                              padding: "10px 8px",
+                              border: `1px solid ${colores.borde}`,
+                              background: colores.fondoHeader,
                               textAlign: "left",
                               minWidth: "210px",
+                              fontSize: "0.78rem",
                             }}
                           >
                             Equipo
                           </th>
 
-                          <th style={tablaTh}>PJ</th>
-                          <th style={tablaTh}>PG</th>
-                          <th style={tablaTh}>PE</th>
-                          <th style={tablaTh}>PP</th>
-                          <th style={tablaTh}>GF</th>
-                          <th style={tablaTh}>GC</th>
-                          <th style={tablaTh}>DG</th>
-
-                          <th
-                            style={{
-                              ...tablaTh,
-                              width: "70px",
-                            }}
-                          >
-                            Pts
-                          </th>
+                          {columnas.map((columna) => (
+                            <th
+                              key={columna.key}
+                              style={{
+                                padding: "10px 8px",
+                                border: `1px solid ${colores.borde}`,
+                                background:
+                                  colores.fondoHeader,
+                                textAlign: "center",
+                                whiteSpace: "nowrap",
+                                fontSize: "0.78rem",
+                                fontWeight:
+                                  columna.is_bold
+                                    ? 800
+                                    : 600,
+                              }}
+                            >
+                              {columna.title ||
+                                columna.key}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
 
                       <tbody>
                         {filas.map((fila, indiceFila) => {
                           const posicion =
-                            Number(
-                              obtenerValor(fila, [
-                                "pos",
-                                "position",
-                                "rank",
-                                "num",
-                              ])
-                            ) || indiceFila + 1;
+                            Number(fila.num) ||
+                            indiceFila + 1;
 
-                          const equipo =
-                            obtenerValor(fila, [
-                              "team_name",
-                              "team",
-                              "name",
-                            ]) ||
+                          const nombre =
                             fila?.entity?.object?.name ||
                             "-";
-
-                          const pj = obtenerValor(fila, [
-                            "PJ",
-                            "pj",
-                            "played",
-                            "matches",
-                            "games",
-                          ]);
-
-                          const pg = obtenerValor(fila, [
-                            "PG",
-                            "pg",
-                            "won",
-                            "wins",
-                          ]);
-
-                          const pe = obtenerValor(fila, [
-                            "PE",
-                            "pe",
-                            "draw",
-                            "draws",
-                          ]);
-
-                          const pp = obtenerValor(fila, [
-                            "PP",
-                            "pp",
-                            "lost",
-                            "losses",
-                          ]);
-
-                          const gf = obtenerValor(fila, [
-                            "GF",
-                            "gf",
-                            "goals_for",
-                            "goalsFor",
-                          ]);
-
-                          const gc = obtenerValor(fila, [
-                            "GC",
-                            "gc",
-                            "goals_against",
-                            "goalsAgainst",
-                          ]);
-
-                          const dg = obtenerValor(fila, [
-                            "DG",
-                            "dg",
-                            "difference",
-                            "goal_difference",
-                            "goalDifference",
-                          ]);
-
-                          const pts = obtenerValor(fila, [
-                            "Pts",
-                            "pts",
-                            "points",
-                            "score",
-                          ]);
 
                           return (
                             <tr
@@ -690,120 +723,126 @@ console.log("==========================================");
 
                               <td
                                 style={{
-                                  ...tablaTd,
+                                  padding: "8px",
+                                  border: `1px solid ${colores.bordeSuave}`,
                                   textAlign: "center",
                                 }}
                               >
-                                <span
-                                  style={{
-                                    ...clasePosicion(posicion),
-                                    width: "30px",
-                                    height: "30px",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderRadius: "50%",
-                                    fontWeight: 700,
-                                    fontSize: "0.8rem",
-                                  }}
-                                >
-                                  {posicion}
-                                </span>
+                                <Posicion
+                                  numero={posicion}
+                                />
                               </td>
 
                               {/* EQUIPO */}
 
                               <td
                                 style={{
-                                  ...tablaTd,
+                                  padding: "9px 8px",
+                                  border: `1px solid ${colores.bordeSuave}`,
                                   textAlign: "left",
                                   fontWeight: 600,
+                                  whiteSpace: "nowrap",
                                 }}
                               >
-                                {equipo}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  {/* INDICADOR DE DESTINO */}
+
+                                  {fila.destination_color && (
+                                    <span
+                                      style={{
+                                        width: "4px",
+                                        height: "25px",
+                                        borderRadius: "3px",
+                                        background:
+                                          fila.destination_color,
+                                        display:
+                                          "inline-block",
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                  )}
+
+                                  <span>{nombre}</span>
+                                </div>
                               </td>
 
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                }}
-                              >
-                                {pj || "-"}
-                              </td>
+                              {/* COLUMNAS */}
 
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                }}
-                              >
-                                {pg || "-"}
-                              </td>
+                              {columnas.map((columna) => {
+                                const valor =
+                                  obtenerValorFila(
+                                    fila,
+                                    columna.key
+                                  );
 
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                }}
-                              >
-                                {pe || "-"}
-                              </td>
+                                // ÚLTIMOS PARTIDOS
+                                if (
+                                  columna.key ===
+                                  "{trend}"
+                                ) {
+                                  return (
+                                    <td
+                                      key={columna.key}
+                                      style={{
+                                        padding: "8px",
+                                        border: `1px solid ${colores.bordeSuave}`,
+                                        textAlign:
+                                          "center",
+                                      }}
+                                    >
+                                      <UltimosPartidos
+                                        valores={valor}
+                                      />
+                                    </td>
+                                  );
+                                }
 
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                }}
-                              >
-                                {pp || "-"}
-                              </td>
+                                const esPuntos =
+                                  columna.key ===
+                                  "Points";
 
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                }}
-                              >
-                                {gf || "-"}
-                              </td>
+                                const esRatio =
+                                  columna.key ===
+                                  "Ratio";
 
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                }}
-                              >
-                                {gc || "-"}
-                              </td>
-
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                  fontWeight: 700,
-                                  color:
-                                    Number(dg) > 0
-                                      ? "#10b981"
-                                      : Number(dg) < 0
-                                      ? "#ef4444"
-                                      : "inherit",
-                                }}
-                              >
-                                {dg || "-"}
-                              </td>
-
-                              <td
-                                style={{
-                                  ...tablaTd,
-                                  textAlign: "center",
-                                  fontWeight: 800,
-                                  fontSize: "0.95rem",
-                                  color: colores.verde,
-                                }}
-                              >
-                                {pts || "-"}
-                              </td>
+                                return (
+                                  <td
+                                    key={columna.key}
+                                    style={{
+                                      padding: "9px 8px",
+                                      border: `1px solid ${colores.bordeSuave}`,
+                                      textAlign:
+                                        "center",
+                                      fontWeight:
+                                        columna.is_bold ||
+                                        esPuntos
+                                          ? 800
+                                          : 500,
+                                      color: esPuntos
+                                        ? colores.verde
+                                        : esRatio
+                                        ? Number(
+                                            valor
+                                          ) > 0
+                                          ? "#10b981"
+                                          : Number(
+                                              valor
+                                            ) < 0
+                                          ? "#ef4444"
+                                          : "inherit"
+                                        : "inherit",
+                                    }}
+                                  >
+                                    {valor}
+                                  </td>
+                                );
+                              })}
                             </tr>
                           );
                         })}
@@ -822,7 +861,7 @@ console.log("==========================================");
       ====================================================== */}
 
       {estadisticas.length > 0 && (
-        <section style={{ marginBottom: "28px" }}>
+        <section style={{ marginBottom: "30px" }}>
           <div
             style={{
               marginBottom: "12px",
@@ -842,18 +881,21 @@ console.log("==========================================");
             }}
           >
             {estadisticas.map((tabla, indiceTabla) => {
-              const filas = normalizarFilas(tabla);
+              const filas =
+                obtenerFilasEstadisticas(tabla);
 
-              if (!filas.length) return null;
+              if (!filas.length) {
+                return null;
+              }
 
-              const columnas = obtenerColumnasEstadistica(tabla);
+              const columnas =
+                obtenerColumnasEstadistica(tabla);
 
               const nombreTabla =
                 tabla?.name ||
                 tabla?.title ||
                 tabla?.label ||
                 tabla?.table?.name ||
-                tabla?.table?.title ||
                 "Estadísticas";
 
               return (
@@ -866,8 +908,6 @@ console.log("==========================================");
                     background: colores.fondo,
                   }}
                 >
-                  {/* TITULO */}
-
                   <div
                     style={{
                       padding: "11px 14px",
@@ -880,8 +920,6 @@ console.log("==========================================");
                   >
                     {nombreTabla}
                   </div>
-
-                  {/* TABLA DE ESTADISTICAS */}
 
                   <div
                     style={{
@@ -901,8 +939,13 @@ console.log("==========================================");
                         <tr>
                           <th
                             style={{
-                              ...tablaTh,
+                              padding: "10px 8px",
+                              border: `1px solid ${colores.borde}`,
+                              background:
+                                colores.fondoHeader,
                               width: "55px",
+                              textAlign: "center",
+                              fontSize: "0.78rem",
                             }}
                           >
                             #
@@ -910,9 +953,13 @@ console.log("==========================================");
 
                           <th
                             style={{
-                              ...tablaTh,
+                              padding: "10px 8px",
+                              border: `1px solid ${colores.borde}`,
+                              background:
+                                colores.fondoHeader,
                               textAlign: "left",
                               minWidth: "190px",
+                              fontSize: "0.78rem",
                             }}
                           >
                             Jugador
@@ -920,9 +967,13 @@ console.log("==========================================");
 
                           <th
                             style={{
-                              ...tablaTh,
+                              padding: "10px 8px",
+                              border: `1px solid ${colores.borde}`,
+                              background:
+                                colores.fondoHeader,
                               textAlign: "left",
                               minWidth: "160px",
+                              fontSize: "0.78rem",
                             }}
                           >
                             Equipo
@@ -931,9 +982,19 @@ console.log("==========================================");
                           {columnas.map((columna) => (
                             <th
                               key={columna}
-                              style={tablaTh}
+                              style={{
+                                padding: "10px 8px",
+                                border: `1px solid ${colores.borde}`,
+                                background:
+                                  colores.fondoHeader,
+                                textAlign: "center",
+                                fontSize: "0.78rem",
+                                whiteSpace: "nowrap",
+                              }}
                             >
-                              {tituloColumna(columna)}
+                              {tituloColumna(
+                                columna
+                              )}
                             </th>
                           ))}
                         </tr>
@@ -945,12 +1006,6 @@ console.log("==========================================");
                             Number(fila?.num) ||
                             indiceFila + 1;
 
-                          const nombre =
-                            obtenerNombreJugador(fila);
-
-                          const equipo =
-                            obtenerEquipoJugador(fila);
-
                           return (
                             <tr
                               key={indiceFila}
@@ -961,54 +1016,40 @@ console.log("==========================================");
                                     : colores.fondoFila,
                               }}
                             >
-                              {/* POSICION */}
-
                               <td
                                 style={{
-                                  ...tablaTd,
+                                  padding: "8px",
+                                  border: `1px solid ${colores.bordeSuave}`,
                                   textAlign: "center",
                                 }}
                               >
-                                <span
-                                  style={{
-                                    ...clasePosicion(posicion),
-                                    width: "30px",
-                                    height: "30px",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderRadius: "50%",
-                                    fontWeight: 700,
-                                    fontSize: "0.8rem",
-                                  }}
-                                >
-                                  {posicion}
-                                </span>
+                                <Posicion
+                                  numero={posicion}
+                                />
                               </td>
-
-                              {/* JUGADOR */}
 
                               <td
                                 style={{
-                                  ...tablaTd,
-                                  textAlign: "left",
+                                  padding: "9px 8px",
+                                  border: `1px solid ${colores.bordeSuave}`,
                                   fontWeight: 600,
                                 }}
                               >
-                                {nombre}
+                                {obtenerNombreJugador(
+                                  fila
+                                )}
                               </td>
-
-                              {/* EQUIPO */}
 
                               <td
                                 style={{
-                                  ...tablaTd,
-                                  textAlign: "left",
+                                  padding: "9px 8px",
+                                  border: `1px solid ${colores.bordeSuave}`,
                                 }}
                               >
                                 <span
                                   style={{
-                                    display: "inline-block",
+                                    display:
+                                      "inline-block",
                                     padding: "4px 8px",
                                     borderRadius: "5px",
                                     background:
@@ -1016,42 +1057,45 @@ console.log("==========================================");
                                     border:
                                       "1px solid rgba(16,185,129,0.18)",
                                     fontSize: "0.78rem",
-                                    whiteSpace: "nowrap",
+                                    whiteSpace:
+                                      "nowrap",
                                   }}
                                 >
-                                  {equipo}
+                                  {obtenerEquipoJugador(
+                                    fila
+                                  )}
                                 </span>
                               </td>
 
-                              {/* ESTADISTICAS */}
-
-                              {columnas.map((columna) => {
-                                const valor =
-                                  obtenerValorEstadistica(
-                                    fila,
-                                    columna
-                                  );
-
-                                return (
+                              {columnas.map(
+                                (columna) => (
                                   <td
                                     key={columna}
                                     style={{
-                                      ...tablaTd,
-                                      textAlign: "center",
+                                      padding:
+                                        "9px 8px",
+                                      border: `1px solid ${colores.bordeSuave}`,
+                                      textAlign:
+                                        "center",
                                       fontWeight:
-                                        columna === "Goals"
+                                        columna ===
+                                        "Goals"
                                           ? 700
                                           : 500,
                                       color:
-                                        columna === "Goals"
+                                        columna ===
+                                        "Goals"
                                           ? colores.verde
                                           : "inherit",
                                     }}
                                   >
-                                    {valor}
+                                    {obtenerValorEstadistica(
+                                      fila,
+                                      columna
+                                    )}
                                   </td>
-                                );
-                              })}
+                                )
+                              )}
                             </tr>
                           );
                         })}
