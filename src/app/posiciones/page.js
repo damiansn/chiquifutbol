@@ -77,28 +77,99 @@ export default function PosicionesPage() {
   }
 
   function obtenerTablas() {
-    if (!data) return [];
+  if (!data) return [];
 
-    if (Array.isArray(data.tables)) {
-      return data.tables;
-    }
+  const resultado = [];
 
-    if (Array.isArray(data.tables_groups)) {
-      const resultado = [];
+  // ============================================================
+  // 1. TABLAS DIRECTAS
+  // ============================================================
 
-      data.tables_groups.forEach((grupo) => {
-        if (Array.isArray(grupo.tables)) {
-          grupo.tables.forEach((tabla) => {
-            resultado.push(tabla);
-          });
-        }
-      });
-
-      return resultado;
-    }
-
-    return [];
+  if (Array.isArray(data.tables)) {
+    data.tables.forEach((tabla) => {
+      if (tabla) {
+        resultado.push(tabla);
+      }
+    });
   }
+
+  // ============================================================
+  // 2. TABLAS DENTRO DE tables_groups
+  // ============================================================
+
+  if (Array.isArray(data.tables_groups)) {
+    data.tables_groups.forEach((grupo) => {
+      if (!grupo) return;
+
+      // El grupo puede tener las tablas directamente
+      if (Array.isArray(grupo.tables)) {
+        grupo.tables.forEach((tabla) => {
+          if (tabla) {
+            resultado.push(tabla);
+          }
+        });
+      }
+
+      // Algunos formatos pueden tener una sola tabla
+      if (grupo.table) {
+        resultado.push(grupo.table);
+      }
+
+      // O pueden estar dentro de data
+      if (Array.isArray(grupo.data)) {
+        grupo.data.forEach((tabla) => {
+          if (tabla) {
+            resultado.push(tabla);
+          }
+        });
+      }
+    });
+  }
+
+  // ============================================================
+  // 3. EVITAR DUPLICADOS
+  // ============================================================
+
+  const vistas = new Set();
+
+  return resultado.filter((tabla) => {
+    const nombre =
+      tabla?.name ||
+      tabla?.title ||
+      tabla?.label ||
+      tabla?.table?.name ||
+      tabla?.table?.title ||
+      "";
+
+    const filas = normalizarFilas(tabla);
+
+    // Si no tiene filas, no es una tabla útil
+    if (!filas.length) {
+      return false;
+    }
+
+    // Creamos una firma para detectar duplicados
+    const firma =
+      String(nombre) +
+      "|" +
+      filas.length +
+      "|" +
+      JSON.stringify(
+        filas[0]?.entity?.object?.name ||
+        filas[0]?.team_name ||
+        filas[0]?.name ||
+        ""
+      );
+
+    if (vistas.has(firma)) {
+      return false;
+    }
+
+    vistas.add(firma);
+
+    return true;
+  });
+}
 
   function obtenerEstadisticasJugadores() {
     if (!data?.players_statistics) return [];
