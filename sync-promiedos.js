@@ -498,17 +498,23 @@ function normalizarLeagues(leagues) {
 // SINCRONIZAR TABLAS
 // ============================================================
 
+// ============================================================
+// SINCRONIZAR TABLAS + ESTADÍSTICAS
+// ============================================================
+
 async function sincronizarTablas(page) {
 
   console.log("\n==========================================");
-  console.log("SINCRONIZANDO TABLA DE POSICIONES");
+  console.log("SINCRONIZANDO TABLAS Y ESTADÍSTICAS");
   console.log("==========================================");
 
   let tablaData = null;
   let tablaResponseHandler = null;
 
+  const respuestasTablas = [];
+
   // ==========================================
-  // ESPERAR RESPUESTA DE LA API DE TABLAS
+  // ESCUCHAR TODAS LAS RESPUESTAS RELACIONADAS
   // ==========================================
 
   const tablaResponsePromise = new Promise(resolve => {
@@ -521,29 +527,49 @@ async function sincronizarTablas(page) {
 
         const url = response.url();
 
-        if (
-          !url.includes(
-            "/league/tables_and_fixtures/"
-          )
-        ) {
+        const esApiPromiedos =
+          url.includes("api.promiedos.com.ar");
+
+        if (!esApiPromiedos) {
           return;
         }
 
-        console.log("\n>>> RESPUESTA DE TABLAS DETECTADA");
-        console.log("URL:", url);
-        console.log("STATUS:", response.status());
+        const esRelacionado =
+          url.includes("/league/") ||
+          url.includes("statistics") ||
+          url.includes("statistic") ||
+          url.includes("players") ||
+          url.includes("table") ||
+          url.includes("standings");
+
+        if (!esRelacionado) {
+          return;
+        }
 
         const contentType =
           response.headers()["content-type"] || "";
 
         if (!contentType.includes("json")) {
-          console.log(
-            "La respuesta no parece JSON."
-          );
           return;
         }
 
-        const data = await response.json();
+        console.log("\n>>> API RELACIONADA DETECTADA");
+        console.log("URL:", url);
+        console.log("STATUS:", response.status());
+
+        let data;
+
+        try {
+          data = await response.json();
+        } catch {
+          return;
+        }
+
+        respuestasTablas.push({
+          url,
+          status: response.status(),
+          data
+        });
 
         console.log(
           "CLAVES:",
@@ -551,79 +577,35 @@ async function sincronizarTablas(page) {
         );
 
         // ==========================================
-        // INFORMACIÓN DE DIAGNÓSTICO
+        // DETECTAR RESPUESTA PRINCIPAL DE TABLAS
         // ==========================================
 
         if (
-          data &&
-          data.tables_groups &&
-          Array.isArray(data.tables_groups)
+          url.includes("/league/tables_and_fixtures/")
         ) {
 
-          console.log(
-            "TABLES_GROUPS:",
-            data.tables_groups.length
-          );
+          if (!resuelta) {
 
-        } else {
+            resuelta = true;
 
-          console.log(
-            "TABLES_GROUPS: no es un array o está vacío."
-          );
+            tablaData = data;
 
-        }
+            resolve(data);
 
-        if (
-          data &&
-          data.players_statistics &&
-          Array.isArray(data.players_statistics)
-        ) {
-
-          console.log(
-            "PLAYERS_STATISTICS:",
-            data.players_statistics.length
-          );
-
-        }
-
-        if (
-          data &&
-          data.games &&
-          Array.isArray(data.games)
-        ) {
-
-          console.log(
-            "GAMES:",
-            data.games.length
-          );
-
-        }
-
-        // ==========================================
-        // DEVOLVER DATOS
-        // ==========================================
-
-        if (!resuelta) {
-
-          resuelta = true;
-
-          resolve(data);
+          }
 
         }
 
       } catch (error) {
 
         console.log(
-          "Error leyendo respuesta de tablas:",
+          "Error leyendo respuesta:",
           error.message
         );
 
       }
 
     };
-
-    // IMPORTANTE:
-    // El listener se registra ANTES de cargar la página.
 
     page.on(
       "response",
@@ -632,9 +614,8 @@ async function sincronizarTablas(page) {
 
   });
 
-
   // ==========================================
-  // CARGAR PÁGINA DE LIGA PROFESIONAL
+  // CARGAR PÁGINA
   // ==========================================
 
   try {
@@ -660,28 +641,34 @@ async function sincronizarTablas(page) {
 
   }
 
-
   // ==========================================
-  // ESPERAR RESPUESTA API
+  // ESPERAR CARGA DE DATOS
   // ==========================================
 
-  const timeoutPromise =
-    new Promise(resolve => {
+  await new Promise(resolve =>
+    setTimeout(resolve, 7000)
+  );
 
-      setTimeout(
-        () => resolve(null),
-        15000
-      );
+  // Esperamos también la promesa por si todavía está pendiente
+  if (!tablaData) {
 
-    });
+    const timeoutPromise =
+      new Promise(resolve => {
 
+        setTimeout(
+          () => resolve(null),
+          8000
+        );
 
-  tablaData =
-    await Promise.race([
-      tablaResponsePromise,
-      timeoutPromise
-    ]);
+      });
 
+    tablaData =
+      await Promise.race([
+        tablaResponsePromise,
+        timeoutPromise
+      ]);
+
+  }
 
   // ==========================================
   // QUITAR LISTENER
@@ -696,24 +683,77 @@ async function sincronizarTablas(page) {
 
   }
 
+  // ==========================================
+  // MOSTRAR TODAS LAS RESPUESTAS ENCONTRADAS
+  // ==========================================
+
+  console.log("\n==========================================");
+  console.log("RESPUESTAS DE ESTADÍSTICAS ENCONTRADAS");
+  console.log("==========================================");
+
+  for (const respuesta of respuestasTablas) {
+
+    console.log("\nURL:");
+    console.log(respuesta.url);
+
+    console.log(
+      "CLAVES:",
+      Object.keys(respuesta.data || {})
+    );
+
+    // Detectar posibles estadísticas
+    if (
+      respuesta.data &&
+      typeof respuesta.data === "object"
+    ) {
+
+      const posiblesClaves = [
+        "players_statistics",
+        "player_statistics",
+        "statistics",
+        "stats",
+        "players",
+        "scorers",
+        "goalscorers",
+        "assists",
+        "cards"
+      ];
+
+      for (const clave of posiblesClaves) {
+
+        if (
+          Array.isArray(respuesta.data[clave])
+        ) {
+
+          console.log(
+            `>>> ENCONTRADO ${clave}:`,
+            respuesta.data[clave].length
+          );
+
+        }
+
+      }
+
+    }
+
+  }
 
   // ==========================================
-  // SI NO HAY RESPUESTA
+  // SI NO HAY DATOS PRINCIPALES
   // ==========================================
 
   if (!tablaData) {
 
     console.log(
-      "\nNO SE RECIBIÓ LA RESPUESTA DE TABLAS."
+      "\nNO SE RECIBIÓ LA RESPUESTA PRINCIPAL DE TABLAS."
     );
 
     return;
 
   }
 
-
   // ==========================================
-  // MOSTRAR ESTRUCTURA
+  // MOSTRAR ESTRUCTURA PRINCIPAL
   // ==========================================
 
   console.log("\n==========================================");
@@ -730,6 +770,13 @@ async function sincronizarTablas(page) {
     tablaData.league
       ? "OK"
       : "NO"
+  );
+
+  console.log(
+    "tables:",
+    Array.isArray(tablaData.tables)
+      ? tablaData.tables.length
+      : "NO ARRAY"
   );
 
   console.log(
@@ -753,65 +800,112 @@ async function sincronizarTablas(page) {
       : "NO ARRAY"
   );
 
+  // ==========================================
+  // BUSCAR ESTADÍSTICAS
+  // ==========================================
 
-  // ==========================================
-  // MOSTRAR PRIMER ELEMENTO
-  // ==========================================
+  let playersStatistics = [];
+
+  // Primero dentro de la respuesta principal
 
   if (
-    Array.isArray(tablaData.tables_groups) &&
-    tablaData.tables_groups.length > 0
+    Array.isArray(tablaData.players_statistics)
   ) {
 
-    console.log(
-      "\n=========================================="
-    );
-
-    console.log(
-      "PRIMER ELEMENTO DE TABLES_GROUPS:"
-    );
-
-    console.dir(
-      tablaData.tables_groups[0],
-      {
-        depth: 10,
-        colors: false
-      }
-    );
-
-    console.log(
-      "=========================================="
-    );
+    playersStatistics =
+      tablaData.players_statistics;
 
   }
 
+  // Si están en otra respuesta API
+
+  if (playersStatistics.length === 0) {
+
+    for (const respuesta of respuestasTablas) {
+
+      const data = respuesta.data;
+
+      if (!data || typeof data !== "object") {
+        continue;
+      }
+
+      const candidatos = [
+        data.players_statistics,
+        data.player_statistics,
+        data.statistics,
+        data.stats,
+        data.players,
+        data.scorers
+      ];
+
+      for (const candidato of candidatos) {
+
+        if (
+          Array.isArray(candidato) &&
+          candidato.length > 0
+        ) {
+
+          playersStatistics =
+            candidato;
+
+          console.log(
+            "\n>>> ESTADÍSTICAS ENCONTRADAS EN:",
+            respuesta.url
+          );
+
+          break;
+
+        }
+
+      }
+
+      if (playersStatistics.length > 0) {
+        break;
+      }
+
+    }
+
+  }
 
   // ==========================================
   // PREPARAR DATOS PARA REDIS
   // ==========================================
+
+  const tablasReales =
+    Array.isArray(tablaData.tables)
+      ? tablaData.tables
+      : (
+          Array.isArray(tablaData.tables_groups)
+            ? tablaData.tables_groups
+            : []
+        );
 
   const standingsData = {
 
     league:
       tablaData.league ?? null,
 
+    // Estructura real
     tables:
-      tablaData.tables_groups ?? [],
+      tablasReales,
 
     tables_groups:
-      tablaData.tables_groups ?? [],
+      Array.isArray(tablaData.tables_groups)
+        ? tablaData.tables_groups
+        : [],
 
     games:
-      tablaData.games ?? [],
+      Array.isArray(tablaData.games)
+        ? tablaData.games
+        : [],
 
     stats:
-      tablaData.players_statistics ?? [],
+      playersStatistics,
 
     players_statistics:
-      tablaData.players_statistics ?? []
+      playersStatistics
 
   };
-
 
   // ==========================================
   // CONTADORES
@@ -823,13 +917,48 @@ async function sincronizarTablas(page) {
       : 0;
 
   const cantidadStats =
-    Array.isArray(standingsData.stats)
-      ? standingsData.stats.length
+    Array.isArray(
+      standingsData.players_statistics
+    )
+      ? standingsData.players_statistics.length
       : 0;
 
+  // ==========================================
+  // MOSTRAR RESULTADO
+  // ==========================================
+
+  console.log("\n==========================================");
+  console.log("DATOS A GUARDAR EN REDIS");
+  console.log("==========================================");
+
+  console.log(
+    "Tablas:",
+    cantidadTablas
+  );
+
+  console.log(
+    "Estadísticas:",
+    cantidadStats
+  );
+
+  if (cantidadStats > 0) {
+
+    console.log(
+      "\nPRIMERA ESTADÍSTICA:"
+    );
+
+    console.dir(
+      playersStatistics[0],
+      {
+        depth: 10,
+        colors: false
+      }
+    );
+
+  }
 
   // ==========================================
-  // VALIDAR ANTES DE GUARDAR
+  // VALIDAR
   // ==========================================
 
   if (
@@ -838,17 +967,16 @@ async function sincronizarTablas(page) {
   ) {
 
     console.log(
-      "\nNO SE GUARDAN TABLAS:"
+      "\nNO SE GUARDAN DATOS:"
     );
 
     console.log(
-      "La respuesta no contiene datos de tablas ni estadísticas."
+      "La respuesta no contiene tablas ni estadísticas."
     );
 
     return;
 
   }
-
 
   // ==========================================
   // GUARDAR REDIS
@@ -859,13 +987,8 @@ async function sincronizarTablas(page) {
     JSON.stringify(standingsData)
   );
 
-
-  // ==========================================
-  // RESULTADO
-  // ==========================================
-
   console.log("\n==========================================");
-  console.log("TABLAS GUARDADAS EN REDIS");
+  console.log("TABLAS Y ESTADÍSTICAS GUARDADAS");
   console.log("==========================================");
 
   console.log(
@@ -888,7 +1011,6 @@ async function sincronizarTablas(page) {
   );
 
 }
-
 
 // ============================================================
 // SINCRONIZAR TODO
