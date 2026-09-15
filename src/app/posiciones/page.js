@@ -35,6 +35,8 @@ function StandingsContent() {
 
         const data = await res.json();
 
+        console.log("DATOS RECIBIDOS DE /api/standings:", data);
+
         setStandings(data);
       } catch (err) {
         console.error("Error cargando posiciones:", err);
@@ -87,7 +89,8 @@ function StandingsContent() {
             justifyContent: "space-between",
             alignItems: "center",
             marginBottom: "25px",
-            borderBottom: "1px solid rgba(128,128,128,0.2)",
+            borderBottom:
+              "1px solid rgba(128,128,128,0.2)",
             paddingBottom: "15px",
           }}
         >
@@ -116,7 +119,8 @@ function StandingsContent() {
         <div
           style={{
             padding: "30px",
-            border: "1px solid rgba(128,128,128,0.2)",
+            border:
+              "1px solid rgba(128,128,128,0.2)",
             borderRadius: "8px",
             textAlign: "center",
           }}
@@ -128,7 +132,7 @@ function StandingsContent() {
   }
 
   // ==========================================
-  // TABLAS
+  // EXTRAER TABLAS
   // ==========================================
 
   let tablesList = [];
@@ -152,46 +156,56 @@ function StandingsContent() {
   }
 
   // ==========================================
-  // NORMALIZAR TITULOS
+  // NORMALIZAR TABLAS
   // ==========================================
 
-  tablesList = tablesList.map((table, index) => {
-    const originalTitle = String(
-      table.title ||
-      table.name ||
-      `Tabla ${index + 1}`
-    );
+  tablesList = tablesList
+    .filter(Boolean)
+    .map((table, index) => {
+      const originalTitle = String(
+        table.title ||
+        table.name ||
+        table.category ||
+        `Tabla ${index + 1}`
+      );
 
-    const lowerTitle = originalTitle.toLowerCase();
+      const lowerTitle =
+        originalTitle.toLowerCase();
 
-    let customTitle = originalTitle;
+      let customTitle = originalTitle;
 
-    if (
-      lowerTitle.includes("promedio") ||
-      lowerTitle.includes("relegation")
-    ) {
-      customTitle = "PROMEDIOS";
-    } else if (
-      lowerTitle.includes("anual") ||
-      lowerTitle.includes("general")
-    ) {
-      customTitle = "TABLA ANUAL";
-    }
+      if (
+        lowerTitle.includes("promedio") ||
+        lowerTitle.includes("promedios") ||
+        lowerTitle.includes("relegation")
+      ) {
+        customTitle = "PROMEDIOS";
+      } else if (
+        lowerTitle.includes("anual") ||
+        lowerTitle.includes("general")
+      ) {
+        customTitle = "TABLA ANUAL";
+      }
 
-    return {
-      ...table,
-      title: customTitle,
-      teams: Array.isArray(table.teams)
-        ? table.teams
-        : [],
-    };
-  });
+      return {
+        ...table,
+        title: customTitle,
+        teams: Array.isArray(table.teams)
+          ? table.teams
+          : Array.isArray(table.rows)
+          ? table.rows
+          : [],
+      };
+    })
+    .filter((table) => table.teams.length > 0);
 
   // ==========================================
   // ESTADÍSTICAS
   // ==========================================
 
-  const playerStats = Array.isArray(standings?.stats)
+  const playerStats = Array.isArray(
+    standings?.stats
+  )
     ? standings.stats
     : [];
 
@@ -247,8 +261,11 @@ function StandingsContent() {
 
       {tablesList.length > 0 ? (
         tablesList.map((section, sIndex) => {
+          const sectionTitle =
+            String(section.title || "");
+
           const isPromedios =
-            section.title
+            sectionTitle
               .toLowerCase()
               .includes("promedio");
 
@@ -268,7 +285,7 @@ function StandingsContent() {
                   textTransform: "uppercase",
                 }}
               >
-                {section.title}
+                {sectionTitle}
               </h2>
 
               <div
@@ -405,15 +422,19 @@ function StandingsContent() {
                   <tbody>
                     {section.teams.map(
                       (team, index) => {
+
                         const teamName =
                           team.name ||
                           team.team_name ||
                           team.team ||
+                          team.nombre ||
+                          team.club ||
                           "Equipo";
 
                         const position =
-                          team.position ||
-                          team.pos ||
+                          team.position ??
+                          team.pos ??
+                          team.rank ??
                           index + 1;
 
                         const points =
@@ -426,13 +447,29 @@ function StandingsContent() {
                           team.played ??
                           team.pj ??
                           team.games ??
+                          team.matches ??
                           0;
 
                         const goalDifference =
                           team.goal_difference ??
                           team.dg ??
                           team.difference ??
+                          team.diff ??
                           0;
+
+                        const promedio =
+                          team.promedio ??
+                          team.average ??
+                          team.avg ??
+                          team.points_average ??
+                          "0.000";
+
+                        const seasons =
+                          Array.isArray(
+                            team.seasons
+                          )
+                            ? team.seasons
+                            : [];
 
                         return (
                           <tr
@@ -475,9 +512,7 @@ function StandingsContent() {
                                     color: "#10b981",
                                   }}
                                 >
-                                  {team.points ??
-                                    team.promedio ??
-                                    "0.000"}
+                                  {promedio}
                                 </td>
 
                                 <td
@@ -506,7 +541,7 @@ function StandingsContent() {
                                     opacity: 0.8,
                                   }}
                                 >
-                                  {team.seasons?.[0] ?? 0}
+                                  {seasons[0] ?? 0}
                                 </td>
 
                                 <td
@@ -516,7 +551,7 @@ function StandingsContent() {
                                     opacity: 0.8,
                                   }}
                                 >
-                                  {team.seasons?.[1] ?? 0}
+                                  {seasons[1] ?? 0}
                                 </td>
 
                                 <td
@@ -526,7 +561,7 @@ function StandingsContent() {
                                     opacity: 0.8,
                                   }}
                                 >
-                                  {team.seasons?.[2] ?? 0}
+                                  {seasons[2] ?? 0}
                                 </td>
                               </>
                             ) : (
@@ -648,7 +683,9 @@ function StandingsContent() {
                       fontSize: "0.95rem",
                     }}
                   >
-                    {statGroup.category}
+                    {statGroup.category ||
+                      statGroup.name ||
+                      "ESTADÍSTICAS"}
                   </div>
 
                   <table
@@ -658,40 +695,124 @@ function StandingsContent() {
                       fontSize: "0.9rem",
                     }}
                   >
+                    <thead>
+                      <tr
+                        style={{
+                          background:
+                            "rgba(128,128,128,0.06)",
+                          borderBottom:
+                            "1px solid rgba(128,128,128,0.15)",
+                        }}
+                      >
+                        <th
+                          style={{
+                            padding: "8px 15px",
+                            textAlign: "left",
+                            fontWeight: "500",
+                            opacity: 0.7,
+                          }}
+                        >
+                          Jugador
+                        </th>
+
+                        <th
+                          style={{
+                            padding: "8px 15px",
+                            textAlign: "left",
+                            fontWeight: "500",
+                            opacity: 0.7,
+                          }}
+                        >
+                          Equipo
+                        </th>
+
+                        <th
+                          style={{
+                            padding: "8px 15px",
+                            textAlign: "right",
+                            fontWeight: "500",
+                            opacity: 0.7,
+                            width: "70px",
+                          }}
+                        >
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+
                     <tbody>
                       {statGroup.players.map(
-                        (player, pIdx) => (
-                          <tr
-                            key={pIdx}
-                            style={{
-                              borderBottom:
-                                "1px solid rgba(128,128,128,0.1)",
-                            }}
-                          >
-                            <td
-                              style={{
-                                padding:
-                                  "10px 15px",
-                                fontWeight: "500",
-                              }}
-                            >
-                              {player.name}
-                            </td>
+                        (player, pIdx) => {
 
-                            <td
+                          const playerName =
+                            player.name ||
+                            player.player_name ||
+                            player.player ||
+                            player.nombre ||
+                            "Jugador";
+
+                          const playerTeam =
+                            player.team ||
+                            player.team_name ||
+                            player.club ||
+                            player.club_name ||
+                            player.equipo ||
+                            "Sin equipo";
+
+                          const playerValue =
+                            player.value ??
+                            player.goals ??
+                            player.assists ??
+                            player.total ??
+                            player.count ??
+                            0;
+
+                          return (
+                            <tr
+                              key={
+                                player.id ||
+                                `${playerName}-${pIdx}`
+                              }
                               style={{
-                                padding:
-                                  "10px 15px",
-                                textAlign: "right",
-                                fontWeight: "bold",
-                                color: "#10b981",
-                                width: "80px",
+                                borderBottom:
+                                  "1px solid rgba(128,128,128,0.1)",
                               }}
                             >
-                              {player.value}
-                            </td>
-                          </tr>
-                        )
+                              <td
+                                style={{
+                                  padding:
+                                    "10px 15px",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {playerName}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding:
+                                    "10px 15px",
+                                  opacity: 0.7,
+                                }}
+                              >
+                                {playerTeam}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding:
+                                    "10px 15px",
+                                  textAlign: "right",
+                                  fontWeight: "bold",
+                                  color: "#10b981",
+                                  width: "70px",
+                                }}
+                              >
+                                {playerValue}
+                              </td>
+                            </tr>
+                          );
+                        }
                       )}
                     </tbody>
                   </table>
