@@ -929,49 +929,122 @@ async function sincronizarTablas(
                 return tables;
             });
 
-        const statsData =
-            await page.evaluate(() => {
+        const statsData = await page.evaluate(() => {
 
-                const resultado = [];
+    const resultado = [];
 
-                const elementos =
-                    document.querySelectorAll(
-                        "body *"
-                    );
+    const tablas = Array.from(
+        document.querySelectorAll("table")
+    );
 
-                elementos.forEach(
-                    (element) => {
+    tablas.forEach((table) => {
 
-                        const texto =
-                            element.innerText?.trim();
+        const textoTabla =
+            table.innerText?.trim() || "";
 
-                        if (!texto) return;
+        const textoLower =
+            textoTabla.toLowerCase();
 
-                        if (
-                            texto.includes(
-                                "Goleadores"
-                            ) ||
-                            texto.includes(
-                                "Asistencias"
-                            ) ||
-                            texto.includes(
-                                "Tarjetas"
-                            )
-                        ) {
+        let category = null;
 
-                            resultado.push(
-                                texto
-                            );
-                        }
-                    }
-                );
+        // --------------------------------------
+        // Detectar Goleadores
+        // --------------------------------------
 
-                return [
-                    ...new Set(
-                        resultado
+        if (
+            textoLower.includes("goleadores") ||
+            textoLower.includes("goles")
+        ) {
+            category = "Goleadores";
+        }
+
+        // --------------------------------------
+        // Detectar Asistidores
+        // --------------------------------------
+
+        if (
+            textoLower.includes("asistencias") ||
+            textoLower.includes("asistidores")
+        ) {
+            category = "Asistidores";
+        }
+
+        // --------------------------------------
+        // Si no es una tabla estadística,
+        // seguimos con la siguiente
+        // --------------------------------------
+
+        if (!category) {
+            return;
+        }
+
+        const rows =
+            Array.from(
+                table.querySelectorAll("tr")
+            );
+
+        const players = [];
+
+        rows.forEach((row) => {
+
+            const cells =
+                Array.from(
+                    row.querySelectorAll(
+                        "th, td"
                     )
-                ];
+                )
+                .map(
+                    (cell) =>
+                        cell.innerText.trim()
+                )
+                .filter(Boolean);
+
+            if (cells.length < 2) {
+                return;
+            }
+
+            // Evitamos encabezados
+            const primera =
+                cells[0].toLowerCase();
+
+            if (
+                primera.includes("jugador") ||
+                primera.includes("nombre") ||
+                primera.includes("player")
+            ) {
+                return;
+            }
+
+            // Normalmente:
+            // columna 1 = jugador
+            // última columna = cantidad
+
+            const name = cells[0];
+
+            const value =
+                cells[cells.length - 1];
+
+            if (!name || !value) {
+                return;
+            }
+
+            players.push({
+                name,
+                value
             });
+        });
+
+        if (players.length > 0) {
+
+            resultado.push({
+                category,
+                players
+            });
+        }
+    });
+
+    return resultado;
+});
 
         const data = {
             tables: tablesData,
