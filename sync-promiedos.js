@@ -1,1017 +1,1138 @@
+// ==========================================
+// SYNC PROMIEDOS -> REDIS
+// ==========================================
 
-import puppeteer from 'puppeteer';
-import Redis from 'ioredis';
-import dotenv from 'dotenv';
+const puppeteer = require("puppeteer");
+const Redis = require("ioredis");
+const dotenv = require("dotenv");
 
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: ".env.local" });
 
 const redis = new Redis(process.env.REDIS_URL);
 
-
-// ==========================================================
+// ==========================================
 // CONFIGURACIÓN
-// ==========================================================
+// ==========================================
 
-const URL_CALENDARIO = 'https://www.promiedos.com.ar/calendario';
+const URLS = {
+    today: "https://www.promiedos.com.ar/",
+    ayer: "https://www.promiedos.com.ar/ayer",
+    manana: "https://www.promiedos.com.ar/man"
+};
 
+const REDIS_KEYS = {
+    today: "chiquifutbol_matches_v2",
+    ayer: "chiquifutbol_matches_ayer",
+    manana: "chiquifutbol_matches_manana"
+};
 
-// ==========================================================
-// FECHAS
-// ==========================================================
+// ==========================================
+// USER AGENT
+// ==========================================
 
-function obtenerFechaArgentina(offsetDias = 0) {
-    const ahora = new Date();
+const USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+    "AppleWebKit/537.36 (KHTML, like Gecko) " +
+    "Chrome/120.0.0.0 Safari/537.36";
 
-    const fechaArgentina = new Date(
-        ahora.toLocaleString('en-US', {
-            timeZone: 'America/Argentina/Buenos_Aires'
-        })
-    );
+// ==========================================
+// UTILIDADES
+// ==========================================
 
-    fechaArgentina.setDate(fechaArgentina.getDate() + offsetDias);
-
-    const dia = String(fechaArgentina.getDate()).padStart(2, '0');
-    const mes = String(fechaArgentina.getMonth() + 1).padStart(2, '0');
-    const anio = fechaArgentina.getFullYear();
-
-    return {
-        dia,
-        mes,
-        anio,
-        texto: `${dia}/${mes}`,
-        fecha: `${anio}-${mes}-${dia}`
-    };
+function esObjeto(valor) {
+    return valor !== null && typeof valor === "object";
 }
 
+function esJuego(obj) {
+    if (!esObjeto(obj)) return false;
 
-// ==========================================================
-// NORMALIZAR NOMBRES
-// ==========================================================
-
-function limpiarTexto(texto) {
-    return texto
-        .replace(/\s+/g, ' ')
-        .trim();
+    return (
+        Array.isArray(obj.teams) &&
+        obj.teams.length >= 2
+    );
 }
 
-
-// ==========================================================
-// SCRAPEAR CALENDARIO DE PROMIEDOS
-// ==========================================================
-
-async function obtenerPartidosCalendario(page, offsetDias) {
-
-    const fechaObjetivo = obtenerFechaArgentina(offsetDias);
-
-    console.log(
-        `Buscando partidos del ${fechaObjetivo.texto} en el calendario...`
+function tieneGames(obj) {
+    return (
+        esObjeto(obj) &&
+        Array.isArray(obj.games) &&
+        obj.games.some((game) => esJuego(game))
     );
+}
 
-    await page.goto(URL_CALENDARIO, {
-        waitUntil: 'networkidle2',
-        timeout: 60000
-    });
+// ==========================================
+// BUSCAR ARRAYS DE JUEGOS RECURSIVAMENTE
+// ==========================================
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+function buscarArraysDeJuegos(obj, resultados = [], ruta = "") {
 
-    const partidos = await page.evaluate((fechaBuscada) => {
+    if (!esObjeto(obj)) {
+        return resultados;
+    }
 
-        function limpiar(texto) {
-            return (texto || '')
-                .replace(/\s+/g, ' ')
-                .trim();
-        }
+    if (Array.isArray(obj)) {
 
-        function esPartido(texto) {
-            if (!texto) return false;
-
-            return (
-                /\d{1,2}:\d{2}/.test(texto) &&
-                /\bVS\b/i.test(texto)
-            );
-        }
-
-        function extraerPartido(texto) {
-
-            texto = limpiar(texto);
-
-            const match = texto.match(
-                /^(\d{1,2}:\d{2})\s+(.+?)\s+VS\s+(.+)$/i
-            );
-
-            if (!match) return null;
-
-            return {
-                time: match[1],
-                homeTeam: limpiar(match[2]),
-                awayTeam: limpiar(match[3])
-            };
-        }
-
-        const resultado = [];
-
-        // --------------------------------------------------
-        // Buscamos todos los enlaces de partidos
-        // --------------------------------------------------
-
-        const enlaces = Array.from(
-            document.querySelectorAll('a[href*="/game/"]')
-        );
-
-        for (const enlace of enlaces) {
-
-            const texto = limpiar(enlace.innerText);
-
-            if (!esPartido(texto)) {
-                continue;
-            }
-
-            const partido = extraerPartido(texto);
-
-            if (!partido) {
-                continue;
-            }
-
-            // --------------------------------------------------
-            // Intentar detectar la competencia
-            // --------------------------------------------------
-
-            let competencia = '';
-
-            let elemento = enlace;
-
-            for (let nivel = 0; nivel < 6 && elemento; nivel++) {
-
-                const padre = elemento.parentElement;
-
-                if (!padre) break;
-
-                const hijos = Array.from(padre.children);
-                const indice = hijos.indexOf(elemento);
-
-                // Buscar elementos anteriores al partido
-                for (let i = indice - 1; i >= 0; i--) {
-
-                    const anterior = hijos[i];
-
-                    const textoAnterior = limpiar(
-                        anterior.innerText
-                    );
-
-                    if (!textoAnterior) continue;
-
-                    // Evitar textos enormes
-                    if (textoAnterior.length > 80) continue;
-
-                    // Evitar otros partidos
-                    if (esPartido(textoAnterior)) continue;
-
-                    // Evitar fechas
-                    if (/^\d{1,2}\/\d{1,2}$/.test(textoAnterior)) {
-                        continue;
-                    }
-
-                    // Evitar información personal
-                    if (
-                        textoAnterior.toLowerCase().includes('cumple') ||
-                        textoAnterior.toLowerCase().includes('aniversario')
-                    ) {
-                        continue;
-                    }
-
-                    competencia = textoAnterior;
-                    break;
-                }
-
-                if (competencia) break;
-
-                elemento = padre;
-            }
-
-            // --------------------------------------------------
-            // Si no encontramos competencia, buscar en ancestros
-            // --------------------------------------------------
-
-            if (!competencia) {
-
-                let padre = enlace.parentElement;
-
-                while (padre) {
-
-                    const candidatos = Array.from(
-                        padre.querySelectorAll(
-                            'h1,h2,h3,h4,h5,h6,strong,b'
-                        )
-                    );
-
-                    for (const candidato of candidatos) {
-
-                        const texto = limpiar(
-                            candidato.innerText
-                        );
-
-                        if (!texto) continue;
-
-                        if (texto.length > 60) continue;
-
-                        if (esPartido(texto)) continue;
-
-                        if (
-                            texto.toLowerCase().includes('cumple') ||
-                            texto.toLowerCase().includes('aniversario')
-                        ) {
-                            continue;
-                        }
-
-                        competencia = texto;
-                        break;
-                    }
-
-                    if (competencia) break;
-
-                    padre = padre.parentElement;
-
-                    if (padre === document.body) break;
-                }
-            }
-
-            if (!competencia) {
-                competencia = 'Otros';
-            }
-
-            resultado.push({
-                ...partido,
-                league: competencia,
-                date: fechaBuscada
+        if (
+            obj.length > 0 &&
+            obj.some((item) => esJuego(item))
+        ) {
+            resultados.push({
+                ruta,
+                games: obj.filter((item) => esJuego(item))
             });
         }
 
-        return resultado;
-
-    }, fechaObjetivo.texto);
-
-
-    // ------------------------------------------------------
-    // Eliminar duplicados
-    // ------------------------------------------------------
-
-    const unicos = [];
-
-    const vistos = new Set();
-
-    for (const partido of partidos) {
-
-        const clave =
-            `${partido.date}|${partido.time}|${partido.homeTeam}|${partido.awayTeam}`;
-
-        if (vistos.has(clave)) {
-            continue;
+        for (let i = 0; i < obj.length; i++) {
+            buscarArraysDeJuegos(
+                obj[i],
+                resultados,
+                `${ruta}[${i}]`
+            );
         }
 
-        vistos.add(clave);
-        unicos.push(partido);
+        return resultados;
     }
 
+    for (const key of Object.keys(obj)) {
 
-    // ------------------------------------------------------
-    // Agrupar por liga
-    // ------------------------------------------------------
+        const valor = obj[key];
 
-    const ligasMap = {};
-
-    for (const partido of unicos) {
-
-        const nombreLiga =
-            partido.league || 'Otros';
-
-        if (!ligasMap[nombreLiga]) {
-            ligasMap[nombreLiga] = [];
+        if (
+            Array.isArray(valor) &&
+            valor.length > 0 &&
+            valor.some((item) => esJuego(item))
+        ) {
+            resultados.push({
+                ruta: ruta ? `${ruta}.${key}` : key,
+                games: valor.filter((item) => esJuego(item))
+            });
         }
 
-        ligasMap[nombreLiga].push(partido);
+        if (esObjeto(valor)) {
+            buscarArraysDeJuegos(
+                valor,
+                resultados,
+                ruta ? `${ruta}.${key}` : key
+            );
+        }
     }
 
+    return resultados;
+}
 
-    // ------------------------------------------------------
-    // Convertir al formato que usa ChiquiFútbol
-    // ------------------------------------------------------
+// ==========================================
+// BUSCAR "LEAGUES" DIRECTAMENTE
+// ==========================================
 
-    const leagues = Object.entries(ligasMap).map(
-        ([leagueName, matches]) => {
+function buscarLeagues(obj, resultados = []) {
 
-            return {
-                leagueName,
-                matches: matches.map(partido => ({
-                    league: leagueName,
-                    leagueName,
-                    date: partido.date,
-                    time: partido.time,
-                    homeTeam: partido.homeTeam,
-                    awayTeam: partido.awayTeam,
-                    local: partido.homeTeam,
-                    visiting: partido.awayTeam
-                }))
-            };
+    if (!esObjeto(obj)) {
+        return resultados;
+    }
 
+    if (Array.isArray(obj)) {
+
+        for (const item of obj) {
+            buscarLeagues(item, resultados);
         }
-    );
 
+        return resultados;
+    }
 
-    console.log(
-        `Encontrados ${unicos.length} partidos del ${fechaObjetivo.texto} en ${leagues.length} competencias.`
-    );
+    for (const key of Object.keys(obj)) {
 
+        const valor = obj[key];
+
+        if (
+            key.toLowerCase() === "leagues" &&
+            Array.isArray(valor)
+        ) {
+
+            const leaguesValidas = valor.filter(
+                (league) =>
+                    esObjeto(league) &&
+                    Array.isArray(league.games)
+            );
+
+            if (leaguesValidas.length > 0) {
+                resultados.push(leaguesValidas);
+            }
+        }
+
+        if (esObjeto(valor)) {
+            buscarLeagues(valor, resultados);
+        }
+    }
+
+    return resultados;
+}
+
+// ==========================================
+// NORMALIZAR LEAGUES
+// ==========================================
+
+function normalizarLeagues(leagues) {
+
+    if (!Array.isArray(leagues)) {
+        return null;
+    }
+
+    const resultado = [];
+
+    for (const league of leagues) {
+
+        if (!esObjeto(league)) continue;
+
+        if (!Array.isArray(league.games)) continue;
+
+        const games = league.games.filter(
+            (game) => esJuego(game)
+        );
+
+        if (games.length === 0) continue;
+
+        resultado.push({
+            ...league,
+            games
+        });
+    }
+
+    if (resultado.length === 0) {
+        return null;
+    }
 
     return {
-        date: fechaObjetivo.texto,
+        leagues: resultado
+    };
+}
+
+// ==========================================
+// INTENTAR EXTRAER LEAGUES DE CUALQUIER JSON
+// ==========================================
+
+function extraerLeaguesDesdeJSON(data) {
+
+    // --------------------------------------
+    // CASO 1:
+    // El JSON ya tiene leagues
+    // --------------------------------------
+
+    const encontrados = buscarLeagues(data);
+
+    if (encontrados.length > 0) {
+
+        // Elegimos el bloque con más partidos
+        encontrados.sort((a, b) => {
+
+            const totalA = a.reduce(
+                (total, league) =>
+                    total + (league.games?.length || 0),
+                0
+            );
+
+            const totalB = b.reduce(
+                (total, league) =>
+                    total + (league.games?.length || 0),
+                0
+            );
+
+            return totalB - totalA;
+        });
+
+        const normalizado = normalizarLeagues(
+            encontrados[0]
+        );
+
+        if (normalizado) {
+            return normalizado;
+        }
+    }
+
+    return null;
+}
+
+// ==========================================
+// RECONSTRUIR LEAGUES DESDE LOS JUEGOS
+// ==========================================
+
+function reconstruirLeaguesDesdeJuegos(data) {
+
+    const arrays = buscarArraysDeJuegos(data);
+
+    if (arrays.length === 0) {
+        return null;
+    }
+
+    // Elegimos el array que tenga más partidos
+    arrays.sort(
+        (a, b) => b.games.length - a.games.length
+    );
+
+    const games = arrays[0].games;
+
+    if (!games.length) {
+        return null;
+    }
+
+    const grupos = new Map();
+
+    for (const game of games) {
+
+        let leagueId = null;
+        let leagueName = null;
+        let countryName = null;
+
+        // --------------------------------------
+        // Posibles lugares donde Promiedos puede
+        // tener la información de la competición
+        // --------------------------------------
+
+        if (game.league) {
+
+            if (esObjeto(game.league)) {
+
+                leagueId =
+                    game.league.id ??
+                    game.league.league_id ??
+                    null;
+
+                leagueName =
+                    game.league.name ??
+                    game.league.league_name ??
+                    null;
+
+                countryName =
+                    game.league.country_name ??
+                    game.league.country ??
+                    null;
+
+            } else {
+
+                leagueId = game.league;
+            }
+        }
+
+        if (!leagueId) {
+            leagueId =
+                game.league_id ??
+                game.competition_id ??
+                game.tournament_id ??
+                null;
+        }
+
+        if (!leagueName) {
+            leagueName =
+                game.league_name ??
+                game.competition_name ??
+                game.tournament_name ??
+                null;
+        }
+
+        if (!countryName) {
+            countryName =
+                game.country_name ??
+                game.country ??
+                null;
+        }
+
+        // --------------------------------------
+        // Si no encontramos liga, intentamos usar
+        // competition
+        // --------------------------------------
+
+        if (
+            !leagueId &&
+            game.competition &&
+            esObjeto(game.competition)
+        ) {
+            leagueId =
+                game.competition.id ??
+                null;
+
+            leagueName =
+                game.competition.name ??
+                null;
+        }
+
+        // --------------------------------------
+        // Último recurso:
+        // agrupar por nombre
+        // --------------------------------------
+
+        if (!leagueId && !leagueName) {
+            leagueId = "otros";
+            leagueName = "Partidos";
+        }
+
+        const groupKey =
+            String(
+                leagueId ??
+                leagueName ??
+                "otros"
+            );
+
+        if (!grupos.has(groupKey)) {
+
+            grupos.set(groupKey, {
+                id: leagueId ?? groupKey,
+                name: leagueName ?? "Partidos",
+                country_name: countryName ?? "",
+                games: []
+            });
+        }
+
+        grupos.get(groupKey).games.push(game);
+    }
+
+    const leagues = Array.from(
+        grupos.values()
+    );
+
+    if (!leagues.length) {
+        return null;
+    }
+
+    return {
         leagues
     };
 }
 
+// ==========================================
+// EXTRAER NEXT_DATA
+// ==========================================
 
-// ==========================================================
-// SINCRONIZAR DATOS
-// ==========================================================
-
-async function sincronizarDatos() {
-
-    console.log('');
-    console.log('==========================================');
-    console.log('INICIANDO SINCRONIZACIÓN');
-    console.log('==========================================');
-
-    console.log('Iniciando navegador para consultar Promiedos...');
-
-    const browser = await puppeteer.launch({
-        headless: "new",
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-        ]
-    });
-
-    const page = await browser.newPage();
-
-    await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-        'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-        'Chrome/120.0.0.0 Safari/537.36'
-    );
-
+async function obtenerNextData(page) {
 
     try {
 
-        // ==================================================
-        // 1. PARTIDOS
-        // ==================================================
+        const data = await page.evaluate(() => {
 
-        console.log('');
-        console.log('Sincronizando partidos desde el calendario...');
+            const script =
+                document.getElementById("__NEXT_DATA__");
 
+            if (!script) {
+                return null;
+            }
 
-        // --------------------------------------------------
-        // AYER
-        // --------------------------------------------------
+            try {
+                return JSON.parse(script.textContent);
+            } catch {
+                return null;
+            }
+        });
 
-        const partidosAyer =
-            await obtenerPartidosCalendario(page, -1);
+        return data;
 
-        if (
-            partidosAyer &&
-            partidosAyer.leagues &&
-            partidosAyer.leagues.length > 0
-        ) {
+    } catch (error) {
 
-            await redis.set(
-                'chiquifutbol_matches_ayer',
-                JSON.stringify(partidosAyer)
-            );
-
-            console.log(
-                '¡Partidos de AYER sincronizados en Redis!'
-            );
-
-        } else {
-
-            console.log(
-                'ADVERTENCIA: no se encontraron partidos de AYER.'
-            );
-        }
-
-
-        // --------------------------------------------------
-        // HOY
-        // --------------------------------------------------
-
-        const partidosHoy =
-            await obtenerPartidosCalendario(page, 0);
-
-        if (
-            partidosHoy &&
-            partidosHoy.leagues &&
-            partidosHoy.leagues.length > 0
-        ) {
-
-            await redis.set(
-                'chiquifutbol_matches_v2',
-                JSON.stringify(partidosHoy)
-            );
-
-            console.log(
-                '¡Partidos de HOY sincronizados en Redis!'
-            );
-
-        } else {
-
-            console.log(
-                'ADVERTENCIA: no se encontraron partidos de HOY.'
-            );
-        }
-
-
-        // --------------------------------------------------
-        // MAÑANA
-        // --------------------------------------------------
-
-        const partidosManana =
-            await obtenerPartidosCalendario(page, 1);
-
-        if (
-            partidosManana &&
-            partidosManana.leagues &&
-            partidosManana.leagues.length > 0
-        ) {
-
-            await redis.set(
-                'chiquifutbol_matches_manana',
-                JSON.stringify(partidosManana)
-            );
-
-            console.log(
-                '¡Partidos de MAÑANA sincronizados en Redis!'
-            );
-
-        } else {
-
-            console.log(
-                'ADVERTENCIA: no se encontraron partidos de MAÑANA.'
-            );
-        }
-
-
-        // ==================================================
-        // 2. TABLAS Y ESTADÍSTICAS
-        // ==================================================
-
-        console.log('');
         console.log(
-            'Consultando tablas y estadísticas completas...'
+            "Error leyendo __NEXT_DATA__:",
+            error.message
         );
 
-        await page.goto(
-            'https://www.promiedos.com.ar/league/liga-profesional/hc',
+        return null;
+    }
+}
+
+// ==========================================
+// ESPERAR A QUE PROMIEDOS CARGUE
+// ==========================================
+
+async function esperarCarga(page) {
+
+    try {
+
+        await page.waitForFunction(
+            () => {
+
+                const next =
+                    document.getElementById(
+                        "__NEXT_DATA__"
+                    );
+
+                return !!next;
+
+            },
             {
-                waitUntil: 'networkidle2',
-                timeout: 60000
+                timeout: 15000
             }
         );
 
+    } catch {
+        // No hacemos nada.
+    }
 
-        // ==================================================
-        // TABLAS DE POSICIONES
-        // ==================================================
+    // Esperamos además la hidratación de Next
+    await new Promise((resolve) =>
+        setTimeout(resolve, 5000)
+    );
+}
 
-        const tablesData = await page.evaluate(() => {
+// ==========================================
+// OBTENER PARTIDOS DE UNA PÁGINA
+// ==========================================
 
-            const tableElements =
-                document.querySelectorAll('table');
+async function obtenerPartidosDesdePagina(
+    page,
+    url,
+    nombreFecha
+) {
 
-            const groupedTables = [];
+    console.log(
+        `\n------------------------------------------`
+    );
 
-            tableElements.forEach((table, index) => {
+    console.log(
+        `Buscando partidos de ${nombreFecha}`
+    );
 
-                const rows =
-                    table.querySelectorAll('tr');
+    console.log(
+        `URL: ${url}`
+    );
 
-                if (rows.length < 3) return;
+    console.log(
+        `------------------------------------------`
+    );
 
-                const teams = [];
+    // --------------------------------------
+    // Capturamos respuestas JSON de Promiedos
+    // --------------------------------------
 
-                let title = "";
+    const respuestasJSON = [];
 
-                let el =
-                    table.previousElementSibling;
+    const responseHandler = async (response) => {
 
-                while (el && !title) {
+        try {
 
-                    const text =
-                        el.innerText
-                            ? el.innerText.trim()
-                            : "";
+            const responseUrl =
+                response.url();
 
-                    if (
-                        text.length > 0 &&
-                        text.length < 60
-                    ) {
-                        title = text;
-                    }
+            // Nos interesan especialmente las
+            // respuestas de la API de Promiedos
+            if (
+                responseUrl.includes(
+                    "api.promiedos.com.ar"
+                )
+            ) {
 
-                    el =
-                        el.previousElementSibling;
-                }
-
-                if (!title) {
-                    title = `Tabla ${index + 1}`;
-                }
-
-
-                const headers =
-                    Array.from(
-                        rows[0]?.querySelectorAll(
-                            'th, td'
-                        ) || []
-                    ).map(th =>
-                        th.innerText
-                            .trim()
-                            .toLowerCase()
-                    );
-
-
-                const tableText =
-                    table.innerText.toLowerCase();
-
-
-                const isPromedioTable =
-                    title
-                        .toLowerCase()
-                        .includes('promedio') ||
-
-                    title
-                        .toLowerCase()
-                        .includes('relegation') ||
-
-                    tableText.includes('prom') ||
-
-                    headers.some(h =>
-                        h.includes('prom')
-                    );
-
+                const contentType =
+                    response.headers()["content-type"] ||
+                    "";
 
                 if (
-                    tableText.includes('goles') ||
-                    tableText.includes('asistencia') ||
-                    tableText.includes('amarillas')
+                    !contentType.includes("json")
                 ) {
                     return;
                 }
 
+                const json =
+                    await response.json();
 
-                rows.forEach((row, rIdx) => {
-
-                    if (
-                        rIdx === 0 &&
-                        row.querySelectorAll('th').length > 0
-                    ) {
-                        return;
-                    }
-
-                    const cols =
-                        row.querySelectorAll('td');
-
-                    if (cols.length < 3) return;
-
-
-                    const name =
-                        cols[1]?.innerText?.trim() ||
-                        cols[0]?.innerText?.trim();
-
-
-                    let pointsStr = null;
-
-                    let playedVal = 0;
-
-                    let dgVal = 0;
-
-                    let season24 = 0;
-
-                    let season25 = 0;
-
-                    let season26 = 0;
-
-
-                    if (isPromedioTable) {
-
-                        const rawProm =
-                            cols[2]?.innerText
-                                ?.trim()
-                                .replace(',', '.') || '';
-
-                        const parsedProm =
-                            parseFloat(rawProm);
-
-
-                        const totalPts =
-                            parseInt(
-                                cols[3]?.innerText?.trim() || 0
-                            );
-
-
-                        playedVal =
-                            parseInt(
-                                cols[4]?.innerText?.trim() || 0
-                            );
-
-
-                        season24 =
-                            parseInt(
-                                cols[5]?.innerText?.trim() || 0
-                            );
-
-
-                        season25 =
-                            parseInt(
-                                cols[6]?.innerText?.trim() || 0
-                            );
-
-
-                        season26 =
-                            parseInt(
-                                cols[7]?.innerText?.trim() || 0
-                            );
-
-
-                        dgVal = totalPts;
-
-
-                        if (
-                            !isNaN(parsedProm) &&
-                            parsedProm > 0 &&
-                            parsedProm < 10
-                        ) {
-
-                            pointsStr =
-                                parsedProm.toFixed(3);
-
-                        } else if (playedVal > 0) {
-
-                            pointsStr =
-                                (totalPts / playedVal)
-                                    .toFixed(3);
-
-                        } else {
-
-                            pointsStr = "0.000";
-                        }
-
-
-                    } else {
-
-                        const standardPts =
-                            cols[2]?.innerText
-                                ?.trim()
-                                .replace(',', '.');
-
-
-                        if (
-                            standardPts &&
-                            !isNaN(parseFloat(standardPts))
-                        ) {
-
-                            pointsStr =
-                                standardPts;
-
-                            playedVal =
-                                parseInt(
-                                    cols[3]?.innerText?.trim() || 0
-                                );
-
-                            dgVal =
-                                parseInt(
-                                    cols[4]?.innerText?.trim() || 0
-                                );
-                        }
-                    }
-
-
-                    if (
-                        name &&
-                        name !== "Equipo" &&
-                        name !== "Equipos" &&
-                        pointsStr
-                    ) {
-
-                        const teamObj = {
-
-                            position:
-                                teams.length + 1,
-
-                            name,
-
-                            points:
-                                pointsStr,
-
-                            played:
-                                playedVal,
-
-                            goal_difference:
-                                dgVal
-                        };
-
-
-                        if (isPromedioTable) {
-
-                            teamObj.seasons = [
-                                season24,
-                                season25,
-                                season26
-                            ];
-                        }
-
-
-                        teams.push(teamObj);
-                    }
-
+                respuestasJSON.push({
+                    url: responseUrl,
+                    data: json
                 });
 
-
-                if (teams.length >= 5) {
-
-                    groupedTables.push({
-                        title,
-                        teams
-                    });
-                }
-
-            });
-
-            return groupedTables;
-        });
-
-
-        // ==================================================
-        // ESTADÍSTICAS PERSONALES
-        // ==================================================
-
-        const statsData = await page.evaluate(() => {
-
-            const statBlocks = [];
-
-            const tables =
-                document.querySelectorAll('table');
-
-
-            tables.forEach((table, index) => {
-
-                const rows =
-                    table.querySelectorAll('tr');
-
-
-                if (rows.length < 2) {
-                    return;
-                }
-
-
-                if (rows.length > 15) {
-                    return;
-                }
-
-
-                let titleText = "";
-
-                let prev =
-                    table.previousElementSibling;
-
-
-                while (prev && !titleText) {
-
-                    const t =
-                        prev.innerText
-                            ? prev.innerText.trim()
-                            : "";
-
-
-                    if (
-                        t.length > 1 &&
-                        t.length < 50
-                    ) {
-                        titleText = t;
-                    }
-
-
-                    prev =
-                        prev.previousElementSibling;
-                }
-
-
-                if (!titleText) {
-
-                    const parent =
-                        table.parentElement;
-
-
-                    if (parent) {
-
-                        const candidate =
-                            parent.querySelector(
-                                'div, span, b, h3, h4'
-                            );
-
-
-                        if (candidate) {
-
-                            titleText =
-                                candidate.innerText.trim();
-                        }
-                    }
-                }
-
-
-                if (!titleText) {
-
-                    titleText =
-                        `ESTADÍSTICA ${index}`;
-                }
-
-
-                const players = [];
-
-
-                rows.forEach(row => {
-
-                    const cols =
-                        row.querySelectorAll('td');
-
-
-                    if (cols.length < 2) {
-                        return;
-                    }
-
-
-                    let playerName = "";
-
-
-                    for (
-                        let c = 0;
-                        c < cols.length;
-                        c++
-                    ) {
-
-                        const txt =
-                            cols[c]
-                                ?.innerText
-                                ?.trim() || "";
-
-
-                        if (
-                            txt.length > 2 &&
-                            isNaN(txt) &&
-                            !txt
-                                .toLowerCase()
-                                .includes('jugador') &&
-                            !txt
-                                .toLowerCase()
-                                .includes('equipo')
-                        ) {
-
-                            playerName = txt;
-
-                            break;
-                        }
-                    }
-
-
-                    let statValue = NaN;
-
-
-                    for (
-                        let c = cols.length - 1;
-                        c >= 0;
-                        c--
-                    ) {
-
-                        const valStr =
-                            cols[c]
-                                ?.innerText
-                                ?.trim()
-                                .replace(',', '.');
-
-
-                        const val =
-                            parseFloat(valStr);
-
-
-                        if (
-                            !isNaN(val) &&
-                            valStr !== ''
-                        ) {
-
-                            statValue = val;
-
-                            break;
-                        }
-                    }
-
-
-                    if (
-                        playerName &&
-                        !isNaN(statValue)
-                    ) {
-
-                        players.push({
-                            name: playerName,
-                            value: statValue
-                        });
-                    }
-
-                });
-
-
-                if (players.length > 0) {
-
-                    statBlocks.push({
-
-                        category:
-                            titleText.toUpperCase(),
-
-                        players:
-                            players.slice(0, 10)
-                    });
-                }
-
-            });
-
-
-            return statBlocks;
-        });
-
+                console.log(
+                    "API Promiedos:",
+                    responseUrl
+                );
+            }
+
+        } catch {
+            // Algunas respuestas pueden no ser JSON.
+        }
+    };
+
+    page.on(
+        "response",
+        responseHandler
+    );
+
+    // --------------------------------------
+    // Abrimos la página
+    // --------------------------------------
+
+    await page.goto(
+        url,
+        {
+            waitUntil: "networkidle2",
+            timeout: 60000
+        }
+    );
+
+    await esperarCarga(page);
+
+    // --------------------------------------
+    // 1. Primero probamos __NEXT_DATA__
+    // --------------------------------------
+
+    const nextData =
+        await obtenerNextData(page);
+
+    if (nextData) {
 
         console.log(
-            `Se detectaron ${tablesData.length} tablas de posiciones y ${statsData.length} bloques de estadísticas.`
+            "__NEXT_DATA__ encontrado."
         );
 
+        const resultadoNext =
+            extraerLeaguesDesdeJSON(
+                nextData
+            );
 
         if (
-            tablesData.length > 0 ||
-            statsData.length > 0
+            resultadoNext &&
+            resultadoNext.leagues.length > 0
         ) {
 
-            const payload =
-                JSON.stringify({
-                    tables: tablesData,
-                    stats: statsData
-                });
-
-
-            await redis.set(
-                'chiquifutbol_standings',
-                payload
-            );
-
-
-            await redis.set(
-                'chiquifutbol_standings_1',
-                payload
-            );
-
+            const total =
+                resultadoNext.leagues.reduce(
+                    (total, league) =>
+                        total +
+                        league.games.length,
+                    0
+                );
 
             console.log(
-                '¡Tablas y estadísticas guardadas en Redis con éxito!'
+                `Encontrados ${total} partidos mediante __NEXT_DATA__.`
             );
 
-        } else {
-
-            console.log(
-                'No se pudieron extraer los datos correctamente.'
+            page.off(
+                "response",
+                responseHandler
             );
+
+            return resultadoNext;
         }
 
+        // ----------------------------------
+        // Si no encontramos leagues,
+        // intentamos reconstruirlas
+        // ----------------------------------
+
+        const reconstruido =
+            reconstruirLeaguesDesdeJuegos(
+                nextData
+            );
+
+        if (
+            reconstruido &&
+            reconstruido.leagues.length > 0
+        ) {
+
+            const total =
+                reconstruido.leagues.reduce(
+                    (total, league) =>
+                        total +
+                        league.games.length,
+                    0
+                );
+
+            console.log(
+                `Encontrados ${total} partidos mediante __NEXT_DATA__ reconstruido.`
+            );
+
+            page.off(
+                "response",
+                responseHandler
+            );
+
+            return reconstruido;
+        }
+    }
+
+    // --------------------------------------
+    // 2. Si __NEXT_DATA__ no alcanza,
+    // analizamos las respuestas de API
+    // --------------------------------------
+
+    console.log(
+        `Analizando ${respuestasJSON.length} respuestas JSON de la API...`
+    );
+
+    for (
+        const respuesta of respuestasJSON
+    ) {
+
+        const data =
+            respuesta.data;
+
+        const resultado =
+            extraerLeaguesDesdeJSON(
+                data
+            );
+
+        if (
+            resultado &&
+            resultado.leagues.length > 0
+        ) {
+
+            const total =
+                resultado.leagues.reduce(
+                    (total, league) =>
+                        total +
+                        league.games.length,
+                    0
+                );
+
+            console.log(
+                `Encontrados ${total} partidos desde:`
+            );
+
+            console.log(
+                respuesta.url
+            );
+
+            page.off(
+                "response",
+                responseHandler
+            );
+
+            return resultado;
+        }
+
+        const reconstruido =
+            reconstruirLeaguesDesdeJuegos(
+                data
+            );
+
+        if (
+            reconstruido &&
+            reconstruido.leagues.length > 0
+        ) {
+
+            const total =
+                reconstruido.leagues.reduce(
+                    (total, league) =>
+                        total +
+                        league.games.length,
+                    0
+                );
+
+            console.log(
+                `Reconstruidos ${total} partidos desde:`
+            );
+
+            console.log(
+                respuesta.url
+            );
+
+            page.off(
+                "response",
+                responseHandler
+            );
+
+            return reconstruido;
+        }
+    }
+
+    // --------------------------------------
+    // No encontramos nada
+    // --------------------------------------
+
+    page.off(
+        "response",
+        responseHandler
+    );
+
+    console.log(
+        `NO se encontraron partidos para ${nombreFecha}.`
+    );
+
+    return null;
+}
+
+// ==========================================
+// GUARDAR PARTIDOS
+// ==========================================
+
+async function sincronizarPartidos(
+    page
+) {
+
+    const fechas = [
+        {
+            nombre: "AYER",
+            param: "ayer"
+        },
+        {
+            nombre: "HOY",
+            param: "today"
+        },
+        {
+            nombre: "MAÑANA",
+            param: "manana"
+        }
+    ];
+
+    for (const fecha of fechas) {
+
+        try {
+
+            const data =
+                await obtenerPartidosDesdePagina(
+                    page,
+                    URLS[fecha.param],
+                    fecha.nombre
+                );
+
+            if (
+                !data ||
+                !data.leagues ||
+                !Array.isArray(data.leagues) ||
+                data.leagues.length === 0
+            ) {
+
+                console.log(
+                    `No se actualizará Redis para ${fecha.nombre}.`
+                );
+
+                continue;
+            }
+
+            const totalPartidos =
+                data.leagues.reduce(
+                    (total, league) =>
+                        total +
+                        (
+                            Array.isArray(
+                                league.games
+                            )
+                                ? league.games.length
+                                : 0
+                        ),
+                    0
+                );
+
+            if (totalPartidos === 0) {
+
+                console.log(
+                    `0 partidos encontrados para ${fecha.nombre}. No se modifica Redis.`
+                );
+
+                continue;
+            }
+
+            const redisKey =
+                REDIS_KEYS[fecha.param];
+
+            await redis.set(
+                redisKey,
+                JSON.stringify(data)
+            );
+
+            console.log(
+                `OK ${fecha.nombre}: ${totalPartidos} partidos guardados en ${redisKey}`
+            );
+
+        } catch (error) {
+
+            console.error(
+                `Error sincronizando ${fecha.nombre}:`,
+                error.message
+            );
+        }
+    }
+}
+
+// ==========================================
+// SINCRONIZAR TABLAS Y ESTADÍSTICAS
+// ==========================================
+
+async function sincronizarTablas(
+    page
+) {
+
+    console.log(
+        "\n=========================================="
+    );
+
+    console.log(
+        "SINCRONIZANDO TABLAS Y ESTADÍSTICAS"
+    );
+
+    console.log(
+        "=========================================="
+    );
+
+    try {
+
+        await page.goto(
+            "https://www.promiedos.com.ar/league/liga-profesional/hc",
+            {
+                waitUntil: "networkidle2",
+                timeout: 60000
+            }
+        );
+
+        await new Promise((resolve) =>
+            setTimeout(resolve, 3000)
+        );
+
+        const tablesData =
+            await page.evaluate(() => {
+
+                const tables = [];
+
+                const elementos =
+                    document.querySelectorAll(
+                        "table"
+                    );
+
+                elementos.forEach(
+                    (table) => {
+
+                        const rows =
+                            table.querySelectorAll(
+                                "tr"
+                            );
+
+                        const data = [];
+
+                        rows.forEach(
+                            (row) => {
+
+                                const cells =
+                                    row.querySelectorAll(
+                                        "th, td"
+                                    );
+
+                                const fila =
+                                    Array.from(
+                                        cells
+                                    ).map(
+                                        (cell) =>
+                                            cell.innerText.trim()
+                                    );
+
+                                if (
+                                    fila.length > 0
+                                ) {
+                                    data.push(
+                                        fila
+                                    );
+                                }
+                            }
+                        );
+
+                        if (
+                            data.length > 0
+                        ) {
+                            tables.push(
+                                data
+                            );
+                        }
+                    }
+                );
+
+                return tables;
+            });
+
+        const statsData =
+            await page.evaluate(() => {
+
+                const resultado = [];
+
+                const elementos =
+                    document.querySelectorAll(
+                        "body *"
+                    );
+
+                elementos.forEach(
+                    (element) => {
+
+                        const texto =
+                            element.innerText?.trim();
+
+                        if (!texto) return;
+
+                        if (
+                            texto.includes(
+                                "Goleadores"
+                            ) ||
+                            texto.includes(
+                                "Asistencias"
+                            ) ||
+                            texto.includes(
+                                "Tarjetas"
+                            )
+                        ) {
+
+                            resultado.push(
+                                texto
+                            );
+                        }
+                    }
+                );
+
+                return [
+                    ...new Set(
+                        resultado
+                    )
+                ];
+            });
+
+        const data = {
+            tables: tablesData,
+            stats: statsData
+        };
+
+        // --------------------------------------
+        // Protección contra datos vacíos
+        // --------------------------------------
+
+        if (
+            !data.tables ||
+            data.tables.length === 0
+        ) {
+
+            console.log(
+                "No se encontraron tablas. No se modifica Redis."
+            );
+
+            return;
+        }
+
+        await redis.set(
+            "chiquifutbol_standings",
+            JSON.stringify(data)
+        );
+
+        await redis.set(
+            "chiquifutbol_standings_1",
+            JSON.stringify(data)
+        );
+
+        console.log(
+            "Tablas y estadísticas guardadas correctamente."
+        );
 
     } catch (error) {
 
         console.error(
-            'Error durante el proceso con Puppeteer:',
+            "Error sincronizando tablas:",
+            error.message
+        );
+    }
+}
+
+// ==========================================
+// FUNCIÓN PRINCIPAL
+// ==========================================
+
+let sincronizacionEnCurso = false;
+
+async function sincronizarTodo() {
+
+    if (sincronizacionEnCurso) {
+
+        console.log(
+            "Ya hay una sincronización en curso. Se omite esta ejecución."
+        );
+
+        return;
+    }
+
+    sincronizacionEnCurso = true;
+
+    let browser = null;
+
+    try {
+
+        console.log(
+            "\n\n=========================================="
+        );
+
+        console.log(
+            "INICIANDO SINCRONIZACIÓN PROMIEDOS"
+        );
+
+        console.log(
+            new Date().toLocaleString("es-AR")
+        );
+
+        console.log(
+            "=========================================="
+        );
+
+        browser = await puppeteer.launch({
+            headless: "new",
+
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        });
+
+        const page =
+            await browser.newPage();
+
+        await page.setUserAgent(
+            USER_AGENT
+        );
+
+        await page.setViewport({
+            width: 1366,
+            height: 768
+        });
+
+        // --------------------------------------
+        // PARTIDOS
+        // --------------------------------------
+
+        await sincronizarPartidos(
+            page
+        );
+
+        // --------------------------------------
+        // TABLAS
+        // --------------------------------------
+
+        await sincronizarTablas(
+            page
+        );
+
+        console.log(
+            "\nSincronización terminada."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "\nERROR GENERAL:"
+        );
+
+        console.error(
             error
         );
 
     } finally {
 
-        await browser.close();
+        if (browser) {
 
-        console.log(
-            'Navegador cerrado.'
-        );
+            try {
+                await browser.close();
+            } catch {}
+        }
+
+        sincronizacionEnCurso = false;
     }
 }
 
+// ==========================================
+// EJECUTAR AHORA
+// ==========================================
 
-// ==========================================================
-// EJECUCIÓN
-// ==========================================================
+sincronizarTodo();
 
-sincronizarDatos();
+// ==========================================
+// REPETIR CADA 60 SEGUNDOS
+// ==========================================
 
 setInterval(
-    sincronizarDatos,
-    60000
+    sincronizarTodo,
+    60 * 1000
 );
-
