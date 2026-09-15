@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 
-// Diccionario exacto con las URLs de los equipos que proporcionaste
+// URLs de los equipos de la Liga Profesional
 const URLS_EQUIPOS = {
     "velez sarsfield": "https://www.promiedos.com.ar/team/velez-sarsfield/ihc",
     "defensa y justicia": "https://www.promiedos.com.ar/team/defensa-y-justicia/hcbh",
@@ -49,69 +49,163 @@ const URLS_EQUIPOS = {
 };
 
 export async function GET(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const teamName = searchParams.get("team");
+    try {
+        const { searchParams } = new URL(request.url);
+        const teamName = searchParams.get("team");
 
-    if (!teamName) {
-      return NextResponse.json({ error: "Falta el parámetro 'team'" }, { status: 400 });
-    }
-
-    const cleanTeam = teamName.toLowerCase().trim();
-    const targetUrl = URLS_EQUIPOS[cleanTeam];
-
-    if (!targetUrl) {
-      return NextResponse.json({ error: `No se encontró la URL para el equipo: ${teamName}` }, { status: 404 });
-    }
-
-    const res = await fetch(targetUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      },
-      next: { revalidate: 300 } // Caché por 5 minutos
-    });
-
-    if (!res.ok) {
-      throw new Error("No se pudo conectar con Promiedos para este equipo");
-    }
-
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const matches = [];
-
-    // Recorremos las filas de las tablas del fixture del equipo
-    $("table tr").each((_, el) => {
-      const $el = $(el);
-      const cols = $el.find("td");
-
-      // Validamos que la fila tenga celdas suficientes para extraer los datos ordenados
-      if (cols.length >= 3) {
-        const fecha = $(cols[0]).text().trim();
-        const condicion = $(cols[1]).text().trim(); // Ej: 'L' o 'V'
-        const rival = $(cols[2]).text().trim();
-        const horaOResultado = cols.length > 3 ? $(cols[3]).text().trim() : "";
-
-        // Verificamos que al menos contenga fecha y rival para descartar filas vacías o de cabecera
-        if (fecha && rival) {
-          matches.push({
-            id: Math.random().toString(36).substring(2, 9),
-            fecha,
-            condicion,
-            rival,
-            horaOResultado,
-            rawText: `${fecha} ${condicion} ${rival} ${horaOResultado}`.trim(),
-          });
+        if (!teamName) {
+            return NextResponse.json(
+                { error: "Falta el parámetro 'team'" },
+                { status: 400 }
+            );
         }
-      }
-    });
 
-    return NextResponse.json({
-      matches: matches.slice(0, 10), // Primeros 10 registros
-      nextDateParam: null
-    });
+        const cleanTeam = teamName.toLowerCase().trim();
+        const targetUrl = URLS_EQUIPOS[cleanTeam];
 
-  } catch (error) {
-    console.error("Error en team-fixture API:", error);
-    return NextResponse.json({ error: error.message || "Error interno del servidor" }, { status: 500 });
-  }
+        if (!targetUrl) {
+            return NextResponse.json(
+                {
+                    error: `No se encontró la URL para el equipo: ${teamName}`
+                },
+                { status: 404 }
+            );
+        }
+
+        console.log(`Consultando fixture de ${teamName}`);
+        console.log(`URL: ${targetUrl}`);
+
+        const res = await fetch(targetUrl, {
+            headers: {
+                "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept":
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "es-AR,es;q=0.9,en;q=0.8"
+            },
+
+            // No dejamos que Next.js conserve un fixture viejo demasiado tiempo.
+            cache: "no-store"
+        });
+
+        if (!res.ok) {
+            throw new Error(
+                `Promiedos respondió con estado ${res.status}`
+            );
+        }
+
+        const html = await res.text();
+        const $ = cheerio.load(html);
+
+        const matches = [];
+
+        $("table tr").each((index, element) => {
+            const $row = $(element);
+
+            const cells = $row
+                .find("td")
+                .map((_, cell) => $(cell).text().trim())
+                .get();
+
+            if (cells.length < 3) {
+                return;
+            }
+
+            // Evitamos encabezados.
+            const textoFila = cells.join(" ").toLowerCase();
+
+            if (
+                textoFila.includes("fecha") &&
+                textoFila.includes("rival")
+            ) {
+                return;
+            }
+
+            const fecha = cells[0] || "";
+            const condicion = cells[1] || "";
+            const rival = cells[2] || "";
+
+            let horaOResultado = "";
+
+            if (cells.length >= 4) {
+                horaOResultado = cells[3] || "";
+            }
+
+            if (!fecha || !rival) {
+                return;
+            }
+
+            // Evitamos filas que claramente no son partidos.
+            if (
+                rival.length < 2 ||
+                rival.toLowerCase() === "equipo" ||
+                rival.toLowerCase() === "rival"
+            ) {
+                return;
+            }
+
+            matches.push({
+                id: `${cleanTeam}-${index}-${Date.now()}`,
+                fecha,
+                condicion,
+                rival,
+                horaOResultado,
+                rawText: `${fecha} ${condicion} ${rival} ${horaOResultado}`.trim()
+            });
+        });
+
+        /*
+         * Eliminamos posibles duplicados.
+         */
+        const uniqueMatches = [];
+
+        const seen = new Set();
+
+        for (const match of matches) {
+            const key = [
+                match.fecha,
+                match.condicion,
+                match.rival,
+                match.horaOResultado
+            ]
+                .join("|")
+                .toLowerCase();
+
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueMatches.push(match);
+            }
+        }
+
+        /*
+         * Devolvemos los primeros 20 partidos.
+         *
+         * Esto es independiente de Ayer/Hoy/Mañana.
+         */
+        const finalMatches = uniqueMatches.slice(0, 20);
+
+        console.log(
+            `Se encontraron ${finalMatches.length} partidos para ${teamName}`
+        );
+
+        return NextResponse.json({
+            team: teamName,
+            matches: finalMatches,
+
+            // Lo dejamos preparado para una futura paginación.
+            nextDateParam: null
+        });
+
+    } catch (error) {
+        console.error("Error en team-fixture API:", error);
+
+        return NextResponse.json(
+            {
+                error:
+                    error.message ||
+                    "Error interno del servidor al obtener el fixture"
+            },
+            { status: 500 }
+        );
+    }
 }
