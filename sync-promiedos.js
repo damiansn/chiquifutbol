@@ -64,7 +64,11 @@ function tieneGames(obj) {
 // BUSCAR ARRAYS DE JUEGOS RECURSIVAMENTE
 // ==========================================
 
-function buscarArraysDeJuegos(obj, resultados = [], ruta = "") {
+function buscarArraysDeJuegos(
+    obj,
+    resultados = [],
+    ruta = ""
+) {
 
     if (!esObjeto(obj)) {
         return resultados;
@@ -76,13 +80,17 @@ function buscarArraysDeJuegos(obj, resultados = [], ruta = "") {
             obj.length > 0 &&
             obj.some((item) => esJuego(item))
         ) {
+
             resultados.push({
                 ruta,
-                games: obj.filter((item) => esJuego(item))
+                games: obj.filter(
+                    (item) => esJuego(item)
+                )
             });
         }
 
         for (let i = 0; i < obj.length; i++) {
+
             buscarArraysDeJuegos(
                 obj[i],
                 resultados,
@@ -102,17 +110,26 @@ function buscarArraysDeJuegos(obj, resultados = [], ruta = "") {
             valor.length > 0 &&
             valor.some((item) => esJuego(item))
         ) {
+
             resultados.push({
-                ruta: ruta ? `${ruta}.${key}` : key,
-                games: valor.filter((item) => esJuego(item))
+                ruta: ruta
+                    ? `${ruta}.${key}`
+                    : key,
+
+                games: valor.filter(
+                    (item) => esJuego(item)
+                )
             });
         }
 
         if (esObjeto(valor)) {
+
             buscarArraysDeJuegos(
                 valor,
                 resultados,
-                ruta ? `${ruta}.${key}` : key
+                ruta
+                    ? `${ruta}.${key}`
+                    : key
             );
         }
     }
@@ -124,7 +141,10 @@ function buscarArraysDeJuegos(obj, resultados = [], ruta = "") {
 // BUSCAR "LEAGUES" DIRECTAMENTE
 // ==========================================
 
-function buscarLeagues(obj, resultados = []) {
+function buscarLeagues(
+    obj,
+    resultados = []
+) {
 
     if (!esObjeto(obj)) {
         return resultados;
@@ -133,7 +153,11 @@ function buscarLeagues(obj, resultados = []) {
     if (Array.isArray(obj)) {
 
         for (const item of obj) {
-            buscarLeagues(item, resultados);
+
+            buscarLeagues(
+                item,
+                resultados
+            );
         }
 
         return resultados;
@@ -148,19 +172,29 @@ function buscarLeagues(obj, resultados = []) {
             Array.isArray(valor)
         ) {
 
-            const leaguesValidas = valor.filter(
-                (league) =>
-                    esObjeto(league) &&
-                    Array.isArray(league.games)
-            );
+            const leaguesValidas =
+                valor.filter(
+                    (league) =>
+                        esObjeto(league) &&
+                        Array.isArray(league.games)
+                );
 
-            if (leaguesValidas.length > 0) {
-                resultados.push(leaguesValidas);
+            if (
+                leaguesValidas.length > 0
+            ) {
+
+                resultados.push(
+                    leaguesValidas
+                );
             }
         }
 
         if (esObjeto(valor)) {
-            buscarLeagues(valor, resultados);
+
+            buscarLeagues(
+                valor,
+                resultados
+            );
         }
     }
 
@@ -171,7 +205,9 @@ function buscarLeagues(obj, resultados = []) {
 // NORMALIZAR LEAGUES
 // ==========================================
 
-function normalizarLeagues(leagues) {
+function normalizarLeagues(
+    leagues
+) {
 
     if (!Array.isArray(leagues)) {
         return null;
@@ -181,15 +217,24 @@ function normalizarLeagues(leagues) {
 
     for (const league of leagues) {
 
-        if (!esObjeto(league)) continue;
+        if (!esObjeto(league)) {
+            continue;
+        }
 
-        if (!Array.isArray(league.games)) continue;
+        if (
+            !Array.isArray(league.games)
+        ) {
+            continue;
+        }
 
-        const games = league.games.filter(
-            (game) => esJuego(game)
-        );
+        const games =
+            league.games.filter(
+                (game) => esJuego(game)
+            );
 
-        if (games.length === 0) continue;
+        if (games.length === 0) {
+            continue;
+        }
 
         resultado.push({
             ...league,
@@ -207,41 +252,53 @@ function normalizarLeagues(leagues) {
 }
 
 // ==========================================
-// INTENTAR EXTRAER LEAGUES DE CUALQUIER JSON
+// EXTRAER LEAGUES DESDE JSON
 // ==========================================
 
-function extraerLeaguesDesdeJSON(data) {
+function extraerLeaguesDesdeJSON(
+    data
+) {
 
-    // --------------------------------------
-    // CASO 1:
-    // El JSON ya tiene leagues
-    // --------------------------------------
+    const encontrados =
+        buscarLeagues(data);
 
-    const encontrados = buscarLeagues(data);
+    if (
+        encontrados.length > 0
+    ) {
 
-    if (encontrados.length > 0) {
+        encontrados.sort(
+            (a, b) => {
 
-        // Elegimos el bloque con más partidos
-        encontrados.sort((a, b) => {
+                const totalA =
+                    a.reduce(
+                        (total, league) =>
+                            total +
+                            (
+                                league.games?.length ||
+                                0
+                            ),
+                        0
+                    );
 
-            const totalA = a.reduce(
-                (total, league) =>
-                    total + (league.games?.length || 0),
-                0
-            );
+                const totalB =
+                    b.reduce(
+                        (total, league) =>
+                            total +
+                            (
+                                league.games?.length ||
+                                0
+                            ),
+                        0
+                    );
 
-            const totalB = b.reduce(
-                (total, league) =>
-                    total + (league.games?.length || 0),
-                0
-            );
-
-            return totalB - totalA;
-        });
-
-        const normalizado = normalizarLeagues(
-            encontrados[0]
+                return totalB - totalA;
+            }
         );
+
+        const normalizado =
+            normalizarLeagues(
+                encontrados[0]
+            );
 
         if (normalizado) {
             return normalizado;
@@ -255,26 +312,34 @@ function extraerLeaguesDesdeJSON(data) {
 // RECONSTRUIR LEAGUES DESDE LOS JUEGOS
 // ==========================================
 
-function reconstruirLeaguesDesdeJuegos(data) {
+function reconstruirLeaguesDesdeJuegos(
+    data
+) {
 
-    const arrays = buscarArraysDeJuegos(data);
+    const arrays =
+        buscarArraysDeJuegos(data);
 
-    if (arrays.length === 0) {
+    if (
+        arrays.length === 0
+    ) {
         return null;
     }
 
-    // Elegimos el array que tenga más partidos
     arrays.sort(
-        (a, b) => b.games.length - a.games.length
+        (a, b) =>
+            b.games.length -
+            a.games.length
     );
 
-    const games = arrays[0].games;
+    const games =
+        arrays[0].games;
 
     if (!games.length) {
         return null;
     }
 
-    const grupos = new Map();
+    const grupos =
+        new Map();
 
     for (const game of games) {
 
@@ -282,14 +347,11 @@ function reconstruirLeaguesDesdeJuegos(data) {
         let leagueName = null;
         let countryName = null;
 
-        // --------------------------------------
-        // Posibles lugares donde Promiedos puede
-        // tener la información de la competición
-        // --------------------------------------
-
         if (game.league) {
 
-            if (esObjeto(game.league)) {
+            if (
+                esObjeto(game.league)
+            ) {
 
                 leagueId =
                     game.league.id ??
@@ -308,11 +370,13 @@ function reconstruirLeaguesDesdeJuegos(data) {
 
             } else {
 
-                leagueId = game.league;
+                leagueId =
+                    game.league;
             }
         }
 
         if (!leagueId) {
+
             leagueId =
                 game.league_id ??
                 game.competition_id ??
@@ -321,6 +385,7 @@ function reconstruirLeaguesDesdeJuegos(data) {
         }
 
         if (!leagueName) {
+
             leagueName =
                 game.league_name ??
                 game.competition_name ??
@@ -329,22 +394,19 @@ function reconstruirLeaguesDesdeJuegos(data) {
         }
 
         if (!countryName) {
+
             countryName =
                 game.country_name ??
                 game.country ??
                 null;
         }
 
-        // --------------------------------------
-        // Si no encontramos liga, intentamos usar
-        // competition
-        // --------------------------------------
-
         if (
             !leagueId &&
             game.competition &&
             esObjeto(game.competition)
         ) {
+
             leagueId =
                 game.competition.id ??
                 null;
@@ -354,12 +416,11 @@ function reconstruirLeaguesDesdeJuegos(data) {
                 null;
         }
 
-        // --------------------------------------
-        // Último recurso:
-        // agrupar por nombre
-        // --------------------------------------
+        if (
+            !leagueId &&
+            !leagueName
+        ) {
 
-        if (!leagueId && !leagueName) {
             leagueId = "otros";
             leagueName = "Partidos";
         }
@@ -371,24 +432,44 @@ function reconstruirLeaguesDesdeJuegos(data) {
                 "otros"
             );
 
-        if (!grupos.has(groupKey)) {
+        if (
+            !grupos.has(groupKey)
+        ) {
 
-            grupos.set(groupKey, {
-                id: leagueId ?? groupKey,
-                name: leagueName ?? "Partidos",
-                country_name: countryName ?? "",
-                games: []
-            });
+            grupos.set(
+                groupKey,
+                {
+                    id:
+                        leagueId ??
+                        groupKey,
+
+                    name:
+                        leagueName ??
+                        "Partidos",
+
+                    country_name:
+                        countryName ??
+                        "",
+
+                    games: []
+                }
+            );
         }
 
-        grupos.get(groupKey).games.push(game);
+        grupos
+            .get(groupKey)
+            .games
+            .push(game);
     }
 
-    const leagues = Array.from(
-        grupos.values()
-    );
+    const leagues =
+        Array.from(
+            grupos.values()
+        );
 
-    if (!leagues.length) {
+    if (
+        !leagues.length
+    ) {
         return null;
     }
 
@@ -401,25 +482,35 @@ function reconstruirLeaguesDesdeJuegos(data) {
 // EXTRAER NEXT_DATA
 // ==========================================
 
-async function obtenerNextData(page) {
+async function obtenerNextData(
+    page
+) {
 
     try {
 
-        const data = await page.evaluate(() => {
+        const data =
+            await page.evaluate(() => {
 
-            const script =
-                document.getElementById("__NEXT_DATA__");
+                const script =
+                    document.getElementById(
+                        "__NEXT_DATA__"
+                    );
 
-            if (!script) {
-                return null;
-            }
+                if (!script) {
+                    return null;
+                }
 
-            try {
-                return JSON.parse(script.textContent);
-            } catch {
-                return null;
-            }
-        });
+                try {
+
+                    return JSON.parse(
+                        script.textContent
+                    );
+
+                } catch {
+
+                    return null;
+                }
+            });
 
         return data;
 
@@ -438,7 +529,9 @@ async function obtenerNextData(page) {
 // ESPERAR A QUE PROMIEDOS CARGUE
 // ==========================================
 
-async function esperarCarga(page) {
+async function esperarCarga(
+    page
+) {
 
     try {
 
@@ -451,7 +544,6 @@ async function esperarCarga(page) {
                     );
 
                 return !!next;
-
             },
             {
                 timeout: 15000
@@ -462,9 +554,9 @@ async function esperarCarga(page) {
         // No hacemos nada.
     }
 
-    // Esperamos además la hidratación de Next
-    await new Promise((resolve) =>
-        setTimeout(resolve, 5000)
+    await new Promise(
+        (resolve) =>
+            setTimeout(resolve, 5000)
     );
 }
 
@@ -494,64 +586,59 @@ async function obtenerPartidosDesdePagina(
         `------------------------------------------`
     );
 
-    // --------------------------------------
-    // Capturamos respuestas JSON de Promiedos
-    // --------------------------------------
-
     const respuestasJSON = [];
 
-    const responseHandler = async (response) => {
+    const responseHandler =
+        async (response) => {
 
-        try {
+            try {
 
-            const responseUrl =
-                response.url();
-
-            // Nos interesan especialmente las
-            // respuestas de la API de Promiedos
-            if (
-                responseUrl.includes(
-                    "api.promiedos.com.ar"
-                )
-            ) {
-
-                const contentType =
-                    response.headers()["content-type"] ||
-                    "";
+                const responseUrl =
+                    response.url();
 
                 if (
-                    !contentType.includes("json")
+                    responseUrl.includes(
+                        "api.promiedos.com.ar"
+                    )
                 ) {
-                    return;
+
+                    const contentType =
+                        response
+                            .headers()
+                            ["content-type"] ||
+                        "";
+
+                    if (
+                        !contentType.includes(
+                            "json"
+                        )
+                    ) {
+                        return;
+                    }
+
+                    const json =
+                        await response.json();
+
+                    respuestasJSON.push({
+                        url: responseUrl,
+                        data: json
+                    });
+
+                    console.log(
+                        "API Promiedos:",
+                        responseUrl
+                    );
                 }
 
-                const json =
-                    await response.json();
-
-                respuestasJSON.push({
-                    url: responseUrl,
-                    data: json
-                });
-
-                console.log(
-                    "API Promiedos:",
-                    responseUrl
-                );
+            } catch {
+                // Ignorar respuestas no JSON.
             }
-
-        } catch {
-            // Algunas respuestas pueden no ser JSON.
-        }
-    };
+        };
 
     page.on(
         "response",
         responseHandler
     );
-
-    // --------------------------------------
-    // Abrimos la página
-    // --------------------------------------
 
     await page.goto(
         url,
@@ -562,10 +649,6 @@ async function obtenerPartidosDesdePagina(
     );
 
     await esperarCarga(page);
-
-    // --------------------------------------
-    // 1. Primero probamos __NEXT_DATA__
-    // --------------------------------------
 
     const nextData =
         await obtenerNextData(page);
@@ -606,11 +689,6 @@ async function obtenerPartidosDesdePagina(
             return resultadoNext;
         }
 
-        // ----------------------------------
-        // Si no encontramos leagues,
-        // intentamos reconstruirlas
-        // ----------------------------------
-
         const reconstruido =
             reconstruirLeaguesDesdeJuegos(
                 nextData
@@ -641,11 +719,6 @@ async function obtenerPartidosDesdePagina(
             return reconstruido;
         }
     }
-
-    // --------------------------------------
-    // 2. Si __NEXT_DATA__ no alcanza,
-    // analizamos las respuestas de API
-    // --------------------------------------
 
     console.log(
         `Analizando ${respuestasJSON.length} respuestas JSON de la API...`
@@ -727,10 +800,6 @@ async function obtenerPartidosDesdePagina(
         }
     }
 
-    // --------------------------------------
-    // No encontramos nada
-    // --------------------------------------
-
     page.off(
         "response",
         responseHandler
@@ -766,7 +835,9 @@ async function sincronizarPartidos(
         }
     ];
 
-    for (const fecha of fechas) {
+    for (
+        const fecha of fechas
+    ) {
 
         try {
 
@@ -805,7 +876,9 @@ async function sincronizarPartidos(
                     0
                 );
 
-            if (totalPartidos === 0) {
+            if (
+                totalPartidos === 0
+            ) {
 
                 console.log(
                     `0 partidos encontrados para ${fecha.nombre}. No se modifica Redis.`
@@ -815,7 +888,9 @@ async function sincronizarPartidos(
             }
 
             const redisKey =
-                REDIS_KEYS[fecha.param];
+                REDIS_KEYS[
+                    fecha.param
+                ];
 
             await redis.set(
                 redisKey,
@@ -858,6 +933,10 @@ async function sincronizarTablas(
 
     try {
 
+        // ======================================
+        // ABRIR PÁGINA DE LIGA
+        // ======================================
+
         await page.goto(
             "https://www.promiedos.com.ar/league/liga-profesional/hc",
             {
@@ -866,194 +945,555 @@ async function sincronizarTablas(
             }
         );
 
-        await new Promise((resolve) =>
-            setTimeout(resolve, 3000)
+        await new Promise(
+            (resolve) =>
+                setTimeout(resolve, 5000)
         );
 
-        const tablesData =
-            await page.evaluate(() => {
+        // ======================================
+        // OBTENER __NEXT_DATA__
+        // ======================================
 
-                const tables = [];
+        const nextData =
+            await obtenerNextData(page);
 
-                const elementos =
-                    document.querySelectorAll(
-                        "table"
-                    );
+        // ======================================
+        // DEBUG
+        // ======================================
 
-                elementos.forEach(
-                    (table) => {
+        console.log(
+            "\n========== ESTRUCTURA DE NEXT_DATA =========="
+        );
 
-                        const rows =
-                            table.querySelectorAll(
-                                "tr"
-                            );
+        console.log(
+            JSON.stringify(
+                nextData,
+                null,
+                2
+            ).substring(
+                0,
+                20000
+            )
+        );
 
-                        const data = [];
+        console.log(
+            "========== FIN NEXT_DATA ==========\n"
+        );
 
-                        rows.forEach(
-                            (row) => {
+        // ======================================
+        // COMPROBAR NEXT_DATA
+        // ======================================
 
-                                const cells =
-                                    row.querySelectorAll(
-                                        "th, td"
-                                    );
+        if (!nextData) {
 
-                                const fila =
-                                    Array.from(
-                                        cells
-                                    ).map(
-                                        (cell) =>
-                                            cell.innerText.trim()
-                                    );
+            console.log(
+                "No se encontró __NEXT_DATA__ en la página de Liga."
+            );
 
-                                if (
-                                    fila.length > 0
-                                ) {
-                                    data.push(
-                                        fila
-                                    );
-                                }
-                            }
-                        );
-
-                        if (
-                            data.length > 0
-                        ) {
-                            tables.push(
-                                data
-                            );
-                        }
-                    }
-                );
-
-                return tables;
-            });
-
-        const statsData = await page.evaluate(() => {
-
-    const resultado = [];
-
-    const tablas = Array.from(
-        document.querySelectorAll("table")
-    );
-
-    tablas.forEach((table) => {
-
-        const textoTabla =
-            table.innerText?.trim() || "";
-
-        const textoLower =
-            textoTabla.toLowerCase();
-
-        let category = null;
-
-        // --------------------------------------
-        // Detectar Goleadores
-        // --------------------------------------
-
-        if (
-            textoLower.includes("goleadores") ||
-            textoLower.includes("goles")
-        ) {
-            category = "Goleadores";
-        }
-
-        // --------------------------------------
-        // Detectar Asistidores
-        // --------------------------------------
-
-        if (
-            textoLower.includes("asistencias") ||
-            textoLower.includes("asistidores")
-        ) {
-            category = "Asistidores";
-        }
-
-        // --------------------------------------
-        // Si no es una tabla estadística,
-        // seguimos con la siguiente
-        // --------------------------------------
-
-        if (!category) {
             return;
         }
 
-        const rows =
-            Array.from(
-                table.querySelectorAll("tr")
+        console.log(
+            "__NEXT_DATA__ encontrado para tablas."
+        );
+
+        // ======================================
+        // BUSCAR RECURSIVAMENTE TABLAS
+        // ======================================
+
+        const tablesFromJSON =
+            nextData;
+
+        // ======================================
+        // FUNCIÓN PARA DETERMINAR EQUIPO
+        // ======================================
+
+        function pareceEquipo(
+            obj
+        ) {
+
+            if (!esObjeto(obj)) {
+                return false;
+            }
+
+            const tieneNombre =
+                typeof obj.name === "string" ||
+                typeof obj.team_name === "string" ||
+                typeof obj.nombre === "string";
+
+            const tieneDatosTabla =
+                obj.points !== undefined ||
+                obj.pts !== undefined ||
+                obj.played !== undefined ||
+                obj.pj !== undefined ||
+                obj.goal_difference !== undefined ||
+                obj.dg !== undefined ||
+                obj.position !== undefined;
+
+            return (
+                tieneNombre &&
+                tieneDatosTabla
+            );
+        }
+
+        // ======================================
+        // BUSCAR ARRAYS DE EQUIPOS
+        // ======================================
+
+        function buscarTablasRecursivamente(
+            obj,
+            resultado = [],
+            ruta = ""
+        ) {
+
+            if (!esObjeto(obj)) {
+                return resultado;
+            }
+
+            if (Array.isArray(obj)) {
+
+                const equipos =
+                    obj.filter(
+                        (item) =>
+                            pareceEquipo(item)
+                    );
+
+                if (
+                    equipos.length >= 4
+                ) {
+
+                    resultado.push({
+                        ruta,
+                        teams: equipos
+                    });
+                }
+
+                for (
+                    let i = 0;
+                    i < obj.length;
+                    i++
+                ) {
+
+                    buscarTablasRecursivamente(
+                        obj[i],
+                        resultado,
+                        `${ruta}[${i}]`
+                    );
+                }
+
+                return resultado;
+            }
+
+            for (
+                const key of Object.keys(obj)
+            ) {
+
+                const valor =
+                    obj[key];
+
+                if (
+                    Array.isArray(valor)
+                ) {
+
+                    const equipos =
+                        valor.filter(
+                            (item) =>
+                                pareceEquipo(item)
+                        );
+
+                    if (
+                        equipos.length >= 4
+                    ) {
+
+                        resultado.push({
+                            ruta:
+                                ruta
+                                    ? `${ruta}.${key}`
+                                    : key,
+
+                            teams:
+                                equipos
+                        });
+                    }
+                }
+
+                if (
+                    esObjeto(valor)
+                ) {
+
+                    buscarTablasRecursivamente(
+                        valor,
+                        resultado,
+                        ruta
+                            ? `${ruta}.${key}`
+                            : key
+                    );
+                }
+            }
+
+            return resultado;
+        }
+
+        const tablasEncontradas =
+            buscarTablasRecursivamente(
+                tablesFromJSON
             );
 
-        const players = [];
+        console.log(
+            `Posibles tablas encontradas: ${tablasEncontradas.length}`
+        );
 
-        rows.forEach((row) => {
+        // ======================================
+        // MOSTRAR TABLAS EN CONSOLA
+        // ======================================
 
-            const cells =
-                Array.from(
-                    row.querySelectorAll(
-                        "th, td"
-                    )
-                )
-                .map(
-                    (cell) =>
-                        cell.innerText.trim()
-                )
-                .filter(Boolean);
+        tablasEncontradas.forEach(
+            (tabla, index) => {
 
-            if (cells.length < 2) {
-                return;
+                console.log(
+                    `\nTABLA ${index + 1}`
+                );
+
+                console.log(
+                    "Ruta:",
+                    tabla.ruta
+                );
+
+                console.log(
+                    "Equipos:",
+                    tabla.teams.length
+                );
+
+                console.log(
+                    tabla.teams
+                        .slice(0, 3)
+                        .map(
+                            (team) => ({
+                                name:
+                                    team.name ??
+                                    team.team_name ??
+                                    team.nombre,
+
+                                position:
+                                    team.position ??
+                                    team.pos,
+
+                                points:
+                                    team.points ??
+                                    team.pts,
+
+                                played:
+                                    team.played ??
+                                    team.pj,
+
+                                dg:
+                                    team.goal_difference ??
+                                    team.dg
+                            })
+                        )
+                );
             }
+        );
 
-            // Evitamos encabezados
-            const primera =
-                cells[0].toLowerCase();
+        // ======================================
+        // ELIMINAR DUPLICADOS
+        // ======================================
+
+        const tablasUnicas = [];
+
+        const firmas =
+            new Set();
+
+        for (
+            const tabla of tablasEncontradas
+        ) {
+
+            const firma =
+                tabla.teams
+                    .map(
+                        (team) =>
+                            String(
+                                team.id ??
+                                team.team_id ??
+                                team.name ??
+                                team.team_name
+                            )
+                    )
+                    .join("|");
 
             if (
-                primera.includes("jugador") ||
-                primera.includes("nombre") ||
-                primera.includes("player")
+                !firmas.has(firma)
             ) {
-                return;
+
+                firmas.add(firma);
+
+                tablasUnicas.push(
+                    tabla
+                );
             }
-
-            // Normalmente:
-            // columna 1 = jugador
-            // última columna = cantidad
-
-            const name = cells[0];
-
-            const value =
-                cells[cells.length - 1];
-
-            if (!name || !value) {
-                return;
-            }
-
-            players.push({
-                name,
-                value
-            });
-        });
-
-        if (players.length > 0) {
-
-            resultado.push({
-                category,
-                players
-            });
         }
-    });
 
-    return resultado;
-});
+        console.log(
+            `Tablas únicas: ${tablasUnicas.length}`
+        );
+
+        // ======================================
+        // CONVERTIR TABLAS
+        // ======================================
+
+        const tablesData =
+            tablasUnicas.map(
+                (tabla, index) => {
+
+                    const teams =
+                        tabla.teams.map(
+                            (
+                                team,
+                                teamIndex
+                            ) => {
+
+                                return {
+
+                                    id:
+                                        team.id ??
+                                        team.team_id ??
+                                        teamIndex,
+
+                                    name:
+                                        team.name ??
+                                        team.team_name ??
+                                        team.nombre ??
+                                        "Equipo",
+
+                                    position:
+                                        team.position ??
+                                        team.pos ??
+                                        teamIndex + 1,
+
+                                    points:
+                                        team.points ??
+                                        team.pts ??
+                                        0,
+
+                                    played:
+                                        team.played ??
+                                        team.pj ??
+                                        0,
+
+                                    goal_difference:
+                                        team.goal_difference ??
+                                        team.dg ??
+                                        0,
+
+                                    seasons:
+                                        team.seasons ??
+                                        []
+                                };
+                            }
+                        );
+
+                    return {
+
+                        title:
+                            `Tabla ${index + 1}`,
+
+                        teams
+                    };
+                }
+            );
+
+        // ======================================
+        // ESTADÍSTICAS PERSONALES
+        // ======================================
+
+        const statsData =
+            await page.evaluate(
+                () => {
+
+                    const resultado = [];
+
+                    const tablas =
+                        Array.from(
+                            document.querySelectorAll(
+                                "table"
+                            )
+                        );
+
+                    tablas.forEach(
+                        (table) => {
+
+                            const textoTabla =
+                                table.innerText
+                                    ?.trim() ||
+                                "";
+
+                            const textoLower =
+                                textoTabla
+                                    .toLowerCase();
+
+                            let category =
+                                null;
+
+                            if (
+                                textoLower.includes(
+                                    "goleadores"
+                                ) ||
+                                textoLower.includes(
+                                    "goles"
+                                )
+                            ) {
+
+                                category =
+                                    "Goleadores";
+                            }
+
+                            if (
+                                textoLower.includes(
+                                    "asistencias"
+                                ) ||
+                                textoLower.includes(
+                                    "asistidores"
+                                )
+                            ) {
+
+                                category =
+                                    "Asistidores";
+                            }
+
+                            if (!category) {
+                                return;
+                            }
+
+                            const rows =
+                                Array.from(
+                                    table.querySelectorAll(
+                                        "tr"
+                                    )
+                                );
+
+                            const players = [];
+
+                            rows.forEach(
+                                (row) => {
+
+                                    const cells =
+                                        Array.from(
+                                            row.querySelectorAll(
+                                                "th, td"
+                                            )
+                                        )
+                                        .map(
+                                            (cell) =>
+                                                cell.innerText.trim()
+                                        )
+                                        .filter(
+                                            Boolean
+                                        );
+
+                                    if (
+                                        cells.length < 2
+                                    ) {
+                                        return;
+                                    }
+
+                                    const primera =
+                                        cells[0]
+                                            .toLowerCase();
+
+                                    if (
+                                        primera.includes(
+                                            "jugador"
+                                        ) ||
+                                        primera.includes(
+                                            "nombre"
+                                        ) ||
+                                        primera.includes(
+                                            "player"
+                                        )
+                                    ) {
+                                        return;
+                                    }
+
+                                    const name =
+                                        cells[0];
+
+                                    const value =
+                                        cells[
+                                            cells.length - 1
+                                        ];
+
+                                    if (
+                                        !name ||
+                                        !value
+                                    ) {
+                                        return;
+                                    }
+
+                                    players.push({
+                                        name,
+                                        value
+                                    });
+                                }
+                            );
+
+                            if (
+                                players.length > 0
+                            ) {
+
+                                resultado.push({
+                                    category,
+                                    players
+                                });
+                            }
+                        }
+                    );
+
+                    return resultado;
+                }
+            );
+
+        // ======================================
+        // GUARDAR TODO
+        // ======================================
 
         const data = {
-            tables: tablesData,
-            stats: statsData
+
+            tables:
+                tablesData,
+
+            stats:
+                statsData
         };
 
-        // --------------------------------------
-        // Protección contra datos vacíos
-        // --------------------------------------
+        // ======================================
+        // RESUMEN
+        // ======================================
+
+        console.log(
+            "\n------------------------------------------"
+        );
+
+        console.log(
+            "RESUMEN TABLAS"
+        );
+
+        console.log(
+            "Tablas:",
+            data.tables.length
+        );
+
+        console.log(
+            "Estadísticas:",
+            data.stats.length
+        );
+
+        console.log(
+            "------------------------------------------"
+        );
+
+        // ======================================
+        // PROTECCIÓN
+        // ======================================
 
         if (
             !data.tables ||
@@ -1061,11 +1501,19 @@ async function sincronizarTablas(
         ) {
 
             console.log(
-                "No se encontraron tablas. No se modifica Redis."
+                "NO se encontraron tablas de posiciones."
+            );
+
+            console.log(
+                "No se modifica Redis."
             );
 
             return;
         }
+
+        // ======================================
+        // GUARDAR REDIS
+        // ======================================
 
         await redis.set(
             "chiquifutbol_standings",
@@ -1098,7 +1546,9 @@ let sincronizacionEnCurso = false;
 
 async function sincronizarTodo() {
 
-    if (sincronizacionEnCurso) {
+    if (
+        sincronizacionEnCurso
+    ) {
 
         console.log(
             "Ya hay una sincronización en curso. Se omite esta ejecución."
@@ -1122,23 +1572,27 @@ async function sincronizarTodo() {
         );
 
         console.log(
-            new Date().toLocaleString("es-AR")
+            new Date().toLocaleString(
+                "es-AR"
+            )
         );
 
         console.log(
             "=========================================="
         );
 
-        browser = await puppeteer.launch({
-            headless: "new",
+        browser =
+            await puppeteer.launch({
 
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu"
-            ]
-        });
+                headless: "new",
+
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu"
+                ]
+            });
 
         const page =
             await browser.newPage();
@@ -1191,7 +1645,8 @@ async function sincronizarTodo() {
             } catch {}
         }
 
-        sincronizacionEnCurso = false;
+        sincronizacionEnCurso =
+            false;
     }
 }
 
