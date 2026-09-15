@@ -30,6 +30,25 @@ setLoading(true);
       json?.players_statistics
     );
 
+    console.log(
+  "=========================================="
+);
+
+console.log(
+  "PRIMER JUGADOR COMPLETO:"
+);
+
+console.log(
+  JSON.stringify(
+    json?.players_statistics?.tables?.[0]?.rows?.[0],
+    null,
+    2
+  )
+);
+
+console.log(
+  "=========================================="
+);
     setData(json);
     setError(null);
   } catch (err) {
