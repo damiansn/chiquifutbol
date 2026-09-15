@@ -505,109 +505,139 @@ async function sincronizarTablas(page) {
   console.log("==========================================");
 
   let tablaData = null;
+  let tablaResponseHandler = null;
 
-  const tablaResponsePromise =
-    new Promise(resolve => {
+  // ==========================================
+  // ESPERAR RESPUESTA DE LA API DE TABLAS
+  // ==========================================
 
-      let resuelta = false;
+  const tablaResponsePromise = new Promise(resolve => {
 
-      const handler = async (response) => {
+    let resuelta = false;
 
-        try {
+    tablaResponseHandler = async (response) => {
 
-          const url = response.url();
+      try {
 
-          if (
-            !url.includes(
-              "/league/tables_and_fixtures/"
-            )
-          ) {
-            return;
-          }
+        const url = response.url();
 
-          console.log("\n>>> RESPUESTA DE TABLAS DETECTADA");
-          console.log("URL:", url);
-          console.log("STATUS:", response.status());
+        if (
+          !url.includes(
+            "/league/tables_and_fixtures/"
+          )
+        ) {
+          return;
+        }
 
-          const contentType =
-            response.headers()["content-type"] || "";
+        console.log("\n>>> RESPUESTA DE TABLAS DETECTADA");
+        console.log("URL:", url);
+        console.log("STATUS:", response.status());
 
-          if (!contentType.includes("json")) {
-            console.log(
-              "La respuesta no parece JSON."
-            );
-            return;
-          }
+        const contentType =
+          response.headers()["content-type"] || "";
 
-          const data = await response.json();
+        if (!contentType.includes("json")) {
+          console.log(
+            "La respuesta no parece JSON."
+          );
+          return;
+        }
+
+        const data = await response.json();
+
+        console.log(
+          "CLAVES:",
+          Object.keys(data || {})
+        );
+
+        // ==========================================
+        // INFORMACIÓN DE DIAGNÓSTICO
+        // ==========================================
+
+        if (
+          data &&
+          data.tables_groups &&
+          Array.isArray(data.tables_groups)
+        ) {
 
           console.log(
-            "CLAVES:",
-            Object.keys(data || {})
+            "TABLES_GROUPS:",
+            data.tables_groups.length
           );
 
-          if (
-            data &&
-            data.tables_groups &&
-            Array.isArray(data.tables_groups)
-          ) {
-
-            console.log(
-              "TABLES_GROUPS:",
-              data.tables_groups.length
-            );
-
-          } else {
-
-            console.log(
-              "TABLES_GROUPS: no es un array o está vacío."
-            );
-
-          }
-
-          if (
-            data &&
-            data.players_statistics &&
-            Array.isArray(data.players_statistics)
-          ) {
-
-            console.log(
-              "PLAYERS_STATISTICS:",
-              data.players_statistics.length
-            );
-
-          }
-
-          if (!resuelta) {
-
-            resuelta = true;
-            resolve(data);
-
-          }
-
-        } catch (error) {
+        } else {
 
           console.log(
-            "Error leyendo respuesta de tablas:",
-            error.message
+            "TABLES_GROUPS: no es un array o está vacío."
           );
 
         }
 
-      };
+        if (
+          data &&
+          data.players_statistics &&
+          Array.isArray(data.players_statistics)
+        ) {
 
-      page.on("response", handler);
+          console.log(
+            "PLAYERS_STATISTICS:",
+            data.players_statistics.length
+          );
 
-      // Guardamos referencia para eliminarla después.
-      tablaResponsePromise.handler = handler;
+        }
 
-    });
+        if (
+          data &&
+          data.games &&
+          Array.isArray(data.games)
+        ) {
 
+          console.log(
+            "GAMES:",
+            data.games.length
+          );
 
-  try {
+        }
+
+        // ==========================================
+        // DEVOLVER DATOS
+        // ==========================================
+
+        if (!resuelta) {
+
+          resuelta = true;
+
+          resolve(data);
+
+        }
+
+      } catch (error) {
+
+        console.log(
+          "Error leyendo respuesta de tablas:",
+          error.message
+        );
+
+      }
+
+    };
 
     // IMPORTANTE:
-    // El listener debe estar activo ANTES del goto.
+    // El listener se registra ANTES de cargar la página.
+
+    page.on(
+      "response",
+      tablaResponseHandler
+    );
+
+  });
+
+
+  // ==========================================
+  // CARGAR PÁGINA DE LIGA PROFESIONAL
+  // ==========================================
+
+  try {
 
     await page.goto(
       URL_TABLAS,
@@ -636,9 +666,15 @@ async function sincronizarTablas(page) {
   // ==========================================
 
   const timeoutPromise =
-    new Promise(resolve =>
-      setTimeout(() => resolve(null), 15000)
-    );
+    new Promise(resolve => {
+
+      setTimeout(
+        () => resolve(null),
+        15000
+      );
+
+    });
+
 
   tablaData =
     await Promise.race([
@@ -648,18 +684,22 @@ async function sincronizarTablas(page) {
 
 
   // ==========================================
-  // LIMPIAR LISTENER
+  // QUITAR LISTENER
   // ==========================================
 
-  if (tablaResponsePromise.handler) {
+  if (tablaResponseHandler) {
 
     page.off(
       "response",
-      tablaResponsePromise.handler
+      tablaResponseHandler
     );
 
   }
 
+
+  // ==========================================
+  // SI NO HAY RESPUESTA
+  // ==========================================
 
   if (!tablaData) {
 
@@ -687,7 +727,9 @@ async function sincronizarTablas(page) {
 
   console.log(
     "league:",
-    tablaData.league ? "OK" : "NO"
+    tablaData.league
+      ? "OK"
+      : "NO"
   );
 
   console.log(
@@ -713,7 +755,7 @@ async function sincronizarTablas(page) {
 
 
   // ==========================================
-  // MOSTRAR PRIMER GRUPO
+  // MOSTRAR PRIMER ELEMENTO
   // ==========================================
 
   if (
@@ -745,7 +787,7 @@ async function sincronizarTablas(page) {
 
 
   // ==========================================
-  // GUARDAR EN REDIS
+  // PREPARAR DATOS PARA REDIS
   // ==========================================
 
   const standingsData = {
@@ -771,11 +813,14 @@ async function sincronizarTablas(page) {
   };
 
 
+  // ==========================================
+  // CONTADORES
+  // ==========================================
+
   const cantidadTablas =
     Array.isArray(standingsData.tables)
       ? standingsData.tables.length
       : 0;
-
 
   const cantidadStats =
     Array.isArray(standingsData.stats)
@@ -783,13 +828,21 @@ async function sincronizarTablas(page) {
       : 0;
 
 
+  // ==========================================
+  // VALIDAR ANTES DE GUARDAR
+  // ==========================================
+
   if (
     cantidadTablas === 0 &&
     cantidadStats === 0
   ) {
 
     console.log(
-      "\nNO SE GUARDAN TABLAS: la respuesta no contiene datos."
+      "\nNO SE GUARDAN TABLAS:"
+    );
+
+    console.log(
+      "La respuesta no contiene datos de tablas ni estadísticas."
     );
 
     return;
@@ -797,11 +850,19 @@ async function sincronizarTablas(page) {
   }
 
 
+  // ==========================================
+  // GUARDAR REDIS
+  // ==========================================
+
   await redis.set(
     REDIS_KEYS.standings,
     JSON.stringify(standingsData)
   );
 
+
+  // ==========================================
+  // RESULTADO
+  // ==========================================
 
   console.log("\n==========================================");
   console.log("TABLAS GUARDADAS EN REDIS");
