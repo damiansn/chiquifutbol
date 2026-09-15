@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 
 // ==========================================
-// URLS DE LOS EQUIPOS
+// URLS DE LOS EQUIPOS DE PRIMERA
 // ==========================================
 
 const URLS_EQUIPOS = {
     "velez sarsfield": "https://www.promiedos.com.ar/team/velez-sarsfield/ihc",
     "defensa y justicia": "https://www.promiedos.com.ar/team/defensa-y-justicia/hcbh",
     "gimnasia mendoza": "https://www.promiedos.com.ar/team/gimnasia-mendoza/bbjbf",
+
     "instituto": "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
     "instituto ac cordoba": "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
 
@@ -79,10 +80,11 @@ const URLS_EQUIPOS = {
 
 
 // ==========================================
-// CONVIERTE DD/MM A YYYY-MM-DD
+// FECHA DD/MM → YYYY-MM-DD
 // ==========================================
 
 function convertirFecha(fechaTexto) {
+
     if (!fechaTexto) return null;
 
     const partes = fechaTexto.trim().split("/");
@@ -111,24 +113,54 @@ function convertirFecha(fechaTexto) {
 
     let fecha = new Date(anio, mes - 1, dia);
 
-    /*
-     * Si la fecha ya pasó, suponemos que corresponde
-     * al próximo año.
-     *
-     * Esto permite manejar correctamente partidos
-     * de enero/febrero cuando estamos a fin de año.
-     */
     const hoy = new Date(
         ahora.getFullYear(),
         ahora.getMonth(),
         ahora.getDate()
     );
 
+    // Para enero/febrero al cambiar de año
     if (fecha < hoy) {
         anio++;
     }
 
     return `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+
+// ==========================================
+// DETECTAR PARTIDOS QUE NO SON DE PRIMERA
+// ==========================================
+
+function esReservaOJoven(texto) {
+
+    const t = texto
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const palabrasExcluidas = [
+        "reserva",
+        "res.",
+        "res ",
+        "res.",
+        "sub 20",
+        "sub-20",
+        "sub20",
+        "sub 19",
+        "sub-19",
+        "sub19",
+        "sub 17",
+        "sub-17",
+        "sub17",
+        "juvenil",
+        "juveniles",
+        "(w)",
+        "femenino",
+        "femenina"
+    ];
+
+    return palabrasExcluidas.some(palabra => t.includes(palabra));
 }
 
 
@@ -145,6 +177,7 @@ export async function GET(request) {
         const teamName = searchParams.get("team");
 
         if (!teamName) {
+
             return NextResponse.json(
                 {
                     error: "Falta el parámetro 'team'"
@@ -153,11 +186,12 @@ export async function GET(request) {
                     status: 400
                 }
             );
+
         }
 
 
         // ==========================================
-        // BUSCAR URL DEL EQUIPO
+        // BUSCAR EQUIPO
         // ==========================================
 
         const cleanTeam = teamName
@@ -165,6 +199,7 @@ export async function GET(request) {
             .trim();
 
         const targetUrl = URLS_EQUIPOS[cleanTeam];
+
 
         if (!targetUrl) {
 
@@ -176,11 +211,12 @@ export async function GET(request) {
                     status: 404
                 }
             );
+
         }
 
 
         console.log("------------------------------------------");
-        console.log(`Consultando fixture: ${teamName}`);
+        console.log(`Fixture de: ${teamName}`);
         console.log(`URL: ${targetUrl}`);
         console.log("------------------------------------------");
 
@@ -192,6 +228,7 @@ export async function GET(request) {
         const res = await fetch(targetUrl, {
 
             headers: {
+
                 "User-Agent":
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 
@@ -219,146 +256,203 @@ export async function GET(request) {
 
         const $ = cheerio.load(html);
 
-
-        // ==========================================
-        // EXTRAER PRÓXIMOS PARTIDOS
-        // ==========================================
-
         const matches = [];
 
 
-        $("table tr").each((index, element) => {
+        // ==========================================
+        // BUSCAR TABLA DE PRÓXIMOS PARTIDOS
+        // ==========================================
 
-            const $row = $(element);
+        $("table").each((tableIndex, tableElement) => {
 
-            const cells = $row
-                .find("td")
-                .map((_, cell) => {
-                    return $(cell)
-                        .text()
-                        .replace(/\s+/g, " ")
-                        .trim();
-                })
-                .get();
-
+            const $table = $(tableElement);
 
             /*
-             * Promiedos actualmente entrega:
+             * Buscamos solamente tablas que tengan
+             * "L/V" o "vs Equipo".
              *
-             * Día | L/V | vs Equipo | Hora
-             *
-             * Ejemplo:
-             *
-             * 19/09 | V | Gimnasia | 14:30
+             * Así evitamos tomar tablas de plantel,
+             * resultados u otras estadísticas.
              */
 
-            if (cells.length < 4) {
-                return;
-            }
-
-
-            const fechaOriginal = cells[0];
-            const condicion = cells[1].toUpperCase();
-            const rival = cells[2];
-            const hora = cells[3];
-
-
-            // ==========================================
-            // VALIDACIONES
-            // ==========================================
-
-            if (!fechaOriginal || !condicion || !rival) {
-                return;
-            }
-
-
-            // Ignorar encabezados
+            const tableText = $table
+                .text()
+                .replace(/\s+/g, " ")
+                .toLowerCase();
 
             if (
-                fechaOriginal.toLowerCase().includes("día") ||
-                fechaOriginal.toLowerCase().includes("fecha") ||
-                rival.toLowerCase().includes("vs equipo") ||
-                rival.toLowerCase() === "equipo"
+                !tableText.includes("l/v") &&
+                !tableText.includes("vs equipo")
             ) {
                 return;
             }
 
 
-            // Solo aceptamos L o V
+            $table.find("tr").each((rowIndex, element) => {
 
-            if (condicion !== "L" && condicion !== "V") {
-                return;
-            }
+                const $row = $(element);
 
+                const cells = $row
+                    .find("td")
+                    .map((_, cell) => {
 
-            // Convertimos fecha DD/MM → YYYY-MM-DD
+                        return $(cell)
+                            .text()
+                            .replace(/\s+/g, " ")
+                            .trim();
 
-            const fecha = convertirFecha(fechaOriginal);
-
-            if (!fecha) {
-                return;
-            }
-
-
-            // ==========================================
-            // DETERMINAR LOCAL Y VISITANTE
-            // ==========================================
-
-            let homeTeam = "";
-            let awayTeam = "";
+                    })
+                    .get();
 
 
-            if (condicion === "L") {
+                /*
+                 * Estructura actual:
+                 *
+                 * Día | L/V | vs Equipo | Hora
+                 */
 
-                // El equipo buscado juega de local
-
-                homeTeam = teamName;
-                awayTeam = rival;
-
-            } else {
-
-                // El equipo buscado juega de visitante
-
-                homeTeam = rival;
-                awayTeam = teamName;
-
-            }
+                if (cells.length < 4) {
+                    return;
+                }
 
 
-            // ==========================================
-            // CREAR PARTIDO
-            // ==========================================
+                const fechaOriginal = cells[0];
+                const condicion = cells[1].toUpperCase();
+                const rival = cells[2];
+                const hora = cells[3];
 
-            matches.push({
 
-                id: `${cleanTeam}-${fecha}-${hora}-${rival}-${index}`,
+                if (
+                    !fechaOriginal ||
+                    !condicion ||
+                    !rival
+                ) {
+                    return;
+                }
 
-                date: fecha,
 
-                time: hora,
+                // ==========================================
+                // DESCARTAR ENCABEZADOS
+                // ==========================================
 
-                league: "Liga Profesional Argentina",
+                const filaCompleta = cells
+                    .join(" ")
+                    .toLowerCase();
 
-                homeTeam: homeTeam,
+                if (
+                    filaCompleta.includes("día") ||
+                    filaCompleta.includes("fecha") ||
+                    filaCompleta.includes("vs equipo")
+                ) {
+                    return;
+                }
 
-                awayTeam: awayTeam,
 
-                // También dejamos estos datos disponibles
-                // por compatibilidad.
+                // ==========================================
+                // SOLO LOCAL / VISITANTE
+                // ==========================================
 
-                local: homeTeam,
+                if (
+                    condicion !== "L" &&
+                    condicion !== "V"
+                ) {
+                    return;
+                }
 
-                visiting: awayTeam,
 
-                rival: rival,
+                // ==========================================
+                // DESCARTAR RESERVA / JUVENILES / FEMENINO
+                // ==========================================
 
-                condicion: condicion,
+                const textoParaFiltrar =
+                    `${teamName} ${rival} ${filaCompleta}`;
 
-                score: null,
 
-                rawText:
-                    `${fechaOriginal} ${condicion} ${rival} ${hora}`
-                        .trim()
+                if (esReservaOJoven(textoParaFiltrar)) {
+
+                    console.log(
+                        `Partido descartado por categoría: ${textoParaFiltrar}`
+                    );
+
+                    return;
+                }
+
+
+                // ==========================================
+                // CONVERTIR FECHA
+                // ==========================================
+
+                const fecha = convertirFecha(
+                    fechaOriginal
+                );
+
+
+                if (!fecha) {
+                    return;
+                }
+
+
+                // ==========================================
+                // LOCAL / VISITANTE
+                // ==========================================
+
+                let homeTeam = "";
+                let awayTeam = "";
+
+
+                if (condicion === "L") {
+
+                    homeTeam = teamName;
+                    awayTeam = rival;
+
+                } else {
+
+                    homeTeam = rival;
+                    awayTeam = teamName;
+
+                }
+
+
+                // ==========================================
+                // GUARDAR PARTIDO
+                // ==========================================
+
+                matches.push({
+
+                    id:
+                        `${cleanTeam}-${fecha}-${hora}-${rival}-${rowIndex}`,
+
+                    date: fecha,
+
+                    time: hora,
+
+                    /*
+                     * El equipo consultado es una URL
+                     * de Primera División.
+                     *
+                     * Por eso no puede ser una URL de Reserva.
+                     */
+
+                    league: "Liga Profesional Argentina",
+
+                    homeTeam: homeTeam,
+
+                    awayTeam: awayTeam,
+
+                    local: homeTeam,
+
+                    visiting: awayTeam,
+
+                    rival: rival,
+
+                    condicion: condicion,
+
+                    score: null,
+
+                    rawText:
+                        `${fechaOriginal} ${condicion} ${rival} ${hora}`
+                });
+
             });
 
         });
@@ -392,7 +486,24 @@ export async function GET(request) {
 
 
         // ==========================================
-        // LIMITAR RESULTADOS
+        // ORDENAR POR FECHA Y HORA
+        // ==========================================
+
+        uniqueMatches.sort((a, b) => {
+
+            const fechaA =
+                new Date(`${a.date}T${a.time || "00:00"}`);
+
+            const fechaB =
+                new Date(`${b.date}T${b.time || "00:00"}`);
+
+            return fechaA - fechaB;
+
+        });
+
+
+        // ==========================================
+        // PRIMEROS 20
         // ==========================================
 
         const finalMatches =
@@ -400,7 +511,7 @@ export async function GET(request) {
 
 
         console.log(
-            `Partidos encontrados para ${teamName}: ${finalMatches.length}`
+            `Partidos válidos encontrados para ${teamName}: ${finalMatches.length}`
         );
 
 
@@ -417,6 +528,7 @@ export async function GET(request) {
             nextDateParam: null
 
         });
+
 
     } catch (error) {
 
