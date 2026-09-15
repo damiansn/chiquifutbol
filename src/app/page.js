@@ -633,7 +633,7 @@ export default function Home() {
         >
           <input
             type="text"
-            placeholder="🔍 Buscar equipo (ej. River, Boca...)"
+            placeholder="🔍 ¿Cúando juega mi equipo?"
             value={
               teamSearchQuery
             }
