@@ -1302,155 +1302,281 @@ async function sincronizarTablas(
                 }
             );
 
-        // ======================================
-        // ESTADÍSTICAS PERSONALES
-        // ======================================
+       // ======================================
+// ESTADÍSTICAS PERSONALES
+// ======================================
 
-        const statsData =
-            await page.evaluate(
-                () => {
+const statsData =
+    await page.evaluate(
+        () => {
 
-                    const resultado = [];
+            const resultado = [];
 
-                    const tablas =
+            const tablas =
+                Array.from(
+                    document.querySelectorAll(
+                        "table"
+                    )
+                );
+
+            tablas.forEach(
+                (table) => {
+
+                    const textoTabla =
+                        table.innerText?.trim() ||
+                        "";
+
+                    const textoLower =
+                        textoTabla.toLowerCase();
+
+                    let category =
+                        null;
+
+                    if (
+                        textoLower.includes(
+                            "goleadores"
+                        ) ||
+                        textoLower.includes(
+                            "goles"
+                        )
+                    ) {
+
+                        category =
+                            "Goleadores";
+                    }
+
+                    if (
+                        textoLower.includes(
+                            "asistencias"
+                        ) ||
+                        textoLower.includes(
+                            "asistidores"
+                        )
+                    ) {
+
+                        category =
+                            "Asistidores";
+                    }
+
+                    if (!category) {
+                        return;
+                    }
+
+                    const rows =
                         Array.from(
-                            document.querySelectorAll(
-                                "table"
+                            table.querySelectorAll(
+                                "tr"
                             )
                         );
 
-                    tablas.forEach(
-                        (table) => {
+                    const players = [];
 
-                            const textoTabla =
-                                table.innerText
-                                    ?.trim() ||
-                                "";
+                    rows.forEach(
+                        (row) => {
 
-                            const textoLower =
-                                textoTabla
-                                    .toLowerCase();
-
-                            let category =
-                                null;
-
-                            if (
-                                textoLower.includes(
-                                    "goleadores"
-                                ) ||
-                                textoLower.includes(
-                                    "goles"
-                                )
-                            ) {
-
-                                category =
-                                    "Goleadores";
-                            }
-
-                            if (
-                                textoLower.includes(
-                                    "asistencias"
-                                ) ||
-                                textoLower.includes(
-                                    "asistidores"
-                                )
-                            ) {
-
-                                category =
-                                    "Asistidores";
-                            }
-
-                            if (!category) {
-                                return;
-                            }
-
-                            const rows =
+                            const cells =
                                 Array.from(
-                                    table.querySelectorAll(
-                                        "tr"
+                                    row.querySelectorAll(
+                                        "th, td"
                                     )
                                 );
 
-                            const players = [];
-
-                            rows.forEach(
-                                (row) => {
-
-                                    const cells =
-                                        Array.from(
-                                            row.querySelectorAll(
-                                                "th, td"
-                                            )
-                                        )
-                                        .map(
-                                            (cell) =>
-                                                cell.innerText.trim()
-                                        )
-                                        .filter(
-                                            Boolean
-                                        );
-
-                                    if (
-                                        cells.length < 2
-                                    ) {
-                                        return;
-                                    }
-
-                                    const primera =
-                                        cells[0]
-                                            .toLowerCase();
-
-                                    if (
-                                        primera.includes(
-                                            "jugador"
-                                        ) ||
-                                        primera.includes(
-                                            "nombre"
-                                        ) ||
-                                        primera.includes(
-                                            "player"
-                                        )
-                                    ) {
-                                        return;
-                                    }
-
-                                    const name =
-                                        cells[0];
-
-                                    const value =
-                                        cells[
-                                            cells.length - 1
-                                        ];
-
-                                    if (
-                                        !name ||
-                                        !value
-                                    ) {
-                                        return;
-                                    }
-
-                                    players.push({
-                                        name,
-                                        value
-                                    });
-                                }
-                            );
+                            const textos =
+                                cells
+                                    .map(
+                                        (cell) =>
+                                            cell.innerText
+                                                .trim()
+                                    )
+                                    .filter(
+                                        Boolean
+                                    );
 
                             if (
-                                players.length > 0
+                                textos.length < 2
+                            ) {
+                                return;
+                            }
+
+                            // ----------------------------------
+                            // IGNORAR ENCABEZADOS
+                            // ----------------------------------
+
+                            const primera =
+                                textos[0]
+                                    .toLowerCase();
+
+                            if (
+                                primera.includes(
+                                    "jugador"
+                                ) ||
+                                primera.includes(
+                                    "nombre"
+                                ) ||
+                                primera.includes(
+                                    "player"
+                                )
                             ) {
 
-                                resultado.push({
-                                    category,
-                                    players
-                                });
+                                return;
                             }
+
+                            // ----------------------------------
+                            // NOMBRE
+                            // ----------------------------------
+
+                            const name =
+                                textos[0];
+
+                            // ----------------------------------
+                            // VALOR
+                            // ----------------------------------
+
+                            const value =
+                                textos[
+                                    textos.length - 1
+                                ];
+
+                            if (
+                                !name ||
+                                !value
+                            ) {
+                                return;
+                            }
+
+                            // ----------------------------------
+                            // BUSCAR EQUIPO
+                            // ----------------------------------
+
+                            let team = "";
+
+                            // 1. Buscar una celda cuyo
+                            //    contenido parezca ser
+                            //    el equipo.
+                            //
+                            //    Normalmente estará entre
+                            //    el nombre y el valor.
+
+                            if (
+                                textos.length >= 3
+                            ) {
+
+                                team =
+                                    textos[1] || "";
+                            }
+
+                            // ----------------------------------
+                            // 2. Buscar enlace del equipo
+                            // ----------------------------------
+
+                            const enlaces =
+                                Array.from(
+                                    row.querySelectorAll(
+                                        "a"
+                                    )
+                                );
+
+                            for (
+                                const enlace of enlaces
+                            ) {
+
+                                const href =
+                                    enlace
+                                        .getAttribute(
+                                            "href"
+                                        ) || "";
+
+                                const texto =
+                                    enlace.innerText
+                                        ?.trim() || "";
+
+                                if (
+                                    texto &&
+                                    href.includes(
+                                        "/team/"
+                                    )
+                                ) {
+
+                                    team =
+                                        texto;
+
+                                    break;
+                                }
+                            }
+
+                            // ----------------------------------
+                            // 3. Buscar atributo title
+                            // ----------------------------------
+
+                            if (!team) {
+
+                                const elementos =
+                                    Array.from(
+                                        row.querySelectorAll(
+                                            "[title]"
+                                        )
+                                    );
+
+                                for (
+                                    const elemento
+                                    of elementos
+                                ) {
+
+                                    const title =
+                                        elemento
+                                            .getAttribute(
+                                                "title"
+                                            )
+                                            ?.trim() || "";
+
+                                    if (
+                                        title &&
+                                        title !== name
+                                    ) {
+
+                                        team =
+                                            title;
+
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // ----------------------------------
+                            // GUARDAR JUGADOR
+                            // ----------------------------------
+
+                            players.push({
+
+                                name,
+
+                                team:
+                                    team || "Sin equipo",
+
+                                value
+
+                            });
                         }
                     );
 
-                    return resultado;
+                    if (
+                        players.length > 0
+                    ) {
+
+                        resultado.push({
+
+                            category,
+
+                            players
+
+                        });
+                    }
                 }
             );
+
+            return resultado;
+        }
+    );
 
         // ======================================
         // GUARDAR TODO
