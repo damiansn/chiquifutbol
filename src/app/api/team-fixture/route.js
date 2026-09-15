@@ -181,8 +181,18 @@ export async function GET(request) {
         const list = searchParams.get("list");
 
 if (list === "true") {
+    const teamsUnicas = [];
+    const urlsVistas = new Set();
+
+    for (const [nombre, url] of Object.entries(URLS_EQUIPOS)) {
+        if (!urlsVistas.has(url)) {
+            urlsVistas.add(url);
+            teamsUnicas.push(nombre);
+        }
+    }
+
     return NextResponse.json({
-        teams: Object.keys(URLS_EQUIPOS).sort((a, b) =>
+        teams: teamsUnicas.sort((a, b) =>
             a.localeCompare(b, "es")
         )
     });
