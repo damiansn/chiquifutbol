@@ -25,7 +25,6 @@ setLoading(true);
     const json = await res.json();
 
     console.log("DATOS DE TABLAS RECIBIDOS:", json);
-
     console.log(
       "DEBUG PLAYERS_STATISTICS:",
       json?.players_statistics
@@ -47,7 +46,7 @@ cargarTablas();
 }, []);
 
 // =========================================================
-// OBTENER VALOR DE UN CAMPO
+// OBTENER VALOR
 // =========================================================
 
 function obtenerValor(valores, clave, defecto = "-") {
@@ -66,13 +65,14 @@ return encontrado?.value ?? defecto;
 }
 
 // =========================================================
-// NORMALIZAR FILAS DE POSICIONES
+// NORMALIZAR POSICIONES
 // =========================================================
 
 function normalizarFilas(rows) {
 if (!Array.isArray(rows)) {
 return [];
 }
+
 
 return rows.map((fila) => {
   const equipo = fila?.entity?.object || {};
@@ -130,12 +130,6 @@ return rows.map((fila) => {
       "Ratio",
       0
     ),
-
-    tendencia: obtenerValor(
-      valores,
-      "{trend}",
-      []
-    ),
   };
 });
 
@@ -143,7 +137,7 @@ return rows.map((fila) => {
 }
 
 // =========================================================
-// EXTRAER LAS TABLAS DE POSICIONES
+// EXTRAER TABLAS DE POSICIONES
 // =========================================================
 
 function obtenerTablas() {
@@ -155,11 +149,6 @@ return [];
 const resultado = [];
 
 if (!Array.isArray(data.tables)) {
-  console.log(
-    "No existe data.tables o no es un array:",
-    data.tables
-  );
-
   return [];
 }
 
@@ -192,20 +181,10 @@ data.tables.forEach((torneo) => {
         grupo.name ||
         "Tabla",
 
-      nombre:
-        `${torneo.name || "Torneo"} - ${
-          grupo.name || "Tabla"
-        }`,
-
       rows,
     });
   });
 });
-
-console.log(
-  "TABLAS NORMALIZADAS:",
-  resultado
-);
 
 return resultado;
 
@@ -213,16 +192,7 @@ return resultado;
 }
 
 // =========================================================
-// EXTRAER ESTADÍSTICAS DE JUGADORES
-//
-// ESTRUCTURA:
-//
-// players_statistics
-// └── tables
-//     ├── Goles
-//     ├── Asistencias
-//     ├── Tarjetas
-//     └── ...
+// ESTADÍSTICAS DE JUGADORES
 // =========================================================
 
 function obtenerEstadisticasJugadores() {
@@ -235,11 +205,6 @@ const tables =
   data.players_statistics.tables;
 
 if (!Array.isArray(tables)) {
-  console.log(
-    "players_statistics.tables no es un array:",
-    tables
-  );
-
   return [];
 }
 
@@ -249,16 +214,6 @@ tables.forEach((tabla, indice) => {
   if (!tabla) {
     return;
   }
-
-  /*
-    Guardamos la tabla completa.
-
-    No asumimos que se llame exactamente
-    "Goles", "Asistencias" o "Tarjetas".
-
-    De esta forma cualquier nueva tabla
-    enviada por Promiedos también aparece.
-  */
 
   const nombre =
     tabla.name ||
@@ -270,7 +225,9 @@ tables.forEach((tabla, indice) => {
 
   if (Array.isArray(tabla.rows)) {
     rows = tabla.rows;
-  } else if (Array.isArray(tabla.table?.rows)) {
+  } else if (
+    Array.isArray(tabla.table?.rows)
+  ) {
     rows = tabla.table.rows;
   } else if (Array.isArray(tabla.data)) {
     rows = tabla.data;
@@ -283,25 +240,109 @@ tables.forEach((tabla, indice) => {
   resultado.push({
     nombre,
     rows,
-    original: tabla,
   });
 });
 
-console.log(
-  "ESTADISTICAS DE JUGADORES NORMALIZADAS:",
-  resultado
-);
-
 return resultado;
+
 
 }
 
 // =========================================================
-// OBTENER NOMBRE DEL JUGADOR
+// BUSCADOR RECURSIVO DE NOMBRE
+//
+// Busca dentro de objetos anidados.
+// Esto nos permite encontrar el equipo aunque
+// Promiedos no lo entregue directamente como
+// entity.team_name.
+// =========================================================
+
+function buscarNombreEnObjeto(
+objeto,
+clavesBuscadas,
+profundidad = 0
+) {
+if (
+objeto === null ||
+objeto === undefined ||
+profundidad > 5
+) {
+return null;
+}
+
+
+if (
+  typeof objeto !== "object"
+) {
+  return null;
+}
+
+for (const clave of clavesBuscadas) {
+  const valor = objeto[clave];
+
+  if (
+    typeof valor === "string" &&
+    valor.trim() !== ""
+  ) {
+    return valor;
+  }
+
+  if (
+    valor &&
+    typeof valor === "object"
+  ) {
+    const encontrado =
+      buscarNombreEnObjeto(
+        valor,
+        ["name", "short_name", "team_name", "club_name"],
+        profundidad + 1
+      );
+
+    if (encontrado) {
+      return encontrado;
+    }
+  }
+}
+
+for (const clave in objeto) {
+  if (!Object.prototype.hasOwnProperty.call(
+    objeto,
+    clave
+  )) {
+    continue;
+  }
+
+  const valor = objeto[clave];
+
+  if (
+    valor &&
+    typeof valor === "object"
+  ) {
+    const encontrado =
+      buscarNombreEnObjeto(
+        valor,
+        clavesBuscadas,
+        profundidad + 1
+      );
+
+    if (encontrado) {
+      return encontrado;
+    }
+  }
+}
+
+return null;
+
+
+}
+
+// =========================================================
+// NOMBRE DEL JUGADOR
 // =========================================================
 
 function obtenerNombreJugador(fila) {
-const entity = fila?.entity?.object || {};
+const entity =
+fila?.entity?.object || {};
 
 
 return (
@@ -318,28 +359,61 @@ return (
 }
 
 // =========================================================
-// OBTENER EQUIPO DEL JUGADOR
+// EQUIPO DEL JUGADOR
 // =========================================================
 
 function obtenerEquipoJugador(fila) {
-const entity = fila?.entity?.object || {};
+/*
+Primero buscamos los campos más habituales.
+*/
 
 
-return (
-  entity.team?.name ||
-  entity.team_name ||
-  entity.club?.name ||
-  fila?.team?.name ||
+const entity =
+  fila?.entity?.object || {};
+
+const directo =
+  entity?.team?.name ||
+  entity?.team?.short_name ||
+  entity?.club?.name ||
+  entity?.club?.short_name ||
+  entity?.team_name ||
+  entity?.club_name ||
   fila?.team_name ||
-  fila?.club?.name ||
-  "-"
-);
+  fila?.club_name ||
+  fila?.team?.name ||
+  fila?.club?.name;
+
+if (
+  directo &&
+  typeof directo === "string"
+) {
+  return directo;
+}
+
+/*
+  Después buscamos recursivamente dentro
+  del objeto completo.
+*/
+
+const encontrado =
+  buscarNombreEnObjeto(
+    fila,
+    [
+      "team",
+      "club",
+      "squad",
+      "team_name",
+      "club_name",
+    ]
+  );
+
+return encontrado || "-";
 
 
 }
 
 // =========================================================
-// OBTENER VALORES DE UNA FILA DE ESTADISTICA
+// VALORES DE ESTADISTICA
 // =========================================================
 
 function obtenerValoresEstadistica(fila) {
@@ -358,7 +432,7 @@ return [];
 }
 
 // =========================================================
-// CONVERTIR VALOR A TEXTO
+// VALOR COMO TEXTO
 // =========================================================
 
 function valorComoTexto(valor) {
@@ -384,15 +458,10 @@ if (typeof valor === "object") {
 
 return String(valor);
 
-
 }
 
 // =========================================================
-// OBTENER TODAS LAS COLUMNAS DE UNA TABLA
-//
-// Busca las claves presentes en "values".
-// Esto permite que cada tabla pueda tener
-// columnas diferentes.
+// COLUMNAS DE ESTADISTICA
 // =========================================================
 
 function obtenerColumnasEstadistica(rows) {
@@ -404,9 +473,8 @@ if (!Array.isArray(rows)) {
 }
 
 rows.forEach((fila) => {
-  const valores = obtenerValoresEstadistica(
-    fila
-  );
+  const valores =
+    obtenerValoresEstadistica(fila);
 
   valores.forEach((valor) => {
     if (!valor) {
@@ -418,11 +486,10 @@ rows.forEach((fila) => {
       valor.name ||
       valor.label;
 
-    if (!key) {
-      return;
-    }
-
-    if (!columnas.includes(key)) {
+    if (
+      key &&
+      !columnas.includes(key)
+    ) {
       columnas.push(key);
     }
   });
@@ -434,7 +501,7 @@ return columnas;
 }
 
 // =========================================================
-// OBTENER VALOR DE ESTADISTICA
+// VALOR DE ESTADISTICA
 // =========================================================
 
 function obtenerValorEstadistica(
@@ -464,7 +531,7 @@ return valorComoTexto(
 }
 
 // =========================================================
-// TITULO AMIGABLE DE UNA COLUMNA
+// TITULO DE COLUMNA
 // =========================================================
 
 function tituloColumna(clave) {
@@ -493,53 +560,10 @@ if (traducciones[clave]) {
 
 return clave
   .replace(/_/g, " ")
-  .replace(/([a-z])([A-Z])/g, "$1 $2");
-
-
-}
-
-// =========================================================
-// CANTIDAD PRINCIPAL DE UNA ESTADISTICA
-//
-// Para mostrar una columna destacada junto
-// al nombre del jugador.
-// =========================================================
-
-function obtenerValorPrincipal(
-fila,
-columnas
-) {
-const preferencias = [
-"Goals",
-"Goal",
-"GoalsTotal",
-"Assists",
-"Assist",
-"YellowCards",
-"RedCards",
-"Cards",
-"Total",
-"Value",
-];
-
-
-for (const clave of preferencias) {
-  if (columnas.includes(clave)) {
-    return obtenerValorEstadistica(
-      fila,
-      clave
-    );
-  }
-}
-
-if (columnas.length > 0) {
-  return obtenerValorEstadistica(
-    fila,
-    columnas[0]
+  .replace(
+    /([a-z])([A-Z])/g,
+    "$1 $2"
   );
-}
-
-return "-";
 
 
 }
@@ -600,7 +624,7 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
 
       </div>
 
-      <div className="bg-[#121821] border border-[#263244] rounded-lg p-6">
+      <div className="bg-[#121821] border border-[#263244] rounded-xl p-6">
 
         <p className="text-red-400">
           {error}
@@ -623,17 +647,17 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
 return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
 
 
-  <div className="max-w-6xl mx-auto">
+  <div className="max-w-7xl mx-auto">
 
-    {/* =====================================================
+    {/* =================================================
         HEADER
-    ===================================================== */}
+    ================================================= */}
 
     <div className="flex items-center justify-between mb-8">
 
       <div>
 
-        <h1 className="text-2xl md:text-3xl font-bold">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
           Posiciones
         </h1>
 
@@ -645,207 +669,221 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
 
       <Link
         href="/"
-        className="text-sm text-[#9ca3af] hover:text-white"
+        className="px-3 py-2 rounded-lg border border-[#263244] text-sm text-[#9ca3af] hover:text-white hover:bg-[#18212c] transition"
       >
         ← Partidos
       </Link>
 
     </div>
 
-    {/* =====================================================
-        TABLAS DE POSICIONES
-    ===================================================== */}
+    {/* =================================================
+        POSICIONES
+    ================================================= */}
 
     {tablas.length > 0 && (
       <section>
 
-        <h2 className="text-xl font-bold mb-4">
-          Tabla de posiciones
-        </h2>
+        <div className="flex items-center gap-3 mb-5">
 
-        <div className="space-y-8">
+          <div className="w-1 h-6 bg-[#22c55e] rounded-full" />
 
-          {tablas.map((tabla, indice) => {
+          <h2 className="text-xl font-bold">
+            Tablas
+          </h2>
 
-            const filas =
-              normalizarFilas(
-                tabla.rows
-              );
+        </div>
 
-            return (
-              <section
-                key={`${tabla.torneo}-${tabla.grupo}-${indice}`}
-                className="bg-[#121821] border border-[#263244] rounded-lg overflow-hidden"
-              >
+        <div className="space-y-6">
 
-                {/* TITULO */}
+          {tablas.map(
+            (tabla, indice) => {
 
-                <div className="px-4 py-3 border-b border-[#263244]">
+              const filas =
+                normalizarFilas(
+                  tabla.rows
+                );
 
-                  <h3 className="font-semibold text-lg">
-                    {tabla.grupo}
-                  </h3>
+              return (
+                <section
+                  key={`${tabla.torneo}-${tabla.grupo}-${indice}`}
+                  className="bg-[#121821] border border-[#263244] rounded-xl overflow-hidden shadow-sm"
+                >
 
-                  <p className="text-xs text-[#8b949e] mt-1">
-                    {tabla.torneo}
-                  </p>
+                  {/* ENCABEZADO */}
 
-                </div>
+                  <div className="px-4 md:px-5 py-4 border-b border-[#263244]">
 
-                {/* TABLA */}
+                    <h3 className="font-semibold text-lg">
+                      {tabla.grupo}
+                    </h3>
 
-                <div className="overflow-x-auto">
+                    <p className="text-xs text-[#8b949e] mt-1">
+                      {tabla.torneo}
+                    </p>
 
-                  <table className="w-full text-sm">
+                  </div>
 
-                    <thead className="bg-[#0d131a] text-[#8b949e]">
+                  {/* TABLA */}
 
-                      <tr>
+                  <div className="overflow-x-auto">
 
-                        <th className="px-3 py-3 text-center w-12">
-                          #
-                        </th>
+                    <table className="w-full text-sm">
 
-                        <th className="px-3 py-3 text-left">
-                          Equipo
-                        </th>
+                      <thead className="bg-[#0d131a]">
 
-                        <th className="px-3 py-3 text-center">
-                          Pts
-                        </th>
+                        <tr>
 
-                        <th className="px-3 py-3 text-center">
-                          PJ
-                        </th>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium w-12">
+                            #
+                          </th>
 
-                        <th className="px-3 py-3 text-center">
-                          G
-                        </th>
+                          <th className="px-3 py-3 text-left text-[#64748b] font-medium">
+                            Equipo
+                          </th>
 
-                        <th className="px-3 py-3 text-center">
-                          E
-                        </th>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium">
+                            Pts
+                          </th>
 
-                        <th className="px-3 py-3 text-center">
-                          P
-                        </th>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium">
+                            PJ
+                          </th>
 
-                        <th className="px-3 py-3 text-center">
-                          GF:GC
-                        </th>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium">
+                            G
+                          </th>
 
-                        <th className="px-3 py-3 text-center">
-                          DG
-                        </th>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium">
+                            E
+                          </th>
 
-                      </tr>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium">
+                            P
+                          </th>
 
-                    </thead>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium">
+                            GF:GC
+                          </th>
 
-                    <tbody>
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium">
+                            DG
+                          </th>
 
-                      {filas.map(
-                        (fila, index) => {
+                        </tr>
 
-                          const diferencia =
-                            Number(
-                              fila.diferencia
-                            );
+                      </thead>
 
-                          return (
-                            <tr
-                              key={`${fila.equipo}-${index}`}
-                              className="border-t border-[#263244] hover:bg-[#18212c]"
-                            >
+                      <tbody>
 
-                              <td className="px-3 py-3 text-center text-[#9ca3af] font-medium">
-                                {fila.posicion}
-                              </td>
+                        {filas.map(
+                          (fila, index) => {
 
-                              <td className="px-3 py-3">
+                            const diferencia =
+                              Number(
+                                fila.diferencia
+                              );
 
-                                <div className="font-medium whitespace-nowrap">
-                                  {fila.equipo}
-                                </div>
-
-                              </td>
-
-                              <td className="px-3 py-3 text-center font-bold">
-                                {fila.puntos}
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-                                {fila.pj}
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-                                {fila.ganados}
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-                                {fila.empatados}
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-                                {fila.perdidos}
-                              </td>
-
-                              <td className="px-3 py-3 text-center">
-                                {fila.goles}
-                              </td>
-
-                              <td
-                                className={`px-3 py-3 text-center ${
-                                  diferencia > 0
-                                    ? "text-green-400"
-                                    : diferencia < 0
-                                    ? "text-red-400"
-                                    : "text-[#9ca3af]"
-                                }`}
+                            return (
+                              <tr
+                                key={`${fila.equipo}-${index}`}
+                                className="border-t border-[#263244] hover:bg-[#18212c] transition"
                               >
-                                {fila.diferencia}
-                              </td>
 
-                            </tr>
-                          );
-                        }
-                      )}
+                                <td className="px-3 py-3 text-center text-[#64748b] font-medium">
+                                  {fila.posicion}
+                                </td>
 
-                    </tbody>
+                                <td className="px-3 py-3">
 
-                  </table>
+                                  <span className="font-medium whitespace-nowrap">
+                                    {fila.equipo}
+                                  </span>
 
-                </div>
+                                </td>
 
-              </section>
-            );
-          })}
+                                <td className="px-3 py-3 text-center font-bold">
+                                  {fila.puntos}
+                                </td>
+
+                                <td className="px-3 py-3 text-center text-[#c9d1d9]">
+                                  {fila.pj}
+                                </td>
+
+                                <td className="px-3 py-3 text-center">
+                                  {fila.ganados}
+                                </td>
+
+                                <td className="px-3 py-3 text-center">
+                                  {fila.empatados}
+                                </td>
+
+                                <td className="px-3 py-3 text-center">
+                                  {fila.perdidos}
+                                </td>
+
+                                <td className="px-3 py-3 text-center">
+                                  {fila.goles}
+                                </td>
+
+                                <td
+                                  className={`px-3 py-3 text-center font-medium ${
+                                    diferencia > 0
+                                      ? "text-green-400"
+                                      : diferencia < 0
+                                      ? "text-red-400"
+                                      : "text-[#9ca3af]"
+                                  }`}
+                                >
+                                  {fila.diferencia}
+                                </td>
+
+                              </tr>
+                            );
+                          }
+                        )}
+
+                      </tbody>
+
+                    </table>
+
+                  </div>
+
+                </section>
+              );
+            }
+          )}
 
         </div>
 
       </section>
     )}
 
-    {/* =====================================================
-        ESTADISTICAS DE JUGADORES
-    ===================================================== */}
+    {/* =================================================
+        ESTADISTICAS
+    ================================================= */}
 
     {estadisticas.length > 0 && (
       <section className="mt-12">
 
-        <div className="mb-5">
+        <div className="flex items-center gap-3 mb-5">
 
-          <h2 className="text-xl font-bold">
-            Estadísticas
-          </h2>
+          <div className="w-1 h-6 bg-[#22c55e] rounded-full" />
 
-          <p className="text-sm text-[#8b949e] mt-1">
-            Estadísticas individuales de los jugadores
-          </p>
+          <div>
+
+            <h2 className="text-xl font-bold">
+              Estadísticas
+            </h2>
+
+            <p className="text-sm text-[#8b949e] mt-1">
+              Estadísticas individuales de los jugadores
+            </p>
+
+          </div>
 
         </div>
 
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
           {estadisticas.map(
             (estadistica, indice) => {
@@ -865,16 +903,20 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
               return (
                 <section
                   key={`${estadistica.nombre}-${indice}`}
-                  className="bg-[#121821] border border-[#263244] rounded-lg overflow-hidden"
+                  className="bg-[#121821] border border-[#263244] rounded-xl overflow-hidden shadow-sm"
                 >
 
                   {/* TITULO */}
 
-                  <div className="px-4 py-3 border-b border-[#263244]">
+                  <div className="px-4 py-4 border-b border-[#263244] flex items-center justify-between">
 
                     <h3 className="font-semibold text-lg">
                       {estadistica.nombre}
                     </h3>
+
+                    <span className="text-xs text-[#64748b]">
+                      {filas.length} jugadores
+                    </span>
 
                   </div>
 
@@ -884,19 +926,19 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
 
                     <table className="w-full text-sm">
 
-                      <thead className="bg-[#0d131a] text-[#8b949e]">
+                      <thead className="bg-[#0d131a]">
 
                         <tr>
 
-                          <th className="px-3 py-3 text-center w-12">
+                          <th className="px-3 py-3 text-center text-[#64748b] font-medium w-10">
                             #
                           </th>
 
-                          <th className="px-3 py-3 text-left">
+                          <th className="px-3 py-3 text-left text-[#64748b] font-medium">
                             Jugador
                           </th>
 
-                          <th className="px-3 py-3 text-left">
+                          <th className="px-3 py-3 text-left text-[#64748b] font-medium">
                             Equipo
                           </th>
 
@@ -904,7 +946,7 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
                             (columna) => (
                               <th
                                 key={columna}
-                                className="px-3 py-3 text-center whitespace-nowrap"
+                                className="px-3 py-3 text-center text-[#64748b] font-medium whitespace-nowrap"
                               >
                                 {tituloColumna(
                                   columna
@@ -935,12 +977,12 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
                             return (
                               <tr
                                 key={`${nombre}-${index}`}
-                                className="border-t border-[#263244] hover:bg-[#18212c]"
+                                className="border-t border-[#263244] hover:bg-[#18212c] transition"
                               >
 
                                 {/* POSICION */}
 
-                                <td className="px-3 py-3 text-center text-[#9ca3af] font-medium">
+                                <td className="px-3 py-3 text-center text-[#64748b] font-medium">
                                   {fila?.num ??
                                     index + 1}
                                 </td>
@@ -949,7 +991,7 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
 
                                 <td className="px-3 py-3">
 
-                                  <div className="font-medium whitespace-nowrap">
+                                  <div className="font-medium text-[#e6edf3] whitespace-nowrap">
                                     {nombre}
                                   </div>
 
@@ -961,20 +1003,30 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
                                   {equipo}
                                 </td>
 
-                                {/* ESTADISTICAS */}
+                                {/* VALORES */}
 
                                 {columnas.map(
-                                  (columna) => (
-                                    <td
-                                      key={columna}
-                                      className="px-3 py-3 text-center whitespace-nowrap"
-                                    >
-                                      {obtenerValorEstadistica(
+                                  (
+                                    columna
+                                  ) => {
+
+                                    const valor =
+                                      obtenerValorEstadistica(
                                         fila,
                                         columna
-                                      )}
-                                    </td>
-                                  )
+                                      );
+
+                                    return (
+                                      <td
+                                        key={
+                                          columna
+                                        }
+                                        className="px-3 py-3 text-center whitespace-nowrap font-semibold"
+                                      >
+                                        {valor}
+                                      </td>
+                                    );
+                                  }
                                 )}
 
                               </tr>
@@ -998,13 +1050,13 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
       </section>
     )}
 
-    {/* =====================================================
-        SIN ESTADISTICAS
-    ===================================================== */}
+    {/* =================================================
+        SIN DATOS
+    ================================================= */}
 
     {tablas.length === 0 &&
       estadisticas.length === 0 && (
-        <div className="bg-[#121821] border border-[#263244] rounded-lg p-6">
+        <div className="bg-[#121821] border border-[#263244] rounded-xl p-6">
 
           <p className="text-[#9ca3af]">
             No hay tablas ni estadísticas disponibles.
@@ -1016,6 +1068,7 @@ return ( <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
   </div>
 
 </main>
+
 
 );
 }
