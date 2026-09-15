@@ -27,6 +27,13 @@ const REDIS_KEYS = {
 };
 
 // ==========================================
+// URL DE TABLAS
+// ==========================================
+
+const URL_TABLAS =
+    "https://www.promiedos.com.ar/league/liga-profesional/hc";
+
+// ==========================================
 // USER AGENT
 // ==========================================
 
@@ -614,12 +621,6 @@ async function obtenerPartidosDesdePagina(
 
     try {
 
-        // ======================================
-        // IMPORTANTE:
-        // NO usamos networkidle2.
-        // Promiedos mantiene conexiones abiertas.
-        // ======================================
-
         await page.goto(
             url,
             {
@@ -635,10 +636,6 @@ async function obtenerPartidosDesdePagina(
             error.message
         );
     }
-
-    // ======================================
-    // ESPERAR A NEXT
-    // ======================================
 
     let nextData = null;
 
@@ -659,10 +656,6 @@ async function obtenerPartidosDesdePagina(
 
     } catch {}
 
-    // ======================================
-    // PEQUEÑA ESPERA PARA LAS RESPUESTAS
-    // ======================================
-
     await new Promise(
         resolve =>
             setTimeout(
@@ -673,10 +666,6 @@ async function obtenerPartidosDesdePagina(
 
     nextData =
         await obtenerNextData(page);
-
-    // ======================================
-    // BUSCAR EN NEXT DATA
-    // ======================================
 
     if (nextData) {
 
@@ -744,10 +733,6 @@ async function obtenerPartidosDesdePagina(
             return reconstruido;
         }
     }
-
-    // ======================================
-    // BUSCAR EN RESPUESTAS API
-    // ======================================
 
     console.log(
         `Analizando ${respuestasJSON.length} respuestas JSON de la API...`
@@ -941,18 +926,23 @@ async function sincronizarPartidos(
 }
 
 // ==========================================
-// TABLAS
+// TABLAS Y ESTADÍSTICAS
 // ==========================================
 //
-// POR AHORA NO CONSULTAMOS:
+// IMPORTANTE:
+//
+// No usamos:
+//
 // /league/tables_and_fixtures/hc
 //
-// Esa URL está devolviendo {}.
+// porque devuelve {}.
 //
-// Dejamos esta función preparada para la próxima
-// etapa, donde vamos a capturar el endpoint real
-// de posiciones.
+// Ahora abrimos directamente la página:
 //
+// /league/liga-profesional/hc
+//
+// y capturamos las APIs que esa página utiliza.
+// ==========================================
 
 async function sincronizarTablas(
     page
@@ -960,19 +950,390 @@ async function sincronizarTablas(
 
     console.log("");
     console.log("==========================================");
-    console.log("TABLAS Y ESTADÍSTICAS");
+    console.log("BUSCANDO TABLAS DE LIGA PROFESIONAL");
     console.log("==========================================");
 
     console.log(
-        "La API genérica de tablas devuelve {}."
+        `URL: ${URL_TABLAS}`
     );
 
-    console.log(
-        "No se modifica Redis de tablas."
+    const respuestasJSON = [];
+
+    const responseHandler =
+        async response => {
+
+            try {
+
+                const responseUrl =
+                    response.url();
+
+                // Solamente nos interesan las APIs
+                // de Promiedos.
+                if (
+                    !responseUrl.includes(
+                        "api.promiedos.com.ar"
+                    )
+                ) {
+                    return;
+                }
+
+                const contentType =
+                    response
+                        .headers()
+                        ["content-type"] ||
+                    "";
+
+                if (
+                    !contentType.includes("json")
+                ) {
+                    return;
+                }
+
+                const status =
+                    response.status();
+
+                let data = null;
+
+                try {
+
+                    data =
+                        await response.json();
+
+                } catch {
+
+                    return;
+                }
+
+                respuestasJSON.push({
+                    url: responseUrl,
+                    status,
+                    data
+                });
+
+                console.log("");
+                console.log(
+                    "------------------------------------------"
+                );
+
+                console.log(
+                    "API DE PROMIEDOS DETECTADA"
+                );
+
+                console.log(
+                    "STATUS:",
+                    status
+                );
+
+                console.log(
+                    "URL:",
+                    responseUrl
+                );
+
+                if (
+                    esObjeto(data)
+                ) {
+
+                    console.log(
+                        "CLAVES:",
+                        Object.keys(data)
+                    );
+
+                } else {
+
+                    console.log(
+                        "TIPO:",
+                        Array.isArray(data)
+                            ? "ARRAY"
+                            : typeof data
+                    );
+                }
+
+                // ======================================
+                // BUSCAR PALABRAS RELACIONADAS
+                // CON TABLAS / ESTADÍSTICAS
+                // ======================================
+
+                let texto = "";
+
+                try {
+
+                    texto =
+                        JSON.stringify(
+                            data
+                        ).toLowerCase();
+
+                } catch {}
+
+                const palabrasClave = [
+                    "table",
+                    "tables",
+                    "standing",
+                    "standings",
+                    "posicion",
+                    "posiciones",
+                    "position",
+                    "pts",
+                    "puntos",
+                    "teams",
+                    "team",
+                    "statistics",
+                    "stats",
+                    "goles",
+                    "goals"
+                ];
+
+                const encontradas =
+                    palabrasClave.filter(
+                        palabra =>
+                            texto.includes(
+                                palabra
+                            )
+                    );
+
+                if (
+                    encontradas.length > 0
+                ) {
+
+                    console.log(
+                        "PALABRAS CLAVE:",
+                        encontradas.join(", ")
+                    );
+
+                    console.log(
+                        "POSIBLE API DE TABLAS."
+                    );
+                }
+
+                // ======================================
+                // MOSTRAR ESTRUCTURA
+                // ======================================
+
+                console.log(
+                    "DATOS:"
+                );
+
+                console.dir(
+                    data,
+                    {
+                        depth: 8
+                    }
+                );
+
+            } catch (error) {
+
+                console.log(
+                    "Error procesando respuesta:",
+                    error.message
+                );
+            }
+        };
+
+    page.on(
+        "response",
+        responseHandler
     );
 
+    try {
+
+        // ======================================
+        // ABRIR PÁGINA REAL DE TABLAS
+        // ======================================
+
+        await page.goto(
+            URL_TABLAS,
+            {
+                waitUntil: "domcontentloaded",
+                timeout: 30000
+            }
+        );
+
+        console.log(
+            "Página de tablas cargada."
+        );
+
+    } catch (error) {
+
+        console.log(
+            "Aviso de navegación de tablas:",
+            error.message
+        );
+    }
+
+    // ======================================
+    // ESPERAR NEXT
+    // ======================================
+
+    try {
+
+        await page.waitForFunction(
+            () => {
+
+                return !!document.getElementById(
+                    "__NEXT_DATA__"
+                );
+
+            },
+            {
+                timeout: 15000
+            }
+        );
+
+        console.log(
+            "__NEXT_DATA__ encontrado en página de tablas."
+        );
+
+    } catch {
+
+        console.log(
+            "No apareció __NEXT_DATA__."
+        );
+    }
+
+    // ======================================
+    // DAR TIEMPO A LAS PETICIONES AJAX
+    // ======================================
+
     console.log(
-        "Los partidos continúan funcionando normalmente."
+        "Esperando respuestas de las APIs..."
+    );
+
+    await new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                8000
+            )
+    );
+
+    // ======================================
+    // ANALIZAR NEXT_DATA
+    // ======================================
+
+    console.log("");
+    console.log("==========================================");
+    console.log("ANALIZANDO __NEXT_DATA__ DE TABLAS");
+    console.log("==========================================");
+
+    const nextData =
+        await obtenerNextData(page);
+
+    if (nextData) {
+
+        console.log(
+            "NEXT DATA encontrado."
+        );
+
+        if (
+            esObjeto(nextData)
+        ) {
+
+            console.log(
+                "CLAVES PRINCIPALES:",
+                Object.keys(nextData)
+            );
+        }
+
+        // Buscamos estructuras que parezcan
+        // tablas/estadísticas.
+
+        const textoNext =
+            JSON.stringify(
+                nextData
+            ).toLowerCase();
+
+        const palabrasNext = [
+            "table",
+            "tables",
+            "standing",
+            "standings",
+            "posicion",
+            "posiciones",
+            "pts",
+            "puntos",
+            "statistics",
+            "stats"
+        ];
+
+        const encontradasNext =
+            palabrasNext.filter(
+                palabra =>
+                    textoNext.includes(
+                        palabra
+                    )
+            );
+
+        console.log(
+            "PALABRAS EN NEXT_DATA:",
+            encontradasNext
+        );
+
+    } else {
+
+        console.log(
+            "No se pudo leer __NEXT_DATA__."
+        );
+    }
+
+    // ======================================
+    // RESUMEN FINAL
+    // ======================================
+
+    console.log("");
+    console.log("==========================================");
+    console.log("RESUMEN DE APIs DE TABLAS");
+    console.log("==========================================");
+
+    console.log(
+        `APIs JSON capturadas: ${respuestasJSON.length}`
+    );
+
+    for (
+        const respuesta of respuestasJSON
+    ) {
+
+        console.log("");
+        console.log(
+            "STATUS:",
+            respuesta.status
+        );
+
+        console.log(
+            "URL:",
+            respuesta.url
+        );
+
+        if (
+            esObjeto(
+                respuesta.data
+            )
+        ) {
+
+            console.log(
+                "CLAVES:",
+                Object.keys(
+                    respuesta.data
+                )
+            );
+        }
+    }
+
+    console.log("");
+    console.log("==========================================");
+    console.log("FIN DE BÚSQUEDA DE API DE TABLAS");
+    console.log("==========================================");
+
+    // ======================================
+    // MUY IMPORTANTE:
+    // TODAVÍA NO MODIFICAMOS REDIS.
+    // ======================================
+
+    console.log(
+        "Redis de tablas NO fue modificado."
+    );
+
+    page.off(
+        "response",
+        responseHandler
     );
 }
 
