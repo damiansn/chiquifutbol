@@ -413,7 +413,7 @@ export default function Home() {
                   }}>
                     {match.league && (
                        <span style={{ fontSize: "0.75rem", color: "#3b82f6", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                          🏆 {match.league}
+                         🏆 {match.league}
                        </span>
                     )}
                     
