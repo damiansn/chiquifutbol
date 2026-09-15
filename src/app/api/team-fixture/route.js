@@ -174,7 +174,28 @@ export async function GET(request) {
 
         const { searchParams } = new URL(request.url);
 
-        const teamName = searchParams.get("team");
+
+    
+
+
+        const list = searchParams.get("list");
+
+if (list === "true") {
+    return NextResponse.json({
+        teams: Object.keys(URLS_EQUIPOS).sort((a, b) =>
+            a.localeCompare(b, "es")
+        )
+    });
+}
+
+const teamName = searchParams.get("team");
+
+if (!teamName) {
+    return NextResponse.json(
+        { error: "Falta el parámetro team" },
+        { status: 400 }
+    );
+}
 
         if (!teamName) {
 
