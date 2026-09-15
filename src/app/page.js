@@ -398,41 +398,63 @@ export default function Home() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem" }}>
               {teamFixtureData.map((match, i) => {
-                const fullDateTimeDisplay = formatFullDateTime(match.date, match.time);
+  const fullDateTimeDisplay = formatFullDateTime(match.date, match.time);
+  
+  // Omitimos filas basura o encabezados que vengan en crudo de la API
+  if (match.rawText && match.rawText.includes("Día L/V")) return null;
 
-                return (
-                  <div key={match.id || `fixture-${i}`} style={{ 
-                    display: "flex", 
-                    flexDirection: "column", 
-                    padding: "10px 12px", 
-                    marginBottom: "8px",
-                    background: "rgba(128,128,128,0.04)", 
-                    border: "1px solid rgba(128,128,128,0.1)",
-                    borderRadius: "6px",
-                    gap: "8px"
-                  }}>
-                    {match.league && (
-                       <span style={{ fontSize: "0.75rem", color: "#3b82f6", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                         🏆 {match.league}
-                       </span>
-                    )}
-                    
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-                      <span style={{ fontWeight: "500", flex: 1, color: "#fff", fontSize: "0.95rem" }}>
-                        {match.rawText}
-                      </span>
-                      
-                      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
-                        {fullDateTimeDisplay && (
-                          <span style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", padding: "4px 10px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "600" }}>
-                            📅 {fullDateTimeDisplay}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+  return (
+    <div key={match.id || `fixture-${i}`} style={{ 
+      display: "flex", 
+      flexDirection: "column", 
+      padding: "10px 14px", 
+      marginBottom: "8px",
+      background: "rgba(128,128,128,0.04)", 
+      border: "1px solid rgba(128,128,128,0.1)",
+      borderRadius: "8px",
+      gap: "6px"
+    }}>
+      {/* Liga y Fecha del partido */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem" }}>
+        <span style={{ color: "#3b82f6", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          🏆 {match.league || selectedTeamFilter?.leagueName || "Torneo"}
+        </span>
+        {fullDateTimeDisplay && (
+          <span style={{ color: "#34d399", fontWeight: "600" }}>
+            📅 {fullDateTimeDisplay}
+          </span>
+        )}
+      </div>
+      
+      {/* Detalle del partido (Equipos y Resultado/Hora) */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", fontWeight: "500", color: "#fff" }}>
+          <span>{match.homeTeam || match.local || "Local"}</span>
+          <span style={{ opacity: 0.4 }}>vs</span>
+          <span>{match.awayTeam || match.visiting || "Visita"}</span>
+        </div>
+
+        {/* Si ya hay resultado o está programado */}
+        <div style={{ fontWeight: "bold", fontSize: "0.95rem" }}>
+          {match.score || match.time ? (
+            <span style={{ 
+              background: match.score ? "rgba(16, 185, 129, 0.15)" : "rgba(59, 130, 246, 0.15)",
+              color: match.score ? "#34d399" : "#3b82f6",
+              padding: "4px 10px",
+              borderRadius: "6px",
+              fontSize: "0.85rem"
+            }}>
+              {match.score || `${match.time} hs`}
+            </span>
+          ) : (
+            <span style={{ opacity: 0.5, fontSize: "0.85rem" }}>Programado</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})}
+
             </div>
           )}
 
