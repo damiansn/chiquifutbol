@@ -38,11 +38,14 @@ export default function PosicionesPage() {
     cargarTablas();
   }, []);
 
-  // ------------------------------------------
+  // =========================================================
   // OBTENER VALOR DE UN CAMPO
-  // ------------------------------------------
+  // =========================================================
+
   function obtenerValor(valores, clave, defecto = "-") {
-    if (!Array.isArray(valores)) return defecto;
+    if (!Array.isArray(valores)) {
+      return defecto;
+    }
 
     const encontrado = valores.find(
       (item) => item?.key === clave
@@ -51,36 +54,20 @@ export default function PosicionesPage() {
     return encontrado?.value ?? defecto;
   }
 
-  // ------------------------------------------
-  // NORMALIZAR UNA TABLA
-  // ------------------------------------------
-  function normalizarTabla(grupo) {
-    if (!grupo) return [];
+  // =========================================================
+  // NORMALIZAR LAS FILAS DE UNA TABLA
+  // =========================================================
 
-    /*
-      La estructura real de Promiedos es:
+  function normalizarFilas(rows) {
+    if (!Array.isArray(rows)) {
+      return [];
+    }
 
-      grupo
-        values: [
-          {
-            num: 1,
-            values: [...],
-            entity: {
-              object: {
-                name: "River Plate"
-              }
-            }
-          }
-        ]
-    */
-
-    const filas = Array.isArray(grupo.values)
-      ? grupo.values
-      : [];
-
-    return filas.map((fila) => {
+    return rows.map((fila) => {
       const equipo = fila?.entity?.object || {};
-      const valores = fila?.values || [];
+      const valores = Array.isArray(fila?.values)
+        ? fila.values
+        : [];
 
       return {
         posicion: fila?.num ?? "-",
@@ -90,21 +77,47 @@ export default function PosicionesPage() {
           equipo.short_name ||
           "Equipo",
 
-        escudo: equipo.logo || equipo.image || null,
+        puntos: obtenerValor(
+          valores,
+          "Points",
+          0
+        ),
 
-        puntos: obtenerValor(valores, "Points", 0),
+        pj: obtenerValor(
+          valores,
+          "GamePlayed",
+          0
+        ),
 
-        pj: obtenerValor(valores, "GamePlayed", 0),
+        ganados: obtenerValor(
+          valores,
+          "GamesWon",
+          0
+        ),
 
-        ganados: obtenerValor(valores, "GamesWon", 0),
+        empatados: obtenerValor(
+          valores,
+          "GamesEven",
+          0
+        ),
 
-        empatados: obtenerValor(valores, "GamesEven", 0),
+        perdidos: obtenerValor(
+          valores,
+          "GamesLost",
+          0
+        ),
 
-        perdidos: obtenerValor(valores, "GamesLost", 0),
+        goles: obtenerValor(
+          valores,
+          "Goals",
+          "0:0"
+        ),
 
-        goles: obtenerValor(valores, "Goals", "0:0"),
-
-        diferencia: obtenerValor(valores, "Ratio", 0),
+        diferencia: obtenerValor(
+          valores,
+          "Ratio",
+          0
+        ),
 
         tendencia: obtenerValor(
           valores,
@@ -115,74 +128,121 @@ export default function PosicionesPage() {
     });
   }
 
-  // ------------------------------------------
-  // OBTENER TODAS LAS TABLAS
-  // ------------------------------------------
+  // =========================================================
+  // EXTRAER LAS TABLAS REALES DE PROMIEDOS
+  // =========================================================
+
   function obtenerTablas() {
-    if (!data) return [];
-
-    if (
-      Array.isArray(data.tables_groups) &&
-      data.tables_groups.length > 0
-    ) {
-      return data.tables_groups;
+    if (!data) {
+      return [];
     }
 
-    if (
-      Array.isArray(data.tables) &&
-      data.tables.length > 0
-    ) {
-      return data.tables;
+    const resultado = [];
+
+    /*
+      ESTRUCTURA REAL:
+
+      data
+      └── tables
+          └── Clausura
+              └── tables
+                  ├── Grupo A
+                  │   └── table
+                  │       └── rows
+                  │
+                  └── Grupo B
+                      └── table
+                          └── rows
+    */
+
+    if (!Array.isArray(data.tables)) {
+      console.log(
+        "No existe data.tables o no es un array:",
+        data.tables
+      );
+
+      return [];
     }
 
-    return [];
+    data.tables.forEach((torneo) => {
+      if (!Array.isArray(torneo?.tables)) {
+        return;
+      }
+
+      torneo.tables.forEach((grupo) => {
+        if (!grupo?.table) {
+          return;
+        }
+
+        const rows = Array.isArray(
+          grupo.table.rows
+        )
+          ? grupo.table.rows
+          : [];
+
+        if (rows.length === 0) {
+          return;
+        }
+
+        resultado.push({
+          torneo:
+            torneo.name ||
+            "Torneo",
+
+          grupo:
+            grupo.name ||
+            "Tabla",
+
+          nombre:
+            `${torneo.name || "Torneo"} - ${
+              grupo.name || "Tabla"
+            }`,
+
+          rows,
+        });
+      });
+    });
+
+    console.log(
+      "TABLAS NORMALIZADAS:",
+      resultado
+    );
+
+    return resultado;
   }
 
   const tablas = obtenerTablas();
 
-  // ------------------------------------------
+  // =========================================================
   // LOADING
-  // ------------------------------------------
+  // =========================================================
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
         <div className="max-w-6xl mx-auto">
-          <p>Cargando tablas...</p>
+
+          <p className="text-[#9ca3af]">
+            Cargando tablas...
+          </p>
+
         </div>
       </main>
     );
   }
 
-  // ------------------------------------------
+  // =========================================================
   // ERROR
-  // ------------------------------------------
+  // =========================================================
+
   if (error) {
     return (
       <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-2xl font-bold mb-4">
-            Posiciones
-          </h1>
 
-          <div className="bg-[#121821] border border-[#263244] rounded-lg p-5">
-            <p className="text-red-400">
-              {error}
-            </p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // ------------------------------------------
-  // SIN TABLAS
-  // ------------------------------------------
-  if (tablas.length === 0) {
-    return (
-      <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
         <div className="max-w-6xl mx-auto">
 
           <div className="flex items-center justify-between mb-6">
+
             <h1 className="text-2xl font-bold">
               Posiciones
             </h1>
@@ -191,33 +251,85 @@ export default function PosicionesPage() {
               href="/"
               className="text-sm text-[#9ca3af] hover:text-white"
             >
-              ← Volver
+              ← Partidos
             </Link>
+
           </div>
 
           <div className="bg-[#121821] border border-[#263244] rounded-lg p-6">
-            <p className="text-[#9ca3af]">
-              No hay tablas disponibles.
+
+            <p className="text-red-400">
+              {error}
             </p>
+
           </div>
 
         </div>
+
       </main>
     );
   }
 
-  // ------------------------------------------
+  // =========================================================
+  // SIN TABLAS
+  // =========================================================
+
+  if (tablas.length === 0) {
+    return (
+      <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
+
+        <div className="max-w-6xl mx-auto">
+
+          <div className="flex items-center justify-between mb-6">
+
+            <div>
+              <h1 className="text-2xl font-bold">
+                Posiciones
+              </h1>
+
+              <p className="text-[#8b949e] mt-1">
+                Liga Profesional Argentina
+              </p>
+            </div>
+
+            <Link
+              href="/"
+              className="text-sm text-[#9ca3af] hover:text-white"
+            >
+              ← Partidos
+            </Link>
+
+          </div>
+
+          <div className="bg-[#121821] border border-[#263244] rounded-lg p-6">
+
+            <p className="text-[#9ca3af]">
+              No hay tablas disponibles.
+            </p>
+
+          </div>
+
+        </div>
+
+      </main>
+    );
+  }
+
+  // =========================================================
   // TABLAS
-  // ------------------------------------------
+  // =========================================================
+
   return (
     <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-4 md:p-6">
 
       <div className="max-w-6xl mx-auto">
 
         {/* HEADER */}
+
         <div className="flex items-center justify-between mb-6">
 
           <div>
+
             <h1 className="text-2xl md:text-3xl font-bold">
               Posiciones
             </h1>
@@ -225,6 +337,7 @@ export default function PosicionesPage() {
             <p className="text-[#8b949e] mt-1">
               Liga Profesional Argentina
             </p>
+
           </div>
 
           <Link
@@ -237,34 +350,37 @@ export default function PosicionesPage() {
         </div>
 
         {/* TABLAS */}
+
         <div className="space-y-8">
 
-          {tablas.map((grupo, indice) => {
+          {tablas.map((tabla, indice) => {
 
-            const filas = normalizarTabla(grupo);
-
-            if (filas.length === 0) {
-              return null;
-            }
+            const filas = normalizarFilas(
+              tabla.rows
+            );
 
             return (
               <section
-                key={grupo?.id || grupo?.name || indice}
+                key={`${tabla.torneo}-${tabla.grupo}-${indice}`}
                 className="bg-[#121821] border border-[#263244] rounded-lg overflow-hidden"
               >
 
                 {/* TITULO */}
+
                 <div className="px-4 py-3 border-b border-[#263244]">
 
                   <h2 className="font-semibold text-lg">
-                    {grupo?.name ||
-                      grupo?.title ||
-                      `Tabla ${indice + 1}`}
+                    {tabla.grupo}
                   </h2>
+
+                  <p className="text-xs text-[#8b949e] mt-1">
+                    {tabla.torneo}
+                  </p>
 
                 </div>
 
                 {/* TABLA */}
+
                 <div className="overflow-x-auto">
 
                   <table className="w-full text-sm">
@@ -315,64 +431,88 @@ export default function PosicionesPage() {
 
                     <tbody>
 
-                      {filas.map((fila, index) => (
+                      {filas.map((fila, index) => {
 
-                        <tr
-                          key={`${fila.equipo}-${index}`}
-                          className="border-t border-[#263244] hover:bg-[#18212c]"
-                        >
+                        const diferencia =
+                          Number(
+                            fila.diferencia
+                          );
 
-                          <td className="px-3 py-3 text-center text-[#9ca3af] font-medium">
-                            {fila.posicion}
-                          </td>
-
-                          <td className="px-3 py-3">
-
-                            <div className="font-medium">
-                              {fila.equipo}
-                            </div>
-
-                          </td>
-
-                          <td className="px-3 py-3 text-center font-bold">
-                            {fila.puntos}
-                          </td>
-
-                          <td className="px-3 py-3 text-center">
-                            {fila.pj}
-                          </td>
-
-                          <td className="px-3 py-3 text-center">
-                            {fila.ganados}
-                          </td>
-
-                          <td className="px-3 py-3 text-center">
-                            {fila.empatados}
-                          </td>
-
-                          <td className="px-3 py-3 text-center">
-                            {fila.perdidos}
-                          </td>
-
-                          <td className="px-3 py-3 text-center">
-                            {fila.goles}
-                          </td>
-
-                          <td
-                            className={`px-3 py-3 text-center ${
-                              Number(fila.diferencia) > 0
-                                ? "text-green-400"
-                                : Number(fila.diferencia) < 0
-                                ? "text-red-400"
-                                : "text-[#9ca3af]"
-                            }`}
+                        return (
+                          <tr
+                            key={`${fila.equipo}-${index}`}
+                            className="border-t border-[#263244] hover:bg-[#18212c]"
                           >
-                            {fila.diferencia}
-                          </td>
 
-                        </tr>
+                            {/* POSICION */}
 
-                      ))}
+                            <td className="px-3 py-3 text-center text-[#9ca3af] font-medium">
+                              {fila.posicion}
+                            </td>
+
+                            {/* EQUIPO */}
+
+                            <td className="px-3 py-3">
+
+                              <div className="font-medium whitespace-nowrap">
+                                {fila.equipo}
+                              </div>
+
+                            </td>
+
+                            {/* PUNTOS */}
+
+                            <td className="px-3 py-3 text-center font-bold">
+                              {fila.puntos}
+                            </td>
+
+                            {/* PJ */}
+
+                            <td className="px-3 py-3 text-center">
+                              {fila.pj}
+                            </td>
+
+                            {/* GANADOS */}
+
+                            <td className="px-3 py-3 text-center">
+                              {fila.ganados}
+                            </td>
+
+                            {/* EMPATADOS */}
+
+                            <td className="px-3 py-3 text-center">
+                              {fila.empatados}
+                            </td>
+
+                            {/* PERDIDOS */}
+
+                            <td className="px-3 py-3 text-center">
+                              {fila.perdidos}
+                            </td>
+
+                            {/* GOLES */}
+
+                            <td className="px-3 py-3 text-center">
+                              {fila.goles}
+                            </td>
+
+                            {/* DIFERENCIA */}
+
+                            <td
+                              className={`px-3 py-3 text-center ${
+                                diferencia > 0
+                                  ? "text-green-400"
+                                  : diferencia < 0
+                                  ? "text-red-400"
+                                  : "text-[#9ca3af]"
+                              }`}
+                            >
+                              {fila.diferencia}
+                            </td>
+
+                          </tr>
+                        );
+                      })}
 
                     </tbody>
 
