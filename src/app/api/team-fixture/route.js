@@ -84,21 +84,29 @@ export async function GET(request) {
       const $el = $(el);
       const cols = $el.find("td");
 
-      // Validamos que la fila tenga celdas suficientes para ser un partido válido
-      if (cols.length >= 2) {
-        const fullRowText = $el.text().replace(/\s+/g, " ").trim();
-        
-        if (fullRowText) {
+      // Validamos que la fila tenga celdas suficientes para extraer los datos ordenados
+      if (cols.length >= 3) {
+        const fecha = $(cols[0]).text().trim();
+        const condicion = $(cols[1]).text().trim(); // Ej: 'L' o 'V'
+        const rival = $(cols[2]).text().trim();
+        const horaOResultado = cols.length > 3 ? $(cols[3]).text().trim() : "";
+
+        // Verificamos que al menos contenga fecha y rival para descartar filas vacías o de cabecera
+        if (fecha && rival) {
           matches.push({
             id: Math.random().toString(36).substring(2, 9),
-            rawText: fullRowText,
+            fecha,
+            condicion,
+            rival,
+            horaOResultado,
+            rawText: `${fecha} ${condicion} ${rival} ${horaOResultado}`.trim(),
           });
         }
       }
     });
 
     return NextResponse.json({
-      matches: matches.slice(0, 10), // Devolvemos un poco más de margen (primeros 10 registros útiles)
+      matches: matches.slice(0, 10), // Primeros 10 registros
       nextDateParam: null
     });
 
