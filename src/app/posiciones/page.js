@@ -15,6 +15,10 @@ function StandingsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // ==========================================
+  // CARGAR DATOS
+  // ==========================================
+
   useEffect(() => {
     const fetchStandings = async () => {
       try {
@@ -25,21 +29,36 @@ function StandingsContent() {
           ? `/api/standings?leagueId=${encodeURIComponent(leagueId)}`
           : `/api/standings`;
 
+        console.log("Cargando:", url);
+
         const res = await fetch(url, {
           cache: "no-store",
         });
 
         if (!res.ok) {
-          throw new Error("No se pudieron cargar los datos");
+          throw new Error(
+            `No se pudieron cargar los datos (${res.status})`
+          );
         }
 
         const data = await res.json();
 
-        console.log("DATOS RECIBIDOS DE /api/standings:", data);
+        console.log(
+          "=========================================="
+        );
+        console.log("DATOS RECIBIDOS DE /api/standings");
+        console.log(data);
+        console.log(
+          "=========================================="
+        );
 
         setStandings(data);
       } catch (err) {
-        console.error("Error cargando posiciones:", err);
+        console.error(
+          "Error cargando posiciones:",
+          err
+        );
+
         setError(err.message);
       } finally {
         setLoading(false);
@@ -139,6 +158,8 @@ function StandingsContent() {
 
   if (Array.isArray(standings?.tables)) {
     tablesList = standings.tables;
+  } else if (Array.isArray(standings?.standings)) {
+    tablesList = standings.standings;
   } else if (Array.isArray(standings?.teams)) {
     tablesList = [
       {
@@ -162,10 +183,12 @@ function StandingsContent() {
   tablesList = tablesList
     .filter(Boolean)
     .map((table, index) => {
+
       const originalTitle = String(
         table.title ||
         table.name ||
         table.category ||
+        table.type ||
         `Tabla ${index + 1}`
       );
 
@@ -187,27 +210,47 @@ function StandingsContent() {
         customTitle = "TABLA ANUAL";
       }
 
+      let teams = [];
+
+      if (Array.isArray(table.teams)) {
+        teams = table.teams;
+      } else if (Array.isArray(table.rows)) {
+        teams = table.rows;
+      } else if (Array.isArray(table.data)) {
+        teams = table.data;
+      } else if (Array.isArray(table.items)) {
+        teams = table.items;
+      }
+
       return {
         ...table,
         title: customTitle,
-        teams: Array.isArray(table.teams)
-          ? table.teams
-          : Array.isArray(table.rows)
-          ? table.rows
-          : [],
+        teams,
       };
     })
-    .filter((table) => table.teams.length > 0);
+    .filter(
+      (table) =>
+        Array.isArray(table.teams) &&
+        table.teams.length > 0
+    );
 
   // ==========================================
   // ESTADÍSTICAS
   // ==========================================
 
-  const playerStats = Array.isArray(
-    standings?.stats
-  )
-    ? standings.stats
-    : [];
+  let playerStats = [];
+
+  if (Array.isArray(standings?.stats)) {
+    playerStats = standings.stats;
+  } else if (
+    Array.isArray(standings?.statistics)
+  ) {
+    playerStats = standings.statistics;
+  }
+
+  // ==========================================
+  // RENDER
+  // ==========================================
 
   return (
     <main
@@ -260,357 +303,439 @@ function StandingsContent() {
       ====================================== */}
 
       {tablesList.length > 0 ? (
-        tablesList.map((section, sIndex) => {
-          const sectionTitle =
-            String(section.title || "");
 
-          const isPromedios =
-            sectionTitle
-              .toLowerCase()
-              .includes("promedio");
+        tablesList.map(
+          (section, sIndex) => {
 
-          return (
-            <section
-              key={sIndex}
-              style={{
-                marginBottom: "35px",
-              }}
-            >
-              <h2
+            const sectionTitle =
+              String(
+                section.title || ""
+              );
+
+            const isPromedios =
+              sectionTitle
+                .toLowerCase()
+                .includes("promedio");
+
+            return (
+              <section
+                key={sIndex}
                 style={{
-                  fontSize: "1.1rem",
-                  fontWeight: "bold",
-                  color: "#10b981",
-                  marginBottom: "10px",
-                  textTransform: "uppercase",
+                  marginBottom: "35px",
                 }}
               >
-                {sectionTitle}
-              </h2>
 
-              <div
-                style={{
-                  border:
-                    "1px solid rgba(128,128,128,0.2)",
-                  borderRadius: "8px",
-                  overflowX: "auto",
-                }}
-              >
-                <table
+                <h2
                   style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: "0.9rem",
+                    fontSize: "1.1rem",
+                    fontWeight: "bold",
+                    color: "#10b981",
+                    marginBottom: "10px",
+                    textTransform:
+                      "uppercase",
                   }}
                 >
-                  <thead>
-                    <tr
-                      style={{
-                        background:
-                          "rgba(16,185,129,0.15)",
-                        textAlign: "left",
-                        color: "#10b981",
-                      }}
-                    >
-                      <th
+                  {sectionTitle}
+                </h2>
+
+                <div
+                  style={{
+                    border:
+                      "1px solid rgba(128,128,128,0.2)",
+                    borderRadius: "8px",
+                    overflowX: "auto",
+                  }}
+                >
+
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse:
+                        "collapse",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+
+                    <thead>
+
+                      <tr
                         style={{
-                          padding: "10px",
-                          width: "40px",
-                          textAlign: "center",
+                          background:
+                            "rgba(16,185,129,0.15)",
+                          textAlign:
+                            "left",
+                          color:
+                            "#10b981",
                         }}
                       >
-                        #
-                      </th>
 
-                      <th
-                        style={{
-                          padding: "10px",
-                        }}
-                      >
-                        Equipo
-                      </th>
+                        <th
+                          style={{
+                            padding: "10px",
+                            width: "40px",
+                            textAlign:
+                              "center",
+                          }}
+                        >
+                          #
+                        </th>
 
-                      {isPromedios ? (
-                        <>
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            Prom
-                          </th>
+                        <th
+                          style={{
+                            padding: "10px",
+                          }}
+                        >
+                          Equipo
+                        </th>
 
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            Pts
-                          </th>
+                        {isPromedios ? (
+                          <>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              Prom
+                            </th>
 
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            PJ
-                          </th>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              Pts
+                            </th>
 
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            '24
-                          </th>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              PJ
+                            </th>
 
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            '25
-                          </th>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              '24
+                            </th>
 
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            '26
-                          </th>
-                        </>
-                      ) : (
-                        <>
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            Pts
-                          </th>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              '25
+                            </th>
 
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            PJ
-                          </th>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              '26
+                            </th>
+                          </>
+                        ) : (
+                          <>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              Pts
+                            </th>
 
-                          <th
-                            style={{
-                              padding: "10px",
-                              textAlign: "center",
-                            }}
-                          >
-                            DG
-                          </th>
-                        </>
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              PJ
+                            </th>
+
+                            <th
+                              style={{
+                                padding: "10px",
+                                textAlign:
+                                  "center",
+                              }}
+                            >
+                              DG
+                            </th>
+                          </>
+                        )}
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {section.teams.map(
+                        (team, index) => {
+
+                          const teamName =
+                            team.name ||
+                            team.team_name ||
+                            team.team ||
+                            team.nombre ||
+                            team.club ||
+                            team.title ||
+                            "Equipo";
+
+                          const position =
+                            team.position ??
+                            team.pos ??
+                            team.rank ??
+                            team.order ??
+                            index + 1;
+
+                          const points =
+                            team.points ??
+                            team.pts ??
+                            team.puntos ??
+                            team.score ??
+                            0;
+
+                          const played =
+                            team.played ??
+                            team.pj ??
+                            team.games ??
+                            team.matches ??
+                            team.partidos ??
+                            0;
+
+                          const goalDifference =
+                            team.goal_difference ??
+                            team.dg ??
+                            team.difference ??
+                            team.diff ??
+                            team.goal_diff ??
+                            0;
+
+                          const promedio =
+                            team.promedio ??
+                            team.average ??
+                            team.avg ??
+                            team.points_average ??
+                            team.ratio ??
+                            "0.000";
+
+                          const seasons =
+                            Array.isArray(
+                              team.seasons
+                            )
+                              ? team.seasons
+                              : [];
+
+                          return (
+                            <tr
+                              key={
+                                team.id ||
+                                team.team_id ||
+                                team.club_id ||
+                                `${teamName}-${index}`
+                              }
+                              style={{
+                                borderBottom:
+                                  "1px solid rgba(128,128,128,0.1)",
+                              }}
+                            >
+
+                              <td
+                                style={{
+                                  padding: "10px",
+                                  textAlign:
+                                    "center",
+                                  opacity: 0.8,
+                                }}
+                              >
+                                {position}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "10px",
+                                  fontWeight:
+                                    "500",
+                                }}
+                              >
+                                {teamName}
+                              </td>
+
+                              {isPromedios ? (
+
+                                <>
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      fontWeight:
+                                        "bold",
+                                      color:
+                                        "#10b981",
+                                    }}
+                                  >
+                                    {promedio}
+                                  </td>
+
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                    }}
+                                  >
+                                    {points}
+                                  </td>
+
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      opacity:
+                                        0.8,
+                                    }}
+                                  >
+                                    {played}
+                                  </td>
+
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      opacity:
+                                        0.8,
+                                    }}
+                                  >
+                                    {seasons[0] ??
+                                      0}
+                                  </td>
+
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      opacity:
+                                        0.8,
+                                    }}
+                                  >
+                                    {seasons[1] ??
+                                      0}
+                                  </td>
+
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      opacity:
+                                        0.8,
+                                    }}
+                                  >
+                                    {seasons[2] ??
+                                      0}
+                                  </td>
+                                </>
+
+                              ) : (
+
+                                <>
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      fontWeight:
+                                        "bold",
+                                      color:
+                                        "#10b981",
+                                    }}
+                                  >
+                                    {Math.round(
+                                      Number(
+                                        points
+                                      )
+                                    )}
+                                  </td>
+
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      opacity:
+                                        0.8,
+                                    }}
+                                  >
+                                    {played}
+                                  </td>
+
+                                  <td
+                                    style={{
+                                      padding:
+                                        "10px",
+                                      textAlign:
+                                        "center",
+                                      opacity:
+                                        0.8,
+                                    }}
+                                  >
+                                    {goalDifference}
+                                  </td>
+                                </>
+
+                              )}
+
+                            </tr>
+                          );
+                        }
                       )}
-                    </tr>
-                  </thead>
 
-                  <tbody>
-                    {section.teams.map(
-                      (team, index) => {
+                    </tbody>
 
-                        const teamName =
-                          team.name ||
-                          team.team_name ||
-                          team.team ||
-                          team.nombre ||
-                          team.club ||
-                          "Equipo";
+                  </table>
 
-                        const position =
-                          team.position ??
-                          team.pos ??
-                          team.rank ??
-                          index + 1;
+                </div>
 
-                        const points =
-                          team.points ??
-                          team.pts ??
-                          team.puntos ??
-                          0;
+              </section>
+            );
+          }
+        )
 
-                        const played =
-                          team.played ??
-                          team.pj ??
-                          team.games ??
-                          team.matches ??
-                          0;
-
-                        const goalDifference =
-                          team.goal_difference ??
-                          team.dg ??
-                          team.difference ??
-                          team.diff ??
-                          0;
-
-                        const promedio =
-                          team.promedio ??
-                          team.average ??
-                          team.avg ??
-                          team.points_average ??
-                          "0.000";
-
-                        const seasons =
-                          Array.isArray(
-                            team.seasons
-                          )
-                            ? team.seasons
-                            : [];
-
-                        return (
-                          <tr
-                            key={
-                              team.id ||
-                              team.team_id ||
-                              `${teamName}-${index}`
-                            }
-                            style={{
-                              borderBottom:
-                                "1px solid rgba(128,128,128,0.1)",
-                            }}
-                          >
-                            <td
-                              style={{
-                                padding: "10px",
-                                textAlign: "center",
-                                opacity: 0.8,
-                              }}
-                            >
-                              {position}
-                            </td>
-
-                            <td
-                              style={{
-                                padding: "10px",
-                                fontWeight: "500",
-                              }}
-                            >
-                              {teamName}
-                            </td>
-
-                            {isPromedios ? (
-                              <>
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    fontWeight: "bold",
-                                    color: "#10b981",
-                                  }}
-                                >
-                                  {promedio}
-                                </td>
-
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  {points}
-                                </td>
-
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    opacity: 0.8,
-                                  }}
-                                >
-                                  {played}
-                                </td>
-
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    opacity: 0.8,
-                                  }}
-                                >
-                                  {seasons[0] ?? 0}
-                                </td>
-
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    opacity: 0.8,
-                                  }}
-                                >
-                                  {seasons[1] ?? 0}
-                                </td>
-
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    opacity: 0.8,
-                                  }}
-                                >
-                                  {seasons[2] ?? 0}
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    fontWeight: "bold",
-                                    color: "#10b981",
-                                  }}
-                                >
-                                  {Math.round(
-                                    Number(points)
-                                  )}
-                                </td>
-
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    opacity: 0.8,
-                                  }}
-                                >
-                                  {played}
-                                </td>
-
-                                <td
-                                  style={{
-                                    padding: "10px",
-                                    textAlign: "center",
-                                    opacity: 0.8,
-                                  }}
-                                >
-                                  {goalDifference}
-                                </td>
-                              </>
-                            )}
-                          </tr>
-                        );
-                      }
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          );
-        })
       ) : (
+
         <div
           style={{
             border:
@@ -623,25 +748,29 @@ function StandingsContent() {
         >
           No hay tabla de posiciones disponible.
         </div>
+
       )}
 
       {/* ======================================
-          GOLEADORES / ASISTIDORES
+          ESTADÍSTICAS
       ====================================== */}
 
       {playerStats.length > 0 && (
+
         <section
           style={{
             marginTop: "40px",
           }}
         >
+
           <h2
             style={{
               fontSize: "1.2rem",
               fontWeight: "bold",
               color: "#10b981",
               marginBottom: "20px",
-              textTransform: "uppercase",
+              textTransform:
+                "uppercase",
               textAlign: "center",
             }}
           >
@@ -652,50 +781,87 @@ function StandingsContent() {
             (statGroup, idx) => {
 
               if (
-                !statGroup ||
-                !Array.isArray(
-                  statGroup.players
-                )
+                !statGroup
               ) {
                 return null;
               }
 
+              const players =
+                Array.isArray(
+                  statGroup.players
+                )
+                  ? statGroup.players
+                  : Array.isArray(
+                      statGroup.data
+                    )
+                  ? statGroup.data
+                  : Array.isArray(
+                      statGroup.rows
+                    )
+                  ? statGroup.rows
+                  : [];
+
+              if (
+                players.length === 0
+              ) {
+                return null;
+              }
+
+              const category =
+                statGroup.category ||
+                statGroup.name ||
+                statGroup.title ||
+                "ESTADÍSTICAS";
+
               return (
+
                 <div
                   key={idx}
                   style={{
-                    marginBottom: "25px",
+                    marginBottom:
+                      "25px",
                     border:
                       "1px solid rgba(128,128,128,0.2)",
-                    borderRadius: "8px",
-                    overflow: "hidden",
+                    borderRadius:
+                      "8px",
+                    overflow:
+                      "hidden",
                   }}
                 >
+
                   <div
                     style={{
                       background:
                         "rgba(16,185,129,0.15)",
-                      padding: "10px 15px",
-                      fontWeight: "bold",
-                      color: "#10b981",
-                      textAlign: "center",
-                      textTransform: "uppercase",
-                      fontSize: "0.95rem",
+                      padding:
+                        "10px 15px",
+                      fontWeight:
+                        "bold",
+                      color:
+                        "#10b981",
+                      textAlign:
+                        "center",
+                      textTransform:
+                        "uppercase",
+                      fontSize:
+                        "0.95rem",
                     }}
                   >
-                    {statGroup.category ||
-                      statGroup.name ||
-                      "ESTADÍSTICAS"}
+                    {category}
                   </div>
 
                   <table
                     style={{
                       width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "0.9rem",
+                      borderCollapse:
+                        "collapse",
+                      fontSize:
+                        "0.9rem",
                     }}
                   >
+
                     <thead>
+
                       <tr
                         style={{
                           background:
@@ -704,12 +870,17 @@ function StandingsContent() {
                             "1px solid rgba(128,128,128,0.15)",
                         }}
                       >
+
                         <th
                           style={{
-                            padding: "8px 15px",
-                            textAlign: "left",
-                            fontWeight: "500",
-                            opacity: 0.7,
+                            padding:
+                              "8px 15px",
+                            textAlign:
+                              "left",
+                            fontWeight:
+                              "500",
+                            opacity:
+                              0.7,
                           }}
                         >
                           Jugador
@@ -717,10 +888,14 @@ function StandingsContent() {
 
                         <th
                           style={{
-                            padding: "8px 15px",
-                            textAlign: "left",
-                            fontWeight: "500",
-                            opacity: 0.7,
+                            padding:
+                              "8px 15px",
+                            textAlign:
+                              "left",
+                            fontWeight:
+                              "500",
+                            opacity:
+                              0.7,
                           }}
                         >
                           Equipo
@@ -728,20 +903,28 @@ function StandingsContent() {
 
                         <th
                           style={{
-                            padding: "8px 15px",
-                            textAlign: "right",
-                            fontWeight: "500",
-                            opacity: 0.7,
-                            width: "70px",
+                            padding:
+                              "8px 15px",
+                            textAlign:
+                              "right",
+                            fontWeight:
+                              "500",
+                            opacity:
+                              0.7,
+                            width:
+                              "70px",
                           }}
                         >
                           Total
                         </th>
+
                       </tr>
+
                     </thead>
 
                     <tbody>
-                      {statGroup.players.map(
+
+                      {players.map(
                         (player, pIdx) => {
 
                           const playerName =
@@ -749,6 +932,7 @@ function StandingsContent() {
                             player.player_name ||
                             player.player ||
                             player.nombre ||
+                            player.full_name ||
                             "Jugador";
 
                           const playerTeam =
@@ -757,6 +941,7 @@ function StandingsContent() {
                             player.club ||
                             player.club_name ||
                             player.equipo ||
+                            player.teamName ||
                             "Sin equipo";
 
                           const playerValue =
@@ -765,12 +950,15 @@ function StandingsContent() {
                             player.assists ??
                             player.total ??
                             player.count ??
+                            player.amount ??
                             0;
 
                           return (
+
                             <tr
                               key={
                                 player.id ||
+                                player.player_id ||
                                 `${playerName}-${pIdx}`
                               }
                               style={{
@@ -778,11 +966,13 @@ function StandingsContent() {
                                   "1px solid rgba(128,128,128,0.1)",
                               }}
                             >
+
                               <td
                                 style={{
                                   padding:
                                     "10px 15px",
-                                  fontWeight: "500",
+                                  fontWeight:
+                                    "500",
                                 }}
                               >
                                 {playerName}
@@ -792,7 +982,8 @@ function StandingsContent() {
                                 style={{
                                   padding:
                                     "10px 15px",
-                                  opacity: 0.7,
+                                  opacity:
+                                    0.7,
                                 }}
                               >
                                 {playerTeam}
@@ -802,29 +993,46 @@ function StandingsContent() {
                                 style={{
                                   padding:
                                     "10px 15px",
-                                  textAlign: "right",
-                                  fontWeight: "bold",
-                                  color: "#10b981",
-                                  width: "70px",
+                                  textAlign:
+                                    "right",
+                                  fontWeight:
+                                    "bold",
+                                  color:
+                                    "#10b981",
+                                  width:
+                                    "70px",
                                 }}
                               >
                                 {playerValue}
                               </td>
+
                             </tr>
+
                           );
                         }
                       )}
+
                     </tbody>
+
                   </table>
+
                 </div>
+
               );
             }
           )}
+
         </section>
+
       )}
+
     </main>
   );
 }
+
+// ==========================================
+// PÁGINA
+// ==========================================
 
 export default function MatchesPage() {
   return (

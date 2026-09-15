@@ -27,6 +27,13 @@ const REDIS_KEYS = {
 };
 
 // ==========================================
+// LIGA PARA TABLAS
+// ==========================================
+
+const STANDINGS_URL =
+    "https://api.promiedos.com.ar/league/tables_and_fixtures/hc";
+
+// ==========================================
 // USER AGENT
 // ==========================================
 
@@ -44,19 +51,14 @@ function esObjeto(valor) {
 }
 
 function esJuego(obj) {
-    if (!esObjeto(obj)) return false;
+
+    if (!esObjeto(obj)) {
+        return false;
+    }
 
     return (
         Array.isArray(obj.teams) &&
         obj.teams.length >= 2
-    );
-}
-
-function tieneGames(obj) {
-    return (
-        esObjeto(obj) &&
-        Array.isArray(obj.games) &&
-        obj.games.some((game) => esJuego(game))
     );
 }
 
@@ -78,18 +80,22 @@ function buscarArraysDeJuegos(
 
         if (
             obj.length > 0 &&
-            obj.some((item) => esJuego(item))
+            obj.some(item => esJuego(item))
         ) {
 
             resultados.push({
                 ruta,
                 games: obj.filter(
-                    (item) => esJuego(item)
+                    item => esJuego(item)
                 )
             });
         }
 
-        for (let i = 0; i < obj.length; i++) {
+        for (
+            let i = 0;
+            i < obj.length;
+            i++
+        ) {
 
             buscarArraysDeJuegos(
                 obj[i],
@@ -101,24 +107,28 @@ function buscarArraysDeJuegos(
         return resultados;
     }
 
-    for (const key of Object.keys(obj)) {
+    for (
+        const key of Object.keys(obj)
+    ) {
 
         const valor = obj[key];
 
         if (
             Array.isArray(valor) &&
             valor.length > 0 &&
-            valor.some((item) => esJuego(item))
+            valor.some(item => esJuego(item))
         ) {
 
             resultados.push({
-                ruta: ruta
-                    ? `${ruta}.${key}`
-                    : key,
+                ruta:
+                    ruta
+                        ? `${ruta}.${key}`
+                        : key,
 
-                games: valor.filter(
-                    (item) => esJuego(item)
-                )
+                games:
+                    valor.filter(
+                        item => esJuego(item)
+                    )
             });
         }
 
@@ -138,7 +148,7 @@ function buscarArraysDeJuegos(
 }
 
 // ==========================================
-// BUSCAR "LEAGUES" DIRECTAMENTE
+// BUSCAR LEAGUES
 // ==========================================
 
 function buscarLeagues(
@@ -163,7 +173,9 @@ function buscarLeagues(
         return resultados;
     }
 
-    for (const key of Object.keys(obj)) {
+    for (
+        const key of Object.keys(obj)
+    ) {
 
         const valor = obj[key];
 
@@ -174,7 +186,7 @@ function buscarLeagues(
 
             const leaguesValidas =
                 valor.filter(
-                    (league) =>
+                    league =>
                         esObjeto(league) &&
                         Array.isArray(league.games)
                 );
@@ -215,7 +227,9 @@ function normalizarLeagues(
 
     const resultado = [];
 
-    for (const league of leagues) {
+    for (
+        const league of leagues
+    ) {
 
         if (!esObjeto(league)) {
             continue;
@@ -229,10 +243,12 @@ function normalizarLeagues(
 
         const games =
             league.games.filter(
-                (game) => esJuego(game)
+                game => esJuego(game)
             );
 
-        if (games.length === 0) {
+        if (
+            games.length === 0
+        ) {
             continue;
         }
 
@@ -242,7 +258,9 @@ function normalizarLeagues(
         });
     }
 
-    if (resultado.length === 0) {
+    if (
+        resultado.length === 0
+    ) {
         return null;
     }
 
@@ -334,14 +352,18 @@ function reconstruirLeaguesDesdeJuegos(
     const games =
         arrays[0].games;
 
-    if (!games.length) {
+    if (
+        !games.length
+    ) {
         return null;
     }
 
     const grupos =
         new Map();
 
-    for (const game of games) {
+    for (
+        const game of games
+    ) {
 
         let leagueId = null;
         let leagueName = null;
@@ -526,7 +548,7 @@ async function obtenerNextData(
 }
 
 // ==========================================
-// ESPERAR A QUE PROMIEDOS CARGUE
+// ESPERAR CARGA
 // ==========================================
 
 async function esperarCarga(
@@ -550,18 +572,16 @@ async function esperarCarga(
             }
         );
 
-    } catch {
-        // No hacemos nada.
-    }
+    } catch {}
 
     await new Promise(
-        (resolve) =>
+        resolve =>
             setTimeout(resolve, 5000)
     );
 }
 
 // ==========================================
-// OBTENER PARTIDOS DE UNA PÁGINA
+// OBTENER PARTIDOS
 // ==========================================
 
 async function obtenerPartidosDesdePagina(
@@ -589,7 +609,7 @@ async function obtenerPartidosDesdePagina(
     const respuestasJSON = [];
 
     const responseHandler =
-        async (response) => {
+        async response => {
 
             try {
 
@@ -597,42 +617,39 @@ async function obtenerPartidosDesdePagina(
                     response.url();
 
                 if (
-                    responseUrl.includes(
+                    !responseUrl.includes(
                         "api.promiedos.com.ar"
                     )
                 ) {
-
-                    const contentType =
-                        response
-                            .headers()
-                            ["content-type"] ||
-                        "";
-
-                    if (
-                        !contentType.includes(
-                            "json"
-                        )
-                    ) {
-                        return;
-                    }
-
-                    const json =
-                        await response.json();
-
-                    respuestasJSON.push({
-                        url: responseUrl,
-                        data: json
-                    });
-
-                    console.log(
-                        "API Promiedos:",
-                        responseUrl
-                    );
+                    return;
                 }
 
-            } catch {
-                // Ignorar respuestas no JSON.
-            }
+                const contentType =
+                    response
+                        .headers()
+                        ["content-type"] ||
+                    "";
+
+                if (
+                    !contentType.includes("json")
+                ) {
+                    return;
+                }
+
+                const json =
+                    await response.json();
+
+                respuestasJSON.push({
+                    url: responseUrl,
+                    data: json
+                });
+
+                console.log(
+                    "API Promiedos:",
+                    responseUrl
+                );
+
+            } catch {}
         };
 
     page.on(
@@ -912,7 +929,553 @@ async function sincronizarPartidos(
 }
 
 // ==========================================
-// SINCRONIZAR TABLAS Y ESTADÍSTICAS
+// EXTRAER NOMBRE DE EQUIPO
+// ==========================================
+
+function obtenerNombreEquipo(
+    team
+) {
+
+    if (!esObjeto(team)) {
+        return null;
+    }
+
+    return (
+        team.name ??
+        team.team_name ??
+        team.teamName ??
+        team.nombre ??
+        team.club ??
+        team.club_name ??
+        team.equipo ??
+        null
+    );
+}
+
+// ==========================================
+// DETECTAR SI ES EQUIPO DE TABLA
+// ==========================================
+
+function pareceEquipoTabla(
+    obj
+) {
+
+    if (!esObjeto(obj)) {
+        return false;
+    }
+
+    const nombre =
+        obtenerNombreEquipo(obj);
+
+    if (
+        typeof nombre !== "string" ||
+        nombre.trim() === ""
+    ) {
+        return false;
+    }
+
+    const tieneDatos =
+        obj.points !== undefined ||
+        obj.pts !== undefined ||
+        obj.puntos !== undefined ||
+        obj.played !== undefined ||
+        obj.pj !== undefined ||
+        obj.games !== undefined ||
+        obj.matches !== undefined ||
+        obj.partidos !== undefined ||
+        obj.goal_difference !== undefined ||
+        obj.goal_diff !== undefined ||
+        obj.dg !== undefined ||
+        obj.difference !== undefined ||
+        obj.position !== undefined ||
+        obj.pos !== undefined ||
+        obj.rank !== undefined;
+
+    return tieneDatos;
+}
+
+// ==========================================
+// BUSCAR TABLAS RECURSIVAMENTE
+// ==========================================
+
+function buscarTablasRecursivamente(
+    obj,
+    resultado = [],
+    ruta = ""
+) {
+
+    if (!esObjeto(obj)) {
+        return resultado;
+    }
+
+    if (Array.isArray(obj)) {
+
+        const equipos =
+            obj.filter(
+                item =>
+                    pareceEquipoTabla(item)
+            );
+
+        if (
+            equipos.length >= 4
+        ) {
+
+            resultado.push({
+                ruta,
+                teams: equipos
+            });
+        }
+
+        for (
+            let i = 0;
+            i < obj.length;
+            i++
+        ) {
+
+            buscarTablasRecursivamente(
+                obj[i],
+                resultado,
+                `${ruta}[${i}]`
+            );
+        }
+
+        return resultado;
+    }
+
+    for (
+        const key of Object.keys(obj)
+    ) {
+
+        const valor =
+            obj[key];
+
+        if (
+            Array.isArray(valor)
+        ) {
+
+            const equipos =
+                valor.filter(
+                    item =>
+                        pareceEquipoTabla(item)
+                );
+
+            if (
+                equipos.length >= 4
+            ) {
+
+                resultado.push({
+
+                    ruta:
+                        ruta
+                            ? `${ruta}.${key}`
+                            : key,
+
+                    teams:
+                        equipos
+                });
+            }
+        }
+
+        if (
+            esObjeto(valor)
+        ) {
+
+            buscarTablasRecursivamente(
+                valor,
+                resultado,
+                ruta
+                    ? `${ruta}.${key}`
+                    : key
+            );
+        }
+    }
+
+    return resultado;
+}
+
+// ==========================================
+// NORMALIZAR UNA TABLA
+// ==========================================
+
+function normalizarTabla(
+    tabla
+) {
+
+    if (
+        !tabla ||
+        !Array.isArray(tabla.teams)
+    ) {
+        return null;
+    }
+
+    const teams =
+        tabla.teams.map(
+            (
+                team,
+                index
+            ) => {
+
+                const nombre =
+                    obtenerNombreEquipo(
+                        team
+                    ) ||
+                    "Equipo";
+
+                return {
+
+                    id:
+                        team.id ??
+                        team.team_id ??
+                        team.teamId ??
+                        index,
+
+                    name:
+                        nombre,
+
+                    position:
+                        team.position ??
+                        team.pos ??
+                        team.rank ??
+                        team.order ??
+                        index + 1,
+
+                    points:
+                        team.points ??
+                        team.pts ??
+                        team.puntos ??
+                        0,
+
+                    played:
+                        team.played ??
+                        team.pj ??
+                        team.games ??
+                        team.matches ??
+                        team.partidos ??
+                        0,
+
+                    goals_for:
+                        team.goals_for ??
+                        team.gf ??
+                        team.goals ??
+                        0,
+
+                    goals_against:
+                        team.goals_against ??
+                        team.ga ??
+                        0,
+
+                    goal_difference:
+                        team.goal_difference ??
+                        team.goal_diff ??
+                        team.dg ??
+                        team.difference ??
+                        0,
+
+                    wins:
+                        team.wins ??
+                        team.w ??
+                        team.ganados ??
+                        0,
+
+                    draws:
+                        team.draws ??
+                        team.d ??
+                        team.empates ??
+                        0,
+
+                    losses:
+                        team.losses ??
+                        team.l ??
+                        team.perdidos ??
+                        0,
+
+                    promedio:
+                        team.promedio ??
+                        team.average ??
+                        team.avg ??
+                        null,
+
+                    seasons:
+                        team.seasons ??
+                        []
+                };
+            }
+        );
+
+    if (
+        teams.length === 0
+    ) {
+        return null;
+    }
+
+    return {
+        teams
+    };
+}
+
+// ==========================================
+// ELIMINAR TABLAS DUPLICADAS
+// ==========================================
+
+function eliminarTablasDuplicadas(
+    tablas
+) {
+
+    const resultado = [];
+    const firmas = new Set();
+
+    for (
+        const tabla of tablas
+    ) {
+
+        if (
+            !tabla ||
+            !Array.isArray(tabla.teams)
+        ) {
+            continue;
+        }
+
+        const firma =
+            tabla.teams
+                .map(
+                    team =>
+                        String(
+                            team.id ??
+                            team.team_id ??
+                            team.name ??
+                            team.team_name
+                        )
+                )
+                .join("|");
+
+        if (
+            !firmas.has(firma)
+        ) {
+
+            firmas.add(firma);
+
+            resultado.push(
+                tabla
+            );
+        }
+    }
+
+    return resultado;
+}
+
+// ==========================================
+// ESTADÍSTICAS DEL DOM
+// ==========================================
+
+async function obtenerEstadisticasDOM(
+    page
+) {
+
+    try {
+
+        return await page.evaluate(
+            () => {
+
+                const resultado = [];
+
+                const tablas =
+                    Array.from(
+                        document.querySelectorAll(
+                            "table"
+                        )
+                    );
+
+                tablas.forEach(
+                    table => {
+
+                        const textoTabla =
+                            table.innerText?.trim() ||
+                            "";
+
+                        const textoLower =
+                            textoTabla.toLowerCase();
+
+                        let category = null;
+
+                        if (
+                            textoLower.includes(
+                                "goleadores"
+                            ) ||
+                            textoLower.includes(
+                                "goles"
+                            )
+                        ) {
+
+                            category =
+                                "Goleadores";
+                        }
+
+                        if (
+                            textoLower.includes(
+                                "asistencias"
+                            ) ||
+                            textoLower.includes(
+                                "asistidores"
+                            )
+                        ) {
+
+                            category =
+                                "Asistidores";
+                        }
+
+                        if (!category) {
+                            return;
+                        }
+
+                        const rows =
+                            Array.from(
+                                table.querySelectorAll(
+                                    "tr"
+                                )
+                            );
+
+                        const players = [];
+
+                        rows.forEach(
+                            row => {
+
+                                const cells =
+                                    Array.from(
+                                        row.querySelectorAll(
+                                            "th, td"
+                                        )
+                                    );
+
+                                const textos =
+                                    cells
+                                        .map(
+                                            cell =>
+                                                cell.innerText
+                                                    .trim()
+                                        )
+                                        .filter(
+                                            Boolean
+                                        );
+
+                                if (
+                                    textos.length < 2
+                                ) {
+                                    return;
+                                }
+
+                                const primera =
+                                    textos[0]
+                                        .toLowerCase();
+
+                                if (
+                                    primera.includes(
+                                        "jugador"
+                                    ) ||
+                                    primera.includes(
+                                        "nombre"
+                                    ) ||
+                                    primera.includes(
+                                        "player"
+                                    )
+                                ) {
+                                    return;
+                                }
+
+                                const name =
+                                    textos[0];
+
+                                const value =
+                                    textos[
+                                        textos.length - 1
+                                    ];
+
+                                let team = "";
+
+                                if (
+                                    textos.length >= 3
+                                ) {
+
+                                    team =
+                                        textos[1] ||
+                                        "";
+                                }
+
+                                const enlaces =
+                                    Array.from(
+                                        row.querySelectorAll(
+                                            "a"
+                                        )
+                                    );
+
+                                for (
+                                    const enlace
+                                    of enlaces
+                                ) {
+
+                                    const href =
+                                        enlace.getAttribute(
+                                            "href"
+                                        ) || "";
+
+                                    const texto =
+                                        enlace.innerText
+                                            ?.trim() || "";
+
+                                    if (
+                                        texto &&
+                                        href.includes(
+                                            "/team/"
+                                        )
+                                    ) {
+
+                                        team =
+                                            texto;
+
+                                        break;
+                                    }
+                                }
+
+                                players.push({
+
+                                    name,
+
+                                    team:
+                                        team ||
+                                        "Sin equipo",
+
+                                    value
+
+                                });
+                            }
+                        );
+
+                        if (
+                            players.length > 0
+                        ) {
+
+                            resultado.push({
+
+                                category,
+
+                                players
+
+                            });
+                        }
+                    }
+                );
+
+                return resultado;
+            }
+        );
+
+    } catch {
+
+        return [];
+    }
+}
+
+// ==========================================
+// SINCRONIZAR TABLAS
 // ==========================================
 
 async function sincronizarTablas(
@@ -946,206 +1509,160 @@ async function sincronizarTablas(
         );
 
         await new Promise(
-            (resolve) =>
+            resolve =>
                 setTimeout(resolve, 5000)
         );
 
         // ======================================
-        // OBTENER __NEXT_DATA__
-        // ======================================
-
-        const nextData =
-            await obtenerNextData(page);
-
-        // ======================================
-        // DEBUG
+        // CONSULTAR API DIRECTAMENTE
         // ======================================
 
         console.log(
-            "\n========== ESTRUCTURA DE NEXT_DATA =========="
+            "\nConsultando API de tablas:"
         );
 
         console.log(
-            JSON.stringify(
-                nextData,
-                null,
-                2
-            ).substring(
-                0,
-                20000
-            )
+            STANDINGS_URL
+        );
+
+        const resultadoAPI =
+            await page.evaluate(
+                async url => {
+
+                    const response =
+                        await fetch(url);
+
+                    const texto =
+                        await response.text();
+
+                    return {
+
+                        status:
+                            response.status,
+
+                        ok:
+                            response.ok,
+
+                        contentType:
+                            response.headers.get(
+                                "content-type"
+                            ),
+
+                        texto
+
+                    };
+                },
+                STANDINGS_URL
+            );
+
+        console.log(
+            "\nHTTP API:",
+            resultadoAPI.status
         );
 
         console.log(
-            "========== FIN NEXT_DATA ==========\n"
+            "Content-Type:",
+            resultadoAPI.contentType
         );
 
-        // ======================================
-        // COMPROBAR NEXT_DATA
-        // ======================================
-
-        if (!nextData) {
+        if (
+            !resultadoAPI.ok
+        ) {
 
             console.log(
-                "No se encontró __NEXT_DATA__ en la página de Liga."
+                "La API respondió con error."
+            );
+
+            console.log(
+                resultadoAPI.texto.substring(
+                    0,
+                    5000
+                )
+            );
+
+            console.log(
+                "No se modifica Redis."
             );
 
             return;
         }
 
+        // ======================================
+        // PARSEAR JSON
+        // ======================================
+
+        let dataAPI = null;
+
+        try {
+
+            dataAPI =
+                JSON.parse(
+                    resultadoAPI.texto
+                );
+
+        } catch {
+
+            console.log(
+                "La respuesta de la API no es JSON válido."
+            );
+
+            console.log(
+                resultadoAPI.texto.substring(
+                    0,
+                    10000
+                )
+            );
+
+            console.log(
+                "No se modifica Redis."
+            );
+
+            return;
+        }
+
+        // ======================================
+        // MOSTRAR RESPUESTA
+        // ======================================
+
         console.log(
-            "__NEXT_DATA__ encontrado para tablas."
+            "\n=========================================="
+        );
+
+        console.log(
+            "RESPUESTA API DE TABLAS"
+        );
+
+        console.log(
+            "=========================================="
+        );
+
+        console.log(
+            JSON.stringify(
+                dataAPI,
+                null,
+                2
+            ).substring(
+                0,
+                30000
+            )
+        );
+
+        console.log(
+            "=========================================="
         );
 
         // ======================================
-        // BUSCAR RECURSIVAMENTE TABLAS
+        // BUSCAR TABLAS
         // ======================================
-
-        const tablesFromJSON =
-            nextData;
-
-        // ======================================
-        // FUNCIÓN PARA DETERMINAR EQUIPO
-        // ======================================
-
-        function pareceEquipo(
-            obj
-        ) {
-
-            if (!esObjeto(obj)) {
-                return false;
-            }
-
-            const tieneNombre =
-                typeof obj.name === "string" ||
-                typeof obj.team_name === "string" ||
-                typeof obj.nombre === "string";
-
-            const tieneDatosTabla =
-                obj.points !== undefined ||
-                obj.pts !== undefined ||
-                obj.played !== undefined ||
-                obj.pj !== undefined ||
-                obj.goal_difference !== undefined ||
-                obj.dg !== undefined ||
-                obj.position !== undefined;
-
-            return (
-                tieneNombre &&
-                tieneDatosTabla
-            );
-        }
-
-        // ======================================
-        // BUSCAR ARRAYS DE EQUIPOS
-        // ======================================
-
-        function buscarTablasRecursivamente(
-            obj,
-            resultado = [],
-            ruta = ""
-        ) {
-
-            if (!esObjeto(obj)) {
-                return resultado;
-            }
-
-            if (Array.isArray(obj)) {
-
-                const equipos =
-                    obj.filter(
-                        (item) =>
-                            pareceEquipo(item)
-                    );
-
-                if (
-                    equipos.length >= 4
-                ) {
-
-                    resultado.push({
-                        ruta,
-                        teams: equipos
-                    });
-                }
-
-                for (
-                    let i = 0;
-                    i < obj.length;
-                    i++
-                ) {
-
-                    buscarTablasRecursivamente(
-                        obj[i],
-                        resultado,
-                        `${ruta}[${i}]`
-                    );
-                }
-
-                return resultado;
-            }
-
-            for (
-                const key of Object.keys(obj)
-            ) {
-
-                const valor =
-                    obj[key];
-
-                if (
-                    Array.isArray(valor)
-                ) {
-
-                    const equipos =
-                        valor.filter(
-                            (item) =>
-                                pareceEquipo(item)
-                        );
-
-                    if (
-                        equipos.length >= 4
-                    ) {
-
-                        resultado.push({
-                            ruta:
-                                ruta
-                                    ? `${ruta}.${key}`
-                                    : key,
-
-                            teams:
-                                equipos
-                        });
-                    }
-                }
-
-                if (
-                    esObjeto(valor)
-                ) {
-
-                    buscarTablasRecursivamente(
-                        valor,
-                        resultado,
-                        ruta
-                            ? `${ruta}.${key}`
-                            : key
-                    );
-                }
-            }
-
-            return resultado;
-        }
 
         const tablasEncontradas =
             buscarTablasRecursivamente(
-                tablesFromJSON
+                dataAPI
             );
 
         console.log(
-            `Posibles tablas encontradas: ${tablasEncontradas.length}`
+            `\nPosibles tablas encontradas: ${tablasEncontradas.length}`
         );
-
-        // ======================================
-        // MOSTRAR TABLAS EN CONSOLA
-        // ======================================
 
         tablasEncontradas.forEach(
             (tabla, index) => {
@@ -1166,29 +1683,37 @@ async function sincronizarTablas(
 
                 console.log(
                     tabla.teams
-                        .slice(0, 3)
+                        .slice(0, 5)
                         .map(
-                            (team) => ({
+                            team => ({
+
                                 name:
-                                    team.name ??
-                                    team.team_name ??
-                                    team.nombre,
+                                    obtenerNombreEquipo(
+                                        team
+                                    ),
 
                                 position:
                                     team.position ??
-                                    team.pos,
+                                    team.pos ??
+                                    team.rank,
 
                                 points:
                                     team.points ??
-                                    team.pts,
+                                    team.pts ??
+                                    team.puntos,
 
                                 played:
                                     team.played ??
-                                    team.pj,
+                                    team.pj ??
+                                    team.games ??
+                                    team.matches,
 
                                 dg:
                                     team.goal_difference ??
-                                    team.dg
+                                    team.goal_diff ??
+                                    team.dg ??
+                                    team.difference
+
                             })
                         )
                 );
@@ -1196,399 +1721,79 @@ async function sincronizarTablas(
         );
 
         // ======================================
+        // NORMALIZAR
+        // ======================================
+
+        const tablasNormalizadas =
+            tablasEncontradas
+                .map(
+                    tabla =>
+                        normalizarTabla(
+                            tabla
+                        )
+                )
+                .filter(
+                    Boolean
+                );
+
+        // ======================================
         // ELIMINAR DUPLICADOS
         // ======================================
 
-        const tablasUnicas = [];
-
-        const firmas =
-            new Set();
-
-        for (
-            const tabla of tablasEncontradas
-        ) {
-
-            const firma =
-                tabla.teams
-                    .map(
-                        (team) =>
-                            String(
-                                team.id ??
-                                team.team_id ??
-                                team.name ??
-                                team.team_name
-                            )
-                    )
-                    .join("|");
-
-            if (
-                !firmas.has(firma)
-            ) {
-
-                firmas.add(firma);
-
-                tablasUnicas.push(
-                    tabla
-                );
-            }
-        }
+        const tablasUnicas =
+            eliminarTablasDuplicadas(
+                tablasNormalizadas
+            );
 
         console.log(
-            `Tablas únicas: ${tablasUnicas.length}`
+            `\nTablas únicas: ${tablasUnicas.length}`
         );
 
         // ======================================
-        // CONVERTIR TABLAS
+        // ESTADÍSTICAS
         // ======================================
 
-        const tablesData =
-            tablasUnicas.map(
-                (tabla, index) => {
-
-                    const teams =
-                        tabla.teams.map(
-                            (
-                                team,
-                                teamIndex
-                            ) => {
-
-                                return {
-
-                                    id:
-                                        team.id ??
-                                        team.team_id ??
-                                        teamIndex,
-
-                                    name:
-                                        team.name ??
-                                        team.team_name ??
-                                        team.nombre ??
-                                        "Equipo",
-
-                                    position:
-                                        team.position ??
-                                        team.pos ??
-                                        teamIndex + 1,
-
-                                    points:
-                                        team.points ??
-                                        team.pts ??
-                                        0,
-
-                                    played:
-                                        team.played ??
-                                        team.pj ??
-                                        0,
-
-                                    goal_difference:
-                                        team.goal_difference ??
-                                        team.dg ??
-                                        0,
-
-                                    seasons:
-                                        team.seasons ??
-                                        []
-                                };
-                            }
-                        );
-
-                    return {
-
-                        title:
-                            `Tabla ${index + 1}`,
-
-                        teams
-                    };
-                }
+        const statsData =
+            await obtenerEstadisticasDOM(
+                page
             );
 
-       // ======================================
-// ESTADÍSTICAS PERSONALES
-// ======================================
-
-const statsData =
-    await page.evaluate(
-        () => {
-
-            const resultado = [];
-
-            const tablas =
-                Array.from(
-                    document.querySelectorAll(
-                        "table"
-                    )
-                );
-
-            tablas.forEach(
-                (table) => {
-
-                    const textoTabla =
-                        table.innerText?.trim() ||
-                        "";
-
-                    const textoLower =
-                        textoTabla.toLowerCase();
-
-                    let category =
-                        null;
-
-                    if (
-                        textoLower.includes(
-                            "goleadores"
-                        ) ||
-                        textoLower.includes(
-                            "goles"
-                        )
-                    ) {
-
-                        category =
-                            "Goleadores";
-                    }
-
-                    if (
-                        textoLower.includes(
-                            "asistencias"
-                        ) ||
-                        textoLower.includes(
-                            "asistidores"
-                        )
-                    ) {
-
-                        category =
-                            "Asistidores";
-                    }
-
-                    if (!category) {
-                        return;
-                    }
-
-                    const rows =
-                        Array.from(
-                            table.querySelectorAll(
-                                "tr"
-                            )
-                        );
-
-                    const players = [];
-
-                    rows.forEach(
-                        (row) => {
-
-                            const cells =
-                                Array.from(
-                                    row.querySelectorAll(
-                                        "th, td"
-                                    )
-                                );
-
-                            const textos =
-                                cells
-                                    .map(
-                                        (cell) =>
-                                            cell.innerText
-                                                .trim()
-                                    )
-                                    .filter(
-                                        Boolean
-                                    );
-
-                            if (
-                                textos.length < 2
-                            ) {
-                                return;
-                            }
-
-                            // ----------------------------------
-                            // IGNORAR ENCABEZADOS
-                            // ----------------------------------
-
-                            const primera =
-                                textos[0]
-                                    .toLowerCase();
-
-                            if (
-                                primera.includes(
-                                    "jugador"
-                                ) ||
-                                primera.includes(
-                                    "nombre"
-                                ) ||
-                                primera.includes(
-                                    "player"
-                                )
-                            ) {
-
-                                return;
-                            }
-
-                            // ----------------------------------
-                            // NOMBRE
-                            // ----------------------------------
-
-                            const name =
-                                textos[0];
-
-                            // ----------------------------------
-                            // VALOR
-                            // ----------------------------------
-
-                            const value =
-                                textos[
-                                    textos.length - 1
-                                ];
-
-                            if (
-                                !name ||
-                                !value
-                            ) {
-                                return;
-                            }
-
-                            // ----------------------------------
-                            // BUSCAR EQUIPO
-                            // ----------------------------------
-
-                            let team = "";
-
-                            // 1. Buscar una celda cuyo
-                            //    contenido parezca ser
-                            //    el equipo.
-                            //
-                            //    Normalmente estará entre
-                            //    el nombre y el valor.
-
-                            if (
-                                textos.length >= 3
-                            ) {
-
-                                team =
-                                    textos[1] || "";
-                            }
-
-                            // ----------------------------------
-                            // 2. Buscar enlace del equipo
-                            // ----------------------------------
-
-                            const enlaces =
-                                Array.from(
-                                    row.querySelectorAll(
-                                        "a"
-                                    )
-                                );
-
-                            for (
-                                const enlace of enlaces
-                            ) {
-
-                                const href =
-                                    enlace
-                                        .getAttribute(
-                                            "href"
-                                        ) || "";
-
-                                const texto =
-                                    enlace.innerText
-                                        ?.trim() || "";
-
-                                if (
-                                    texto &&
-                                    href.includes(
-                                        "/team/"
-                                    )
-                                ) {
-
-                                    team =
-                                        texto;
-
-                                    break;
-                                }
-                            }
-
-                            // ----------------------------------
-                            // 3. Buscar atributo title
-                            // ----------------------------------
-
-                            if (!team) {
-
-                                const elementos =
-                                    Array.from(
-                                        row.querySelectorAll(
-                                            "[title]"
-                                        )
-                                    );
-
-                                for (
-                                    const elemento
-                                    of elementos
-                                ) {
-
-                                    const title =
-                                        elemento
-                                            .getAttribute(
-                                                "title"
-                                            )
-                                            ?.trim() || "";
-
-                                    if (
-                                        title &&
-                                        title !== name
-                                    ) {
-
-                                        team =
-                                            title;
-
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // ----------------------------------
-                            // GUARDAR JUGADOR
-                            // ----------------------------------
-
-                            players.push({
-
-                                name,
-
-                                team:
-                                    team || "Sin equipo",
-
-                                value
-
-                            });
-                        }
-                    );
-
-                    if (
-                        players.length > 0
-                    ) {
-
-                        resultado.push({
-
-                            category,
-
-                            players
-
-                        });
-                    }
-                }
-            );
-
-            return resultado;
-        }
-    );
+        console.log(
+            `Estadísticas encontradas: ${statsData.length}`
+        );
 
         // ======================================
-        // GUARDAR TODO
+        // PREPARAR DATA
         // ======================================
 
         const data = {
 
+            league: {
+
+                id:
+                    "hc",
+
+                name:
+                    "Liga Profesional"
+
+            },
+
             tables:
-                tablesData,
+                tablasUnicas.map(
+                    (tabla, index) => ({
+
+                        title:
+                            `Tabla ${index + 1}`,
+
+                        teams:
+                            tabla.teams
+
+                    })
+                ),
 
             stats:
                 statsData
+
         };
 
         // ======================================
@@ -1596,11 +1801,15 @@ const statsData =
         // ======================================
 
         console.log(
-            "\n------------------------------------------"
+            "\n=========================================="
         );
 
         console.log(
             "RESUMEN TABLAS"
+        );
+
+        console.log(
+            "=========================================="
         );
 
         console.log(
@@ -1613,25 +1822,40 @@ const statsData =
             data.stats.length
         );
 
-        console.log(
-            "------------------------------------------"
-        );
+        if (
+            data.tables.length > 0
+        ) {
+
+            console.log(
+                "\nPrimera tabla:"
+            );
+
+            console.log(
+                JSON.stringify(
+                    data.tables[0],
+                    null,
+                    2
+                ).substring(
+                    0,
+                    10000
+                )
+            );
+        }
 
         // ======================================
         // PROTECCIÓN
         // ======================================
 
         if (
-            !data.tables ||
             data.tables.length === 0
         ) {
 
             console.log(
-                "NO se encontraron tablas de posiciones."
+                "\nNO se encontraron tablas."
             );
 
             console.log(
-                "No se modifica Redis."
+                "NO se modifica Redis."
             );
 
             return;
@@ -1652,13 +1876,21 @@ const statsData =
         );
 
         console.log(
-            "Tablas y estadísticas guardadas correctamente."
+            "\n=========================================="
+        );
+
+        console.log(
+            "TABLAS GUARDADAS CORRECTAMENTE"
+        );
+
+        console.log(
+            "=========================================="
         );
 
     } catch (error) {
 
         console.error(
-            "Error sincronizando tablas:",
+            "\nError sincronizando tablas:",
             error.message
         );
     }
