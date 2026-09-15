@@ -26,6 +26,13 @@ export default function PosicionesPage() {
       }
 
       const json = await response.json();
+      console.log("==========================================");
+console.log("DEBUG TABLAS DE POSICIONES");
+console.log("==========================================");
+console.log(
+  JSON.stringify(json.tables_groups, null, 2)
+);
+console.log("==========================================");
       setData(json);
     } catch (err) {
       console.error(err);
