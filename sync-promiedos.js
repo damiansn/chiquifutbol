@@ -1062,6 +1062,37 @@ async function sincronizarTablas(page) {
     tablaData.players_statistics ??
     null;
 
+    console.log("\n");
+console.log("##########################################");
+console.log("DEBUG PLAYERS_STATISTICS");
+console.log("##########################################");
+
+console.log(
+  "TIPO:",
+  typeof playersStatistics
+);
+
+console.log(
+  "ES ARRAY:",
+  Array.isArray(playersStatistics)
+);
+
+console.log(
+  "JSON COMPLETO:"
+);
+
+console.log(
+  JSON.stringify(
+    playersStatistics,
+    null,
+    2
+  )
+);
+
+console.log(
+  "##########################################"
+);
+
   console.log(
     "players_statistics tipo:",
     Array.isArray(
