@@ -527,7 +527,7 @@ export default function Home() {
               margin: 0
             }}
           >
-            Chiqui
+            ChiquiF
           </h1>
         </div>
 
