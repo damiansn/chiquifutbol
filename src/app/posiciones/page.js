@@ -84,98 +84,27 @@ console.log("==========================================");
   }
 
   function obtenerTablas() {
-  if (!data) return [];
+  console.log("==========================================");
+  console.log("DEBUG tables_groups");
+  console.log("==========================================");
 
-  const resultado = [];
+  console.log("tables_groups:");
+  console.log(data?.tables_groups);
 
-  // ============================================================
-  // 1. TABLAS DIRECTAS
-  // ============================================================
-
-  if (Array.isArray(data.tables)) {
-    data.tables.forEach((tabla) => {
-      if (tabla) {
-        resultado.push(tabla);
-      }
+  if (Array.isArray(data?.tables_groups)) {
+    data.tables_groups.forEach((grupo, i) => {
+      console.log("------------------------------------------");
+      console.log("GRUPO:", i);
+      console.log("TIPO:", typeof grupo);
+      console.log("CLAVES:", Object.keys(grupo || {}));
+      console.log("CONTENIDO:");
+      console.log(JSON.stringify(grupo, null, 2));
     });
   }
 
-  // ============================================================
-  // 2. TABLAS DENTRO DE tables_groups
-  // ============================================================
+  console.log("==========================================");
 
-  if (Array.isArray(data.tables_groups)) {
-    data.tables_groups.forEach((grupo) => {
-      if (!grupo) return;
-
-      // El grupo puede tener las tablas directamente
-      if (Array.isArray(grupo.tables)) {
-        grupo.tables.forEach((tabla) => {
-          if (tabla) {
-            resultado.push(tabla);
-          }
-        });
-      }
-
-      // Algunos formatos pueden tener una sola tabla
-      if (grupo.table) {
-        resultado.push(grupo.table);
-      }
-
-      // O pueden estar dentro de data
-      if (Array.isArray(grupo.data)) {
-        grupo.data.forEach((tabla) => {
-          if (tabla) {
-            resultado.push(tabla);
-          }
-        });
-      }
-    });
-  }
-
-  // ============================================================
-  // 3. EVITAR DUPLICADOS
-  // ============================================================
-
-  const vistas = new Set();
-
-  return resultado.filter((tabla) => {
-    const nombre =
-      tabla?.name ||
-      tabla?.title ||
-      tabla?.label ||
-      tabla?.table?.name ||
-      tabla?.table?.title ||
-      "";
-
-    const filas = normalizarFilas(tabla);
-
-    // Si no tiene filas, no es una tabla útil
-    if (!filas.length) {
-      return false;
-    }
-
-    // Creamos una firma para detectar duplicados
-    const firma =
-      String(nombre) +
-      "|" +
-      filas.length +
-      "|" +
-      JSON.stringify(
-        filas[0]?.entity?.object?.name ||
-        filas[0]?.team_name ||
-        filas[0]?.name ||
-        ""
-      );
-
-    if (vistas.has(firma)) {
-      return false;
-    }
-
-    vistas.add(firma);
-
-    return true;
-  });
+  return [];
 }
 
   function obtenerEstadisticasJugadores() {
