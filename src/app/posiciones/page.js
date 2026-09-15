@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,258 +6,122 @@ import Link from "next/link";
 export default function PosicionesPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    async function cargarTablas() {
-      try {
-        setLoading(true);
-
-        const res = await fetch("/api/standings", {
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          throw new Error("No se pudieron obtener las tablas");
-        }
-
-        const json = await res.json();
-
-        console.log("DATOS DE TABLAS RECIBIDOS:", json);
-
-        console.log(
-          "DEBUG PLAYERS_STATISTICS:",
-          json?.players_statistics
-        );
-
-        setData(json);
-        setError(null);
-      } catch (err) {
-        console.error("Error cargando tablas:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    cargarTablas();
+    cargarDatos();
   }, []);
 
-  // =========================================================
-  // OBTENER VALOR
-  // =========================================================
+  async function cargarDatos() {
+    try {
+      setLoading(true);
+      setError("");
 
-  function obtenerValor(valores, clave, defecto = "-") {
-    if (!Array.isArray(valores)) {
-      return defecto;
+      const response = await fetch("/api/standings", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudieron obtener los datos.");
+      }
+
+      const json = await response.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Error al cargar los datos.");
+    } finally {
+      setLoading(false);
     }
-
-    const encontrado = valores.find(
-      (item) => item?.key === clave
-    );
-
-    return encontrado?.value ?? defecto;
   }
 
-  // =========================================================
-  // NORMALIZAR POSICIONES
-  // =========================================================
+  // ============================================================
+  // FUNCIONES DE DATOS
+  // ============================================================
 
-  function normalizarFilas(rows) {
-    if (!Array.isArray(rows)) {
-      return [];
+  function obtenerValor(objeto, claves = []) {
+    for (const clave of claves) {
+      if (
+        objeto &&
+        objeto[clave] !== undefined &&
+        objeto[clave] !== null &&
+        objeto[clave] !== ""
+      ) {
+        return objeto[clave];
+      }
     }
 
-    return rows.map((fila) => {
-      const equipo = fila?.entity?.object || {};
-
-      const valores = Array.isArray(fila?.values)
-        ? fila.values
-        : [];
-
-      return {
-        posicion: fila?.num ?? "-",
-
-        equipo:
-          equipo.name ||
-          equipo.short_name ||
-          "Equipo",
-
-        puntos: obtenerValor(
-          valores,
-          "Points",
-          0
-        ),
-
-        pj: obtenerValor(
-          valores,
-          "GamePlayed",
-          0
-        ),
-
-        ganados: obtenerValor(
-          valores,
-          "GamesWon",
-          0
-        ),
-
-        empatados: obtenerValor(
-          valores,
-          "GamesEven",
-          0
-        ),
-
-        perdidos: obtenerValor(
-          valores,
-          "GamesLost",
-          0
-        ),
-
-        goles: obtenerValor(
-          valores,
-          "Goals",
-          "0:0"
-        ),
-
-        diferencia: obtenerValor(
-          valores,
-          "Ratio",
-          0
-        ),
-      };
-    });
+    return "";
   }
 
-  // =========================================================
-  // EXTRAER TABLAS DE POSICIONES
-  // =========================================================
+  function normalizarFilas(tabla) {
+    if (!tabla) return [];
+
+    if (Array.isArray(tabla.rows)) {
+      return tabla.rows;
+    }
+
+    if (Array.isArray(tabla.table?.rows)) {
+      return tabla.table.rows;
+    }
+
+    if (Array.isArray(tabla.data?.rows)) {
+      return tabla.data.rows;
+    }
+
+    if (Array.isArray(tabla.data)) {
+      return tabla.data;
+    }
+
+    return [];
+  }
 
   function obtenerTablas() {
-    if (!data) {
-      return [];
+    if (!data) return [];
+
+    if (Array.isArray(data.tables)) {
+      return data.tables;
     }
 
-    const resultado = [];
+    if (Array.isArray(data.tables_groups)) {
+      const resultado = [];
 
-    if (!Array.isArray(data.tables)) {
-      return [];
-    }
-
-    data.tables.forEach((torneo) => {
-      if (!Array.isArray(torneo?.tables)) {
-        return;
-      }
-
-      torneo.tables.forEach((grupo) => {
-        if (!grupo?.table) {
-          return;
+      data.tables_groups.forEach((grupo) => {
+        if (Array.isArray(grupo.tables)) {
+          grupo.tables.forEach((tabla) => {
+            resultado.push(tabla);
+          });
         }
-
-        const rows = Array.isArray(
-          grupo.table.rows
-        )
-          ? grupo.table.rows
-          : [];
-
-        if (rows.length === 0) {
-          return;
-        }
-
-        resultado.push({
-          torneo:
-            torneo.name ||
-            "Torneo",
-
-          grupo:
-            grupo.name ||
-            "Tabla",
-
-          rows,
-        });
       });
-    });
 
-    return resultado;
+      return resultado;
+    }
+
+    return [];
   }
-
-  // =========================================================
-  // ESTADÍSTICAS DE JUGADORES
-  // =========================================================
 
   function obtenerEstadisticasJugadores() {
-    if (!data?.players_statistics) {
-      return [];
+    if (!data?.players_statistics) return [];
+
+    if (Array.isArray(data.players_statistics)) {
+      return data.players_statistics;
     }
 
-    const tables =
-      data.players_statistics.tables;
-
-    if (!Array.isArray(tables)) {
-      return [];
+    if (Array.isArray(data.players_statistics.tables)) {
+      return data.players_statistics.tables;
     }
 
-    const resultado = [];
-
-    tables.forEach((tabla, indice) => {
-      if (!tabla) {
-        return;
-      }
-
-      const nombre =
-        tabla.name ||
-        tabla.title ||
-        tabla.label ||
-        `Estadísticas ${indice + 1}`;
-
-      let rows = [];
-
-      if (Array.isArray(tabla.rows)) {
-        rows = tabla.rows;
-      } else if (
-        Array.isArray(tabla.table?.rows)
-      ) {
-        rows = tabla.table.rows;
-      } else if (
-        Array.isArray(tabla.data)
-      ) {
-        rows = tabla.data;
-      }
-
-      if (!rows.length) {
-        return;
-      }
-
-      resultado.push({
-        nombre,
-        rows,
-      });
-    });
-
-    return resultado;
+    return [];
   }
-
-  // =========================================================
-  // NOMBRE DEL JUGADOR
-  // =========================================================
 
   function obtenerNombreJugador(fila) {
-    const entity =
-      fila?.entity?.object || {};
-
     return (
-      entity.name ||
-      entity.full_name ||
-      entity.player_name ||
+      fila?.entity?.object?.name ||
+      fila?.entity?.object?.sname ||
       fila?.name ||
-      fila?.player ||
-      fila?.player_name ||
-      "Jugador"
+      "-"
     );
   }
-
-  // =========================================================
-  // EQUIPO DEL JUGADOR
-  // =========================================================
 
   function obtenerEquipoJugador(fila) {
     return (
@@ -267,10 +130,6 @@ export default function PosicionesPage() {
       "-"
     );
   }
-
-  // =========================================================
-  // VALORES DE ESTADISTICA
-  // =========================================================
 
   function obtenerValoresEstadistica(fila) {
     if (Array.isArray(fila?.values)) {
@@ -284,61 +143,34 @@ export default function PosicionesPage() {
     return [];
   }
 
-  // =========================================================
-  // VALOR COMO TEXTO
-  // =========================================================
-
   function valorComoTexto(valor) {
-    if (
-      valor === null ||
-      valor === undefined
-    ) {
-      return "-";
-    }
+    if (valor === null || valor === undefined) return "-";
 
     if (typeof valor === "object") {
-      if (Array.isArray(valor)) {
-        return valor.join(", ");
+      if (valor.value !== undefined) {
+        return String(valor.value);
       }
 
-      return (
-        valor.value ??
-        valor.name ??
-        JSON.stringify(valor)
-      );
+      return JSON.stringify(valor);
     }
 
     return String(valor);
   }
 
-  // =========================================================
-  // COLUMNAS DE ESTADISTICA
-  // =========================================================
+  function obtenerColumnasEstadistica(tabla) {
+    const filas = normalizarFilas(tabla);
 
-  function obtenerColumnasEstadistica(rows) {
     const columnas = [];
 
-    if (!Array.isArray(rows)) {
-      return columnas;
-    }
+    filas.forEach((fila) => {
+      const valores = obtenerValoresEstadistica(fila);
 
-    rows.forEach((fila) => {
-      const valores =
-        obtenerValoresEstadistica(fila);
-
-      valores.forEach((valor) => {
-        if (!valor) {
-          return;
-        }
-
-        const key =
-          valor.key ||
-          valor.name ||
-          valor.label;
+      valores.forEach((item) => {
+        const key = item?.key;
 
         if (
           key &&
-          !columnas.includes(key)
+          !columnas.some((columna) => columna === key)
         ) {
           columnas.push(key);
         }
@@ -348,747 +180,920 @@ export default function PosicionesPage() {
     return columnas;
   }
 
-  // =========================================================
-  // VALOR DE ESTADISTICA
-  // =========================================================
-
-  function obtenerValorEstadistica(
-    fila,
-    clave
-  ) {
-    const valores =
-      obtenerValoresEstadistica(fila);
+  function obtenerValorEstadistica(fila, columna) {
+    const valores = obtenerValoresEstadistica(fila);
 
     const encontrado = valores.find(
-      (item) =>
-        item?.key === clave ||
-        item?.name === clave ||
-        item?.label === clave
+      (item) => item?.key === columna
     );
 
-    if (!encontrado) {
-      return "-";
-    }
+    if (!encontrado) return "-";
 
-    return valorComoTexto(
-      encontrado.value
-    );
+    return valorComoTexto(encontrado.value);
   }
 
-  // =========================================================
-  // TITULO DE COLUMNA
-  // =========================================================
-
-  function tituloColumna(clave) {
-    if (!clave) {
-      return "";
-    }
-
-    const traducciones = {
+  function tituloColumna(columna) {
+    const titulos = {
       Goals: "Goles",
-      Goal: "Goles",
-      Assists: "Asist.",
-      Assist: "Asist.",
-      YellowCards: "Amar.",
+      Assists: "Asistencias",
+      Matches: "PJ",
+      Games: "PJ",
+      Minutes: "Min.",
+      YellowCards: "Amarillas",
       RedCards: "Rojas",
-      Cards: "Tarj.",
-      MinutesPlayed: "Min.",
-      GamePlayed: "PJ",
-      GamesPlayed: "PJ",
-      Points: "Pts",
+      GoalsPerGame: "G/PJ",
+      Average: "Promedio",
+      Rating: "Puntaje",
     };
 
-    if (traducciones[clave]) {
-      return traducciones[clave];
-    }
-
-    return clave
-      .replace(/_/g, " ")
-      .replace(
-        /([a-z])([A-Z])/g,
-        "$1 $2"
-      );
+    return titulos[columna] || columna;
   }
 
-  // =========================================================
-  // COLOR DE POSICION
-  // =========================================================
+  // ============================================================
+  // ESTILOS
+  // ============================================================
+
+  const colores = {
+    verde: "#10b981",
+    verdeSuave: "rgba(16,185,129,0.15)",
+    fondo: "rgba(128,128,128,0.02)",
+    fondoHeader: "rgba(128,128,128,0.08)",
+    fondoFila: "rgba(128,128,128,0.025)",
+    borde: "rgba(128,128,128,0.25)",
+    bordeSuave: "rgba(128,128,128,0.15)",
+    texto: "inherit",
+    textoSecundario: "rgba(180,180,180,0.75)",
+  };
+
+  const tablaTh = {
+    padding: "10px 8px",
+    border: `1px solid ${colores.borde}`,
+    background: colores.fondoHeader,
+    fontSize: "0.78rem",
+    fontWeight: 700,
+    textAlign: "center",
+    whiteSpace: "nowrap",
+  };
+
+  const tablaTd = {
+    padding: "9px 8px",
+    border: `1px solid ${colores.bordeSuave}`,
+    fontSize: "0.86rem",
+    verticalAlign: "middle",
+  };
 
   function clasePosicion(posicion) {
-    const numero = Number(posicion);
-
-    if (numero === 1) {
-      return "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20";
+    if (posicion === 1) {
+      return {
+        background: "rgba(234,179,8,0.15)",
+        color: "#facc15",
+        border: "1px solid rgba(234,179,8,0.35)",
+      };
     }
 
-    if (numero === 2) {
-      return "bg-slate-400/15 text-slate-300 border border-slate-400/20";
+    if (posicion === 2) {
+      return {
+        background: "rgba(148,163,184,0.15)",
+        color: "#cbd5e1",
+        border: "1px solid rgba(148,163,184,0.35)",
+      };
     }
 
-    if (numero === 3) {
-      return "bg-orange-500/15 text-orange-400 border border-orange-500/20";
+    if (posicion === 3) {
+      return {
+        background: "rgba(249,115,22,0.15)",
+        color: "#fb923c",
+        border: "1px solid rgba(249,115,22,0.35)",
+      };
     }
 
-    return "text-[#718096]";
+    return {
+      background: "transparent",
+      color: colores.textoSecundario,
+      border: "1px solid transparent",
+    };
   }
 
-  // =========================================================
-  // DATOS
-  // =========================================================
-
-  const tablas = obtenerTablas();
-
-  const estadisticas =
-    obtenerEstadisticasJugadores();
-
-  // =========================================================
+  // ============================================================
   // LOADING
-  // =========================================================
+  // ============================================================
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
-
-        <div className="max-w-7xl mx-auto">
-
-          <div className="animate-pulse space-y-5">
-
-            <div className="h-8 w-52 bg-[#18212c] rounded-lg" />
-
-            <div className="h-4 w-72 bg-[#18212c] rounded" />
-
-            <div className="h-64 bg-[#121821] border border-[#263244] rounded-xl" />
-
-          </div>
-
+      <main
+        style={{
+          maxWidth: "950px",
+          width: "100%",
+          margin: "0 auto",
+          padding: "20px",
+          minHeight: "100vh",
+        }}
+      >
+        <div
+          style={{
+            border: `1px solid ${colores.borde}`,
+            borderRadius: "8px",
+            padding: "30px",
+            textAlign: "center",
+            background: colores.fondo,
+          }}
+        >
+          Cargando posiciones...
         </div>
-
       </main>
     );
   }
 
-  // =========================================================
+  // ============================================================
   // ERROR
-  // =========================================================
+  // ============================================================
 
   if (error) {
     return (
-      <main className="min-h-screen bg-[#0d131a] text-[#e6edf3] p-6">
+      <main
+        style={{
+          maxWidth: "950px",
+          width: "100%",
+          margin: "0 auto",
+          padding: "20px",
+          minHeight: "100vh",
+        }}
+      >
+        <div
+          style={{
+            border: "1px solid rgba(239,68,68,0.4)",
+            borderRadius: "8px",
+            padding: "20px",
+            background: "rgba(239,68,68,0.08)",
+            color: "#fca5a5",
+          }}
+        >
+          <strong>Error:</strong> {error}
 
-        <div className="max-w-7xl mx-auto">
+          <div style={{ marginTop: "15px" }}>
+            <button
+              onClick={cargarDatos}
+              style={{
+                padding: "7px 14px",
+                borderRadius: "6px",
+                border: `1px solid ${colores.borde}`,
+                background: "transparent",
+                color: "inherit",
+                cursor: "pointer",
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
-          <div className="flex items-center justify-between mb-8">
+  const tablas = obtenerTablas();
+  const estadisticas = obtenerEstadisticasJugadores();
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
+  return (
+    <main
+      style={{
+        maxWidth: "950px",
+        width: "100%",
+        margin: "0 auto",
+        padding: "20px",
+        minHeight: "100vh",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
+
+      <header
+        style={{
+          borderBottom: `1px solid ${colores.borde}`,
+          paddingBottom: "16px",
+          marginBottom: "20px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "15px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
+            }}
+          >
+            <img
+              src="/logo.svg"
+              alt="Chiquifutbol"
+              style={{
+                height: "58px",
+                width: "auto",
+                display: "block",
+              }}
+            />
 
             <div>
-
-              <h1 className="text-2xl font-bold">
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: "1.5rem",
+                  fontWeight: 700,
+                  letterSpacing: "1px",
+                  textTransform: "uppercase",
+                }}
+              >
                 Posiciones
               </h1>
 
-              <p className="text-[#8b949e] mt-1">
-                Liga Profesional Argentina
-              </p>
-
+              {data?.league?.name && (
+                <div
+                  style={{
+                    marginTop: "3px",
+                    fontSize: "0.82rem",
+                    color: colores.textoSecundario,
+                  }}
+                >
+                  {data.league.name}
+                </div>
+              )}
             </div>
+          </div>
 
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+            }}
+          >
             <Link
               href="/"
-              className="px-4 py-2 rounded-lg border border-[#263244] text-sm text-[#9ca3af] hover:text-white hover:bg-[#18212c] transition"
+              style={{
+                display: "inline-block",
+                padding: "7px 14px",
+                borderRadius: "6px",
+                border: `1px solid ${colores.borde}`,
+                color: "inherit",
+                textDecoration: "none",
+                background: "transparent",
+                fontSize: "0.85rem",
+              }}
             >
               ← Partidos
             </Link>
 
+            <button
+              onClick={cargarDatos}
+              style={{
+                padding: "7px 14px",
+                borderRadius: "6px",
+                border: `1px solid ${colores.borde}`,
+                background: "transparent",
+                color: "inherit",
+                cursor: "pointer",
+                fontSize: "0.85rem",
+              }}
+            >
+              Actualizar
+            </button>
           </div>
-
-          <div className="bg-[#121821] border border-red-900/40 rounded-xl p-6">
-
-            <p className="text-red-400">
-              {error}
-            </p>
-
-          </div>
-
         </div>
+      </header>
 
-      </main>
-    );
-  }
+      {/* ======================================================
+          TABLAS DE POSICIONES
+      ====================================================== */}
 
-  // =========================================================
-  // PAGINA
-  // =========================================================
-
-  return (
-    <main className="min-h-screen bg-[#0d131a] text-[#e6edf3]">
-
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-5 md:py-8">
-
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
-        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-
-          <div>
-
-            <div className="flex items-center gap-3">
-
-              <div className="w-1 h-9 bg-[#22c55e] rounded-full" />
-
-              <div>
-
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  Posiciones
-                </h1>
-
-                <p className="text-[#8b949e] text-sm mt-1">
-                  Liga Profesional Argentina
-                </p>
-
-              </div>
-
-            </div>
-
+      {tablas.length > 0 && (
+        <section style={{ marginBottom: "28px" }}>
+          <div
+            style={{
+              marginBottom: "12px",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              color: colores.verde,
+            }}
+          >
+            Tablas de posiciones
           </div>
 
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-[#263244] bg-[#121821] text-sm text-[#b1bac4] hover:bg-[#18212c] hover:text-white transition"
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "18px",
+            }}
           >
-            ← Partidos
-          </Link>
+            {tablas.map((tabla, indiceTabla) => {
+              const filas = normalizarFilas(tabla);
 
-        </header>
+              if (!filas.length) return null;
 
+              const nombreTabla =
+                tabla?.name ||
+                tabla?.title ||
+                tabla?.label ||
+                tabla?.table?.name ||
+                tabla?.table?.title ||
+                `Tabla ${indiceTabla + 1}`;
 
-        {/* =================================================
-            TABLAS DE POSICIONES
-        ================================================= */}
+              return (
+                <div
+                  key={indiceTabla}
+                  style={{
+                    border: `1px solid ${colores.borde}`,
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    background: colores.fondo,
+                  }}
+                >
+                  {/* CABECERA DE TABLA */}
 
-        {tablas.length > 0 && (
+                  <div
+                    style={{
+                      padding: "11px 14px",
+                      background: colores.verdeSuave,
+                      borderBottom: `1px solid ${colores.borde}`,
+                      color: colores.verde,
+                      fontWeight: 700,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    {nombreTabla}
+                  </div>
 
-          <section>
+                  {/* TABLA */}
 
-            <div className="flex items-center justify-between mb-5">
-
-              <div className="flex items-center gap-3">
-
-                <div className="w-1 h-7 bg-[#22c55e] rounded-full" />
-
-                <div>
-
-                  <h2 className="text-xl font-bold">
-                    Tablas de posiciones
-                  </h2>
-
-                  <p className="text-xs text-[#718096] mt-1">
-                    Clasificación actual
-                  </p>
-
-                </div>
-
-              </div>
-
-              <span className="hidden sm:block text-xs text-[#64748b]">
-                {tablas.length} tablas
-              </span>
-
-            </div>
-
-
-            <div className="space-y-6">
-
-              {tablas.map(
-                (tabla, indice) => {
-
-                  const filas =
-                    normalizarFilas(
-                      tabla.rows
-                    );
-
-                  return (
-
-                    <section
-                      key={`${tabla.torneo}-${tabla.grupo}-${indice}`}
-                      className="bg-[#121821] border border-[#263244] rounded-xl overflow-hidden shadow-lg shadow-black/10"
+                  <div
+                    style={{
+                      width: "100%",
+                      overflowX: "auto",
+                    }}
+                  >
+                    <table
+                      style={{
+                        width: "100%",
+                        minWidth: "720px",
+                        borderCollapse: "collapse",
+                        borderSpacing: 0,
+                      }}
                     >
+                      <thead>
+                        <tr>
+                          <th
+                            style={{
+                              ...tablaTh,
+                              width: "55px",
+                            }}
+                          >
+                            #
+                          </th>
 
-                      {/* ENCABEZADO */}
+                          <th
+                            style={{
+                              ...tablaTh,
+                              textAlign: "left",
+                              minWidth: "210px",
+                            }}
+                          >
+                            Equipo
+                          </th>
 
-                      <div className="px-4 md:px-5 py-4 bg-[#141c26] border-b border-[#263244]">
+                          <th style={tablaTh}>PJ</th>
+                          <th style={tablaTh}>PG</th>
+                          <th style={tablaTh}>PE</th>
+                          <th style={tablaTh}>PP</th>
+                          <th style={tablaTh}>GF</th>
+                          <th style={tablaTh}>GC</th>
+                          <th style={tablaTh}>DG</th>
 
-                        <div className="flex items-center justify-between gap-4">
+                          <th
+                            style={{
+                              ...tablaTh,
+                              width: "70px",
+                            }}
+                          >
+                            Pts
+                          </th>
+                        </tr>
+                      </thead>
 
-                          <div>
+                      <tbody>
+                        {filas.map((fila, indiceFila) => {
+                          const posicion =
+                            Number(
+                              obtenerValor(fila, [
+                                "pos",
+                                "position",
+                                "rank",
+                                "num",
+                              ])
+                            ) || indiceFila + 1;
 
-                            <h3 className="font-bold text-base md:text-lg">
-                              {tabla.grupo}
-                            </h3>
+                          const equipo =
+                            obtenerValor(fila, [
+                              "team_name",
+                              "team",
+                              "name",
+                            ]) ||
+                            fila?.entity?.object?.name ||
+                            "-";
 
-                            <p className="text-xs text-[#718096] mt-1">
-                              {tabla.torneo}
-                            </p>
+                          const pj = obtenerValor(fila, [
+                            "PJ",
+                            "pj",
+                            "played",
+                            "matches",
+                            "games",
+                          ]);
 
-                          </div>
+                          const pg = obtenerValor(fila, [
+                            "PG",
+                            "pg",
+                            "won",
+                            "wins",
+                          ]);
 
-                          <span className="text-xs text-[#64748b]">
-                            {filas.length} equipos
-                          </span>
+                          const pe = obtenerValor(fila, [
+                            "PE",
+                            "pe",
+                            "draw",
+                            "draws",
+                          ]);
 
-                        </div>
+                          const pp = obtenerValor(fila, [
+                            "PP",
+                            "pp",
+                            "lost",
+                            "losses",
+                          ]);
 
-                      </div>
+                          const gf = obtenerValor(fila, [
+                            "GF",
+                            "gf",
+                            "goals_for",
+                            "goalsFor",
+                          ]);
 
+                          const gc = obtenerValor(fila, [
+                            "GC",
+                            "gc",
+                            "goals_against",
+                            "goalsAgainst",
+                          ]);
 
-                      {/* TABLA */}
+                          const dg = obtenerValor(fila, [
+                            "DG",
+                            "dg",
+                            "difference",
+                            "goal_difference",
+                            "goalDifference",
+                          ]);
 
-                      <div className="overflow-x-auto">
+                          const pts = obtenerValor(fila, [
+                            "Pts",
+                            "pts",
+                            "points",
+                            "score",
+                          ]);
 
-                        <table className="w-full text-sm">
+                          return (
+                            <tr
+                              key={indiceFila}
+                              style={{
+                                background:
+                                  indiceFila % 2 === 0
+                                    ? "transparent"
+                                    : colores.fondoFila,
+                              }}
+                            >
+                              {/* POSICION */}
 
-                          <thead>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    ...clasePosicion(posicion),
+                                    width: "30px",
+                                    height: "30px",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderRadius: "50%",
+                                    fontWeight: 700,
+                                    fontSize: "0.8rem",
+                                  }}
+                                >
+                                  {posicion}
+                                </span>
+                              </td>
 
-                            <tr className="bg-[#0f161e] text-[#64748b] text-xs uppercase tracking-wide">
+                              {/* EQUIPO */}
 
-                              <th className="px-3 py-3 text-center w-12">
-                                #
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "left",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {equipo}
+                              </td>
 
-                              <th className="px-3 py-3 text-left min-w-[180px]">
-                                Equipo
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                {pj || "-"}
+                              </td>
 
-                              <th className="px-3 py-3 text-center">
-                                Pts
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                {pg || "-"}
+                              </td>
 
-                              <th className="px-3 py-3 text-center">
-                                PJ
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                {pe || "-"}
+                              </td>
 
-                              <th className="px-3 py-3 text-center">
-                                G
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                {pp || "-"}
+                              </td>
 
-                              <th className="px-3 py-3 text-center">
-                                E
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                {gf || "-"}
+                              </td>
 
-                              <th className="px-3 py-3 text-center">
-                                P
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                {gc || "-"}
+                              </td>
 
-                              <th className="px-3 py-3 text-center">
-                                GF:GC
-                              </th>
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                  fontWeight: 700,
+                                  color:
+                                    Number(dg) > 0
+                                      ? "#10b981"
+                                      : Number(dg) < 0
+                                      ? "#ef4444"
+                                      : "inherit",
+                                }}
+                              >
+                                {dg || "-"}
+                              </td>
 
-                              <th className="px-3 py-3 text-center">
-                                DG
-                              </th>
-
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                  fontWeight: 800,
+                                  fontSize: "0.95rem",
+                                  color: colores.verde,
+                                }}
+                              >
+                                {pts || "-"}
+                              </td>
                             </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-                          </thead>
+      {/* ======================================================
+          ESTADISTICAS DE JUGADORES
+      ====================================================== */}
 
+      {estadisticas.length > 0 && (
+        <section style={{ marginBottom: "28px" }}>
+          <div
+            style={{
+              marginBottom: "12px",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              color: colores.verde,
+            }}
+          >
+            Estadísticas de jugadores
+          </div>
 
-                          <tbody>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "18px",
+            }}
+          >
+            {estadisticas.map((tabla, indiceTabla) => {
+              const filas = normalizarFilas(tabla);
 
-                            {filas.map(
-                              (fila, index) => {
+              if (!filas.length) return null;
 
-                                const diferencia =
-                                  Number(
-                                    fila.diferencia
+              const columnas = obtenerColumnasEstadistica(tabla);
+
+              const nombreTabla =
+                tabla?.name ||
+                tabla?.title ||
+                tabla?.label ||
+                tabla?.table?.name ||
+                tabla?.table?.title ||
+                "Estadísticas";
+
+              return (
+                <div
+                  key={indiceTabla}
+                  style={{
+                    border: `1px solid ${colores.borde}`,
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    background: colores.fondo,
+                  }}
+                >
+                  {/* TITULO */}
+
+                  <div
+                    style={{
+                      padding: "11px 14px",
+                      background: colores.verdeSuave,
+                      borderBottom: `1px solid ${colores.borde}`,
+                      color: colores.verde,
+                      fontWeight: 700,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    {nombreTabla}
+                  </div>
+
+                  {/* TABLA DE ESTADISTICAS */}
+
+                  <div
+                    style={{
+                      width: "100%",
+                      overflowX: "auto",
+                    }}
+                  >
+                    <table
+                      style={{
+                        width: "100%",
+                        minWidth: "720px",
+                        borderCollapse: "collapse",
+                        borderSpacing: 0,
+                      }}
+                    >
+                      <thead>
+                        <tr>
+                          <th
+                            style={{
+                              ...tablaTh,
+                              width: "55px",
+                            }}
+                          >
+                            #
+                          </th>
+
+                          <th
+                            style={{
+                              ...tablaTh,
+                              textAlign: "left",
+                              minWidth: "190px",
+                            }}
+                          >
+                            Jugador
+                          </th>
+
+                          <th
+                            style={{
+                              ...tablaTh,
+                              textAlign: "left",
+                              minWidth: "160px",
+                            }}
+                          >
+                            Equipo
+                          </th>
+
+                          {columnas.map((columna) => (
+                            <th
+                              key={columna}
+                              style={tablaTh}
+                            >
+                              {tituloColumna(columna)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {filas.map((fila, indiceFila) => {
+                          const posicion =
+                            Number(fila?.num) ||
+                            indiceFila + 1;
+
+                          const nombre =
+                            obtenerNombreJugador(fila);
+
+                          const equipo =
+                            obtenerEquipoJugador(fila);
+
+                          return (
+                            <tr
+                              key={indiceFila}
+                              style={{
+                                background:
+                                  indiceFila % 2 === 0
+                                    ? "transparent"
+                                    : colores.fondoFila,
+                              }}
+                            >
+                              {/* POSICION */}
+
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "center",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    ...clasePosicion(posicion),
+                                    width: "30px",
+                                    height: "30px",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderRadius: "50%",
+                                    fontWeight: 700,
+                                    fontSize: "0.8rem",
+                                  }}
+                                >
+                                  {posicion}
+                                </span>
+                              </td>
+
+                              {/* JUGADOR */}
+
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "left",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {nombre}
+                              </td>
+
+                              {/* EQUIPO */}
+
+                              <td
+                                style={{
+                                  ...tablaTd,
+                                  textAlign: "left",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "4px 8px",
+                                    borderRadius: "5px",
+                                    background:
+                                      "rgba(16,185,129,0.08)",
+                                    border:
+                                      "1px solid rgba(16,185,129,0.18)",
+                                    fontSize: "0.78rem",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {equipo}
+                                </span>
+                              </td>
+
+                              {/* ESTADISTICAS */}
+
+                              {columnas.map((columna) => {
+                                const valor =
+                                  obtenerValorEstadistica(
+                                    fila,
+                                    columna
                                   );
 
                                 return (
-
-                                  <tr
-                                    key={`${fila.equipo}-${index}`}
-                                    className="border-t border-[#263244] hover:bg-[#18212c] transition-colors"
-                                  >
-
-                                    {/* POSICION */}
-
-                                    <td className="px-3 py-3 text-center">
-
-                                      <span
-                                        className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${clasePosicion(
-                                          fila.posicion
-                                        )}`}
-                                      >
-                                        {fila.posicion}
-                                      </span>
-
-                                    </td>
-
-
-                                    {/* EQUIPO */}
-
-                                    <td className="px-3 py-3">
-
-                                      <span className="font-semibold text-[#e6edf3] whitespace-nowrap">
-                                        {fila.equipo}
-                                      </span>
-
-                                    </td>
-
-
-                                    {/* PUNTOS */}
-
-                                    <td className="px-3 py-3 text-center">
-
-                                      <span className="font-bold text-white">
-                                        {fila.puntos}
-                                      </span>
-
-                                    </td>
-
-
-                                    {/* PJ */}
-
-                                    <td className="px-3 py-3 text-center text-[#b1bac4]">
-                                      {fila.pj}
-                                    </td>
-
-
-                                    {/* G */}
-
-                                    <td className="px-3 py-3 text-center text-[#b1bac4]">
-                                      {fila.ganados}
-                                    </td>
-
-
-                                    {/* E */}
-
-                                    <td className="px-3 py-3 text-center text-[#b1bac4]">
-                                      {fila.empatados}
-                                    </td>
-
-
-                                    {/* P */}
-
-                                    <td className="px-3 py-3 text-center text-[#b1bac4]">
-                                      {fila.perdidos}
-                                    </td>
-
-
-                                    {/* GOLES */}
-
-                                    <td className="px-3 py-3 text-center text-[#b1bac4]">
-                                      {fila.goles}
-                                    </td>
-
-
-                                    {/* DIFERENCIA */}
-
-                                    <td
-                                      className={`px-3 py-3 text-center font-bold ${
-                                        diferencia > 0
-                                          ? "text-green-400"
-                                          : diferencia < 0
-                                          ? "text-red-400"
-                                          : "text-[#718096]"
-                                      }`}
-                                    >
-                                      {fila.diferencia}
-                                    </td>
-
-                                  </tr>
-
-                                );
-                              }
-                            )}
-
-                          </tbody>
-
-                        </table>
-
-                      </div>
-
-                    </section>
-
-                  );
-                }
-              )}
-
-            </div>
-
-          </section>
-
-        )}
-
-
-        {/* =================================================
-            ESTADISTICAS
-        ================================================= */}
-
-        {estadisticas.length > 0 && (
-
-          <section className="mt-12">
-
-            {/* TITULO */}
-
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
-
-              <div className="flex items-center gap-3">
-
-                <div className="w-1 h-7 bg-[#22c55e] rounded-full" />
-
-                <div>
-
-                  <h2 className="text-xl md:text-2xl font-bold">
-                    Estadísticas
-                  </h2>
-
-                  <p className="text-sm text-[#8b949e] mt-1">
-                    Rendimiento individual de los jugadores
-                  </p>
-
-                </div>
-
-              </div>
-
-              <span className="text-xs text-[#64748b]">
-                {estadisticas.reduce(
-                  (total, tabla) =>
-                    total + tabla.rows.length,
-                  0
-                )} jugadores
-              </span>
-
-            </div>
-
-
-            {/* TARJETAS */}
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-              {estadisticas.map(
-                (estadistica, indice) => {
-
-                  const filas =
-                    Array.isArray(
-                      estadistica.rows
-                    )
-                      ? estadistica.rows
-                      : [];
-
-                  const columnas =
-                    obtenerColumnasEstadistica(
-                      filas
-                    );
-
-                  return (
-
-                    <section
-                      key={`${estadistica.nombre}-${indice}`}
-                      className="bg-[#121821] border border-[#263244] rounded-xl overflow-hidden shadow-lg shadow-black/10"
-                    >
-
-                      {/* CABECERA */}
-
-                      <div className="px-4 md:px-5 py-4 bg-[#141c26] border-b border-[#263244]">
-
-                        <div className="flex items-center justify-between gap-3">
-
-                          <div>
-
-                            <h3 className="font-bold text-base md:text-lg">
-                              {estadistica.nombre}
-                            </h3>
-
-                            <p className="text-xs text-[#718096] mt-1">
-                              Ranking de jugadores
-                            </p>
-
-                          </div>
-
-                          <span className="text-xs text-[#64748b]">
-                            {filas.length}
-                          </span>
-
-                        </div>
-
-                      </div>
-
-
-                      {/* TABLA */}
-
-                      <div className="overflow-x-auto">
-
-                        <table className="w-full text-sm">
-
-                          <thead>
-
-                            <tr className="bg-[#0f161e] text-[#64748b] text-xs uppercase tracking-wide">
-
-                              <th className="px-3 py-3 text-center w-10">
-                                #
-                              </th>
-
-                              <th className="px-3 py-3 text-left min-w-[145px]">
-                                Jugador
-                              </th>
-
-                              <th className="px-3 py-3 text-left min-w-[145px]">
-                                Equipo
-                              </th>
-
-                              {columnas.map(
-                                (columna) => (
-
-                                  <th
+                                  <td
                                     key={columna}
-                                    className="px-3 py-3 text-center whitespace-nowrap"
+                                    style={{
+                                      ...tablaTd,
+                                      textAlign: "center",
+                                      fontWeight:
+                                        columna === "Goals"
+                                          ? 700
+                                          : 500,
+                                      color:
+                                        columna === "Goals"
+                                          ? colores.verde
+                                          : "inherit",
+                                    }}
                                   >
-                                    {tituloColumna(
-                                      columna
-                                    )}
-                                  </th>
-
-                                )
-                              )}
-
-                            </tr>
-
-                          </thead>
-
-
-                          <tbody>
-
-                            {filas.map(
-                              (fila, index) => {
-
-                                const nombre =
-                                  obtenerNombreJugador(
-                                    fila
-                                  );
-
-                                const equipo =
-                                  obtenerEquipoJugador(
-                                    fila
-                                  );
-
-                                return (
-
-                                  <tr
-                                    key={`${nombre}-${index}`}
-                                    className="border-t border-[#263244] hover:bg-[#18212c] transition-colors"
-                                  >
-
-                                    {/* POSICION */}
-
-                                    <td className="px-3 py-3 text-center">
-
-                                      <span
-                                        className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${clasePosicion(
-                                          fila?.num ??
-                                            index + 1
-                                        )}`}
-                                      >
-                                        {fila?.num ??
-                                          index + 1}
-                                      </span>
-
-                                    </td>
-
-
-                                    {/* JUGADOR */}
-
-                                    <td className="px-3 py-3">
-
-                                      <div className="font-semibold text-[#e6edf3] whitespace-nowrap">
-                                        {nombre}
-                                      </div>
-
-                                    </td>
-
-
-                                    {/* EQUIPO */}
-
-                                    <td className="px-3 py-3">
-
-                                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-[#1a2430] border border-[#263244] text-xs text-[#b1bac4] whitespace-nowrap">
-                                        {equipo}
-                                      </span>
-
-                                    </td>
-
-
-                                    {/* ESTADISTICAS */}
-
-                                    {columnas.map(
-                                      (columna, columnaIndex) => {
-
-                                        const valor =
-                                          obtenerValorEstadistica(
-                                            fila,
-                                            columna
-                                          );
-
-                                        return (
-
-                                          <td
-                                            key={columna}
-                                            className={`px-3 py-3 text-center whitespace-nowrap ${
-                                              columnaIndex === 0
-                                                ? "font-bold text-white"
-                                                : "font-medium text-[#b1bac4]"
-                                            }`}
-                                          >
-                                            {valor}
-                                          </td>
-
-                                        );
-                                      }
-                                    )}
-
-                                  </tr>
-
+                                    {valor}
+                                  </td>
                                 );
-                              }
-                            )}
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-                          </tbody>
+      {/* ======================================================
+          SIN DATOS
+      ====================================================== */}
 
-                        </table>
-
-                      </div>
-
-                    </section>
-
-                  );
-                }
-              )}
-
-            </div>
-
-          </section>
-
+      {tablas.length === 0 &&
+        estadisticas.length === 0 && (
+          <div
+            style={{
+              border: `1px solid ${colores.borde}`,
+              borderRadius: "8px",
+              padding: "25px",
+              textAlign: "center",
+              background: colores.fondo,
+              color: colores.textoSecundario,
+            }}
+          >
+            No hay datos de posiciones disponibles.
+          </div>
         )}
 
+      {/* ======================================================
+          FOOTER
+      ====================================================== */}
 
-        {/* =================================================
-            SIN DATOS
-        ================================================= */}
-
-        {tablas.length === 0 &&
-          estadisticas.length === 0 && (
-
-            <div className="bg-[#121821] border border-[#263244] rounded-xl p-8 text-center">
-
-              <p className="text-[#9ca3af]">
-                No hay tablas ni estadísticas disponibles.
-              </p>
-
-            </div>
-
-          )}
-
-      </div>
-
+      <footer
+        style={{
+          marginTop: "30px",
+          paddingTop: "15px",
+          borderTop: `1px solid ${colores.bordeSuave}`,
+          textAlign: "center",
+          fontSize: "0.75rem",
+          color: colores.textoSecundario,
+        }}
+      >
+        Chiquifutbol
+      </footer>
     </main>
   );
 }
-
