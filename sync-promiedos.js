@@ -2,9 +2,9 @@
 // SYNC PROMIEDOS -> REDIS
 // ==========================================
 
-const puppeteer = require("puppeteer");
-const Redis = require("ioredis");
-const dotenv = require("dotenv");
+import puppeteer from "puppeteer";
+import Redis from "ioredis";
+import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
