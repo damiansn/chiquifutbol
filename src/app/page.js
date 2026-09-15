@@ -88,7 +88,6 @@ export default function Home() {
   const [loadingFixture, setLoadingFixture] =
     useState(false);
 
-  // Lista independiente de todos los equipos disponibles
   const [availableTeams, setAvailableTeams] =
     useState([]);
 
@@ -110,7 +109,10 @@ export default function Home() {
       setLoading(true);
 
       const res = await fetch(
-        `/api/matches?date=${date}`
+        `/api/matches?date=${date}`,
+        {
+          cache: "no-store"
+        }
       );
 
       if (!res.ok) {
@@ -124,6 +126,11 @@ export default function Home() {
       setData(json);
       setError(null);
     } catch (err) {
+      console.error(
+        "Error cargando partidos:",
+        err
+      );
+
       setError(err.message);
     } finally {
       setLoading(false);
@@ -215,9 +222,6 @@ export default function Home() {
   const handleDateChange = (newDate) => {
     setSelectedDate(newDate);
 
-    // La fecha NO afecta al buscador,
-    // pero al cambiar de fecha limpiamos
-    // el fixture seleccionado.
     setSelectedTeamFilter(null);
     setShowFullFixture(false);
     setTeamSearchQuery("");
@@ -271,7 +275,6 @@ export default function Home() {
 
     setIsSearchFocused(false);
 
-    // Cargamos el fixture directamente.
     loadTeamFixture(item.teamName);
   };
 
@@ -394,8 +397,9 @@ export default function Home() {
   };
 
   const hideAllLeagues = () => {
-    const allIds =
-      data?.leagues
+    const allIds = Array.isArray(data)
+      ? data.map((l) => l.id)
+      : data?.leagues
         ? data.leagues.map(
             (l) => l.id
           )
@@ -459,8 +463,13 @@ export default function Home() {
   // LIGAS
   // ====================================================
 
-  const leagues =
-    data?.leagues || [];
+  // IMPORTANTE:
+  // /api/matches devuelve directamente un ARRAY de ligas.
+  // También dejamos compatibilidad con { leagues: [...] }.
+
+  const leagues = Array.isArray(data)
+    ? data
+    : data?.leagues || [];
 
   const filteredLeagues =
     leagues.filter(
@@ -732,10 +741,6 @@ export default function Home() {
               }}
             >
 
-              {/* -------------------------------------------------
-                  EQUIPOS ENCONTRADOS
-              ------------------------------------------------- */}
-
               {filteredSuggestions.length >
               0 ? (
                 filteredSuggestions.map(
@@ -785,10 +790,6 @@ export default function Home() {
                   )
                 )
               ) : (
-                /* -------------------------------------------------
-                   SIN RESULTADOS
-                ------------------------------------------------- */
-
                 <div
                   style={{
                     padding:
@@ -868,8 +869,6 @@ export default function Home() {
               Cerrar [X]
             </button>
           </div>
-
-          {/* CARGANDO */}
 
           {teamFixtureData.length ===
             0 &&
@@ -951,7 +950,6 @@ export default function Home() {
                         gap: "6px"
                       }}
                     >
-                      {/* Liga + fecha */}
 
                       <div
                         style={{
@@ -998,8 +996,6 @@ export default function Home() {
                           </span>
                         )}
                       </div>
-
-                      {/* Equipos */}
 
                       <div
                         style={{
@@ -1049,8 +1045,6 @@ export default function Home() {
                               "Visita"}
                           </span>
                         </div>
-
-                        {/* Resultado / hora */}
 
                         <div
                           style={{
@@ -1103,10 +1097,6 @@ export default function Home() {
               )}
             </div>
           )}
-
-          {/* =================================================
-              SIGUIENTE PÁGINA
-          ================================================= */}
 
           {nextFetchDate && (
             <div
@@ -1263,7 +1253,8 @@ export default function Home() {
                   "flex",
                 flexWrap:
                   "wrap",
-                gap: "8px"
+                gap:
+                  "8px"
               }}
             >
               {leagues.map(
@@ -1377,7 +1368,8 @@ export default function Home() {
               "flex",
             flexDirection:
               "column",
-            gap: "24px"
+            gap:
+              "24px"
           }}
         >
           {filteredLeagues.map(
@@ -1395,6 +1387,7 @@ export default function Home() {
                     "hidden"
                 }}
               >
+
                 {/* CABECERA LIGA */}
 
                 <div
@@ -1459,529 +1452,529 @@ export default function Home() {
                 {/* PARTIDOS DE LA LIGA */}
 
                 <div>
-                  {league.games
-                    .map(
-                      (
+                  {league.games?.map(
+                    (game) => {
+                      const isLive =
                         game
-                      ) => {
-                        const isLive =
-                          game
-                            .status
-                            ?.enum ===
-                          2;
+                          .status
+                          ?.enum ===
+                        2;
 
-                        const isFinished =
-                          game
-                            .status
-                            ?.enum ===
-                          3;
+                      const isFinished =
+                        game
+                          .status
+                          ?.enum ===
+                        3;
 
-                        const isProgrammed =
-                          game
-                            .status
-                            ?.enum ===
-                          1;
+                      const isProgrammed =
+                        game
+                          .status
+                          ?.enum ===
+                        1;
 
-                        const teamA =
-                          game
-                            .teams?.[0] ||
-                          {};
+                      const teamA =
+                        game
+                          .teams?.[0] ||
+                        {};
 
-                        const teamB =
-                          game
-                            .teams?.[1] ||
-                          {};
+                      const teamB =
+                        game
+                          .teams?.[1] ||
+                        {};
 
-                        const scoreA =
-                          game.scores
-                            ? game
-                                .scores[0]
-                            : "-";
+                      const scoreA =
+                        game.scores
+                          ? game
+                              .scores[0]
+                          : "-";
 
-                        const scoreB =
-                          game.scores
-                            ? game
-                                .scores[1]
-                            : "-";
+                      const scoreB =
+                        game.scores
+                          ? game
+                              .scores[1]
+                          : "-";
 
-                        const goalsA =
-                          teamA.goals ||
-                          [];
+                      const goalsA =
+                        teamA.goals ||
+                        [];
 
-                        const goalsB =
-                          teamB.goals ||
-                          [];
+                      const goalsB =
+                        teamB.goals ||
+                        [];
 
-                        const formatGoals =
-                          (
-                            goalsList
-                          ) => {
-                            return goalsList
+                      const formatGoals =
+                        (
+                          goalsList
+                        ) => {
+                          return goalsList
+                            .map(
+                              (
+                                g
+                              ) => {
+                                const time =
+                                  g.time_to_display ||
+                                  `${g.time}'`;
+
+                                const name =
+                                  g.player_name ||
+                                  g.player_sname;
+
+                                const pen =
+                                  g.goal_type ===
+                                  "Pen"
+                                    ? " (Pen)"
+                                    : "";
+
+                                return `${time} ${name}${pen}`;
+                              }
+                            )
+                            .join(
+                              "; "
+                            );
+                        };
+
+                      const strGoalsA =
+                        formatGoals(
+                          goalsA
+                        );
+
+                      const strGoalsB =
+                        formatGoals(
+                          goalsB
+                        );
+
+                      const hasGoals =
+                        strGoalsA !==
+                          "" ||
+                        strGoalsB !==
+                          "";
+
+                      const tvList =
+                        game.tv_networks
+                          ? game.tv_networks
                               .map(
                                 (
-                                  g
-                                ) => {
-                                  const time =
-                                    g.time_to_display ||
-                                    `${g.time}'`;
-
-                                  const name =
-                                    g.player_name ||
-                                    g.player_sname;
-
-                                  const pen =
-                                    g.goal_type ===
-                                    "Pen"
-                                      ? " (Pen)"
-                                      : "";
-
-                                  return `${time} ${name}${pen}`;
-                                }
+                                  tv
+                                ) =>
+                                  tv.name
                               )
                               .join(
-                                "; "
-                              );
-                          };
+                                ", "
+                              )
+                          : "";
 
-                        const strGoalsA =
-                          formatGoals(
-                            goalsA
-                          );
+                      return (
+                        <div
+                          key={
+                            game.id
+                          }
+                          style={{
+                            display:
+                              "flex",
+                            borderBottom:
+                              "1px solid rgba(128,128,128,0.15)",
+                            fontSize:
+                              "0.9rem"
+                          }}
+                        >
 
-                        const strGoalsB =
-                          formatGoals(
-                            goalsB
-                          );
+                          {/* ESTADO */}
 
-                        const hasGoals =
-                          strGoalsA !==
-                            "" ||
-                          strGoalsB !==
-                            "";
-
-                        const tvList =
-                          game.tv_networks
-                            ? game.tv_networks
-                                .map(
-                                  (
-                                    tv
-                                  ) =>
-                                    tv.name
-                                )
-                                .join(
-                                  ", "
-                                )
-                            : "";
-
-                        return (
                           <div
-                            key={
-                              game.id
-                            }
                             style={{
+                              width:
+                                "95px",
+                              background:
+                                "rgba(128,128,128,0.06)",
+                              borderRight:
+                                "1px solid rgba(128,128,128,0.15)",
                               display:
                                 "flex",
-                              borderBottom:
-                                "1px solid rgba(128,128,128,0.15)",
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "center",
+                              padding:
+                                "8px",
+                              textAlign:
+                                "center",
+                              fontWeight:
+                                "600",
                               fontSize:
-                                "0.9rem"
+                                "0.75rem",
+                              flexShrink:
+                                0
                             }}
                           >
-                            {/* ESTADO */}
+                            {isLive && (
+                              <span
+                                style={{
+                                  color:
+                                    "#ef4444",
+                                  fontWeight:
+                                    "bold"
+                                }}
+                              >
+                                {
+                                  game.game_time_status_to_display
+                                }
+                              </span>
+                            )}
 
+                            {isFinished && (
+                              <span
+                                style={{
+                                  opacity:
+                                    0.7
+                                }}
+                              >
+                                Finalizado
+                              </span>
+                            )}
+
+                            {isProgrammed && (
+                              <span
+                                style={{
+                                  color:
+                                    "#3b82f6"
+                                }}
+                              >
+                                {
+                                  game.start_time
+                                }
+                              </span>
+                            )}
+                          </div>
+
+                          {/* EQUIPOS */}
+
+                          <div
+                            style={{
+                              flex:
+                                1,
+                              display:
+                                "flex",
+                              flexDirection:
+                                "column"
+                            }}
+                          >
                             <div
                               style={{
-                                width:
-                                  "95px",
-                                background:
-                                  "rgba(128,128,128,0.06)",
-                                borderRight:
-                                  "1px solid rgba(128,128,128,0.15)",
                                 display:
                                   "flex",
                                 alignItems:
                                   "center",
-                                justifyContent:
-                                  "center",
                                 padding:
-                                  "8px",
-                                textAlign:
-                                  "center",
-                                fontWeight:
-                                  "600",
-                                fontSize:
-                                  "0.75rem",
-                                flexShrink:
-                                  0
+                                  "10px 16px",
+                                justifyContent:
+                                  "space-between"
                               }}
                             >
-                              {isLive && (
+
+                              <div
+                                style={{
+                                  flex:
+                                    1,
+                                  display:
+                                    "flex",
+                                  justifyContent:
+                                    "flex-end",
+                                  alignItems:
+                                    "center",
+                                  gap:
+                                    "10px",
+                                  textAlign:
+                                    "right"
+                                }}
+                              >
                                 <span
                                   style={{
-                                    color:
-                                      "#ef4444",
                                     fontWeight:
-                                      "bold"
+                                      500
                                   }}
                                 >
                                   {
-                                    game.game_time_status_to_display
+                                    teamA.name
                                   }
                                 </span>
-                              )}
+                              </div>
 
-                              {isFinished && (
-                                <span
-                                  style={{
-                                    opacity:
-                                      0.7
-                                  }}
-                                >
-                                  Finalizado
-                                </span>
-                              )}
+                              {/* MARCADOR */}
 
-                              {isProgrammed && (
-                                <span
-                                  style={{
-                                    color:
-                                      "#3b82f6"
-                                  }}
-                                >
-                                  {
-                                    game.start_time
-                                  }
-                                </span>
-                              )}
-                            </div>
-
-                            {/* EQUIPOS */}
-
-                            <div
-                              style={{
-                                flex:
-                                  1,
-                                display:
-                                  "flex",
-                                flexDirection:
-                                  "column"
-                              }}
-                            >
                               <div
                                 style={{
                                   display:
                                     "flex",
                                   alignItems:
                                     "center",
-                                  padding:
-                                    "10px 16px",
                                   justifyContent:
-                                    "space-between"
+                                    "center",
+                                  padding:
+                                    "0 16px",
+                                  fontWeight:
+                                    "bold",
+                                  fontSize:
+                                    "1.1rem",
+                                  gap:
+                                    "8px",
+                                  minWidth:
+                                    "120px",
+                                  textAlign:
+                                    "center"
                                 }}
                               >
-                                <div
-                                  style={{
-                                    flex:
-                                      1,
-                                    display:
-                                      "flex",
-                                    justifyContent:
-                                      "flex-end",
-                                    alignItems:
-                                      "center",
-                                    gap:
-                                      "10px",
-                                    textAlign:
-                                      "right"
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontWeight:
-                                        500
-                                    }}
-                                  >
-                                    {
-                                      teamA.name
-                                    }
-                                  </span>
-                                </div>
 
-                                {/* MARCADOR */}
-
-                                <div
-                                  style={{
-                                    display:
-                                      "flex",
-                                    alignItems:
-                                      "center",
-                                    justifyContent:
-                                      "center",
-                                    padding:
-                                      "0 16px",
-                                    fontWeight:
-                                      "bold",
-                                    fontSize:
-                                      "1.1rem",
-                                    gap:
-                                      "8px",
-                                    minWidth:
-                                      "120px",
-                                    textAlign:
-                                      "center"
-                                  }}
-                                >
-                                  {teamA.red_cards >
-                                    0 && (
-                                    <div
-                                      style={{
-                                        display:
-                                          "flex",
-                                        gap:
-                                          "2px"
-                                      }}
-                                    >
-                                      {Array.from(
-                                        {
-                                          length:
-                                            teamA.red_cards
-                                        }
-                                      ).map(
-                                        (
-                                          _,
-                                          i
-                                        ) => (
-                                          <span
-                                            key={`red-a-${i}`}
-                                            style={{
-                                              background:
-                                                "#ef4444",
-                                              width:
-                                                "7px",
-                                              height:
-                                                "11px",
-                                              display:
-                                                "inline-block",
-                                              borderRadius:
-                                                "1px",
-                                              flexShrink:
-                                                0
-                                            }}
-                                          />
-                                        )
-                                      )}
-                                    </div>
-                                  )}
-
-                                  <span
-                                    style={{
-                                      color:
-                                        isLive
-                                          ? "#ef4444"
-                                          : "inherit"
-                                    }}
-                                  >
-                                    {
-                                      scoreA
-                                    }
-                                  </span>
-
-                                  <span
-                                    style={{
-                                      opacity:
-                                        0.4
-                                    }}
-                                  >
-                                    –
-                                  </span>
-
-                                  <span
-                                    style={{
-                                      color:
-                                        isLive
-                                          ? "#ef4444"
-                                          : "inherit"
-                                    }}
-                                  >
-                                    {
-                                      scoreB
-                                    }
-                                  </span>
-
-                                  {teamB.red_cards >
-                                    0 && (
-                                    <div
-                                      style={{
-                                        display:
-                                          "flex",
-                                        gap:
-                                          "2px"
-                                      }}
-                                    >
-                                      {Array.from(
-                                        {
-                                          length:
-                                            teamB.red_cards
-                                        }
-                                      ).map(
-                                        (
-                                          _,
-                                          i
-                                        ) => (
-                                          <span
-                                            key={`red-b-${i}`}
-                                            style={{
-                                              background:
-                                                "#ef4444",
-                                              width:
-                                                "7px",
-                                              height:
-                                                "11px",
-                                              display:
-                                                "inline-block",
-                                              borderRadius:
-                                                "1px",
-                                              flexShrink:
-                                                0
-                                            }}
-                                          />
-                                        )
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div
-                                  style={{
-                                    flex:
-                                      1,
-                                    display:
-                                      "flex",
-                                    justifyContent:
-                                      "flex-start",
-                                    alignItems:
-                                      "center",
-                                    gap:
-                                      "10px",
-                                    textAlign:
-                                      "left"
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontWeight:
-                                        500
-                                    }}
-                                  >
-                                    {
-                                      teamB.name
-                                    }
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* GOLES */}
-
-                              {hasGoals && (
-                                <div
-                                  style={{
-                                    display:
-                                      "flex",
-                                    borderTop:
-                                      "1px dashed rgba(128,128,128,0.15)",
-                                    fontSize:
-                                      "0.75rem",
-                                    opacity:
-                                      0.75,
-                                    background:
-                                      "rgba(128,128,128,0.02)"
-                                  }}
-                                >
+                                {teamA.red_cards >
+                                  0 && (
                                   <div
                                     style={{
-                                      flex:
-                                        1,
-                                      padding:
-                                        "6px 16px",
-                                      textAlign:
-                                        "right",
-                                      borderRight:
-                                        "1px dashed rgba(128,128,128,0.15)"
+                                      display:
+                                        "flex",
+                                      gap:
+                                        "2px"
                                     }}
                                   >
-                                    {
-                                      strGoalsA
-                                    }
+                                    {Array.from(
+                                      {
+                                        length:
+                                          teamA.red_cards
+                                      }
+                                    ).map(
+                                      (
+                                        _,
+                                        i
+                                      ) => (
+                                        <span
+                                          key={`red-a-${i}`}
+                                          style={{
+                                            background:
+                                              "#ef4444",
+                                            width:
+                                              "7px",
+                                            height:
+                                              "11px",
+                                            display:
+                                              "inline-block",
+                                            borderRadius:
+                                              "1px",
+                                            flexShrink:
+                                              0
+                                          }}
+                                        />
+                                      )
+                                    )}
                                   </div>
+                                )}
 
-                                  <div
-                                    style={{
-                                      flex:
-                                        1,
-                                      padding:
-                                        "6px 16px",
-                                      textAlign:
-                                        "left"
-                                    }}
-                                  >
-                                    {
-                                      strGoalsB
-                                    }
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* TV */}
-
-                            <div
-                              style={{
-                                width:
-                                  "160px",
-                                background:
-                                  "rgba(128,128,128,0.04)",
-                                borderLeft:
-                                  "1px solid rgba(128,128,128,0.15)",
-                                display:
-                                  "flex",
-                                alignItems:
-                                  "center",
-                                justifyContent:
-                                  "center",
-                                padding:
-                                  "8px 12px",
-                                textAlign:
-                                  "center",
-                                fontSize:
-                                  "0.75rem",
-                                opacity:
-                                  0.7,
-                                flexShrink:
-                                  0
-                              }}
-                            >
-                              {tvList ? (
-                                <span>
-                                  📺{" "}
+                                <span
+                                  style={{
+                                    color:
+                                      isLive
+                                        ? "#ef4444"
+                                        : "inherit"
+                                  }}
+                                >
                                   {
-                                    tvList
+                                    scoreA
                                   }
                                 </span>
-                              ) : (
+
                                 <span
                                   style={{
                                     opacity:
                                       0.4
                                   }}
                                 >
-                                  -
+                                  –
                                 </span>
-                              )}
+
+                                <span
+                                  style={{
+                                    color:
+                                      isLive
+                                        ? "#ef4444"
+                                        : "inherit"
+                                  }}
+                                >
+                                  {
+                                    scoreB
+                                  }
+                                </span>
+
+                                {teamB.red_cards >
+                                  0 && (
+                                  <div
+                                    style={{
+                                      display:
+                                        "flex",
+                                      gap:
+                                        "2px"
+                                    }}
+                                  >
+                                    {Array.from(
+                                      {
+                                        length:
+                                          teamB.red_cards
+                                      }
+                                    ).map(
+                                      (
+                                        _,
+                                        i
+                                      ) => (
+                                        <span
+                                          key={`red-b-${i}`}
+                                          style={{
+                                            background:
+                                              "#ef4444",
+                                            width:
+                                              "7px",
+                                            height:
+                                              "11px",
+                                            display:
+                                              "inline-block",
+                                            borderRadius:
+                                              "1px",
+                                            flexShrink:
+                                              0
+                                          }}
+                                        />
+                                      )
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div
+                                style={{
+                                  flex:
+                                    1,
+                                  display:
+                                    "flex",
+                                  justifyContent:
+                                    "flex-start",
+                                  alignItems:
+                                    "center",
+                                  gap:
+                                    "10px",
+                                  textAlign:
+                                    "left"
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight:
+                                      500
+                                  }}
+                                >
+                                  {
+                                    teamB.name
+                                  }
+                                </span>
+                              </div>
                             </div>
+
+                            {/* GOLES */}
+
+                            {hasGoals && (
+                              <div
+                                style={{
+                                  display:
+                                    "flex",
+                                  borderTop:
+                                    "1px dashed rgba(128,128,128,0.15)",
+                                  fontSize:
+                                    "0.75rem",
+                                  opacity:
+                                    0.75,
+                                  background:
+                                    "rgba(128,128,128,0.02)"
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    flex:
+                                      1,
+                                    padding:
+                                      "6px 16px",
+                                    textAlign:
+                                      "right",
+                                    borderRight:
+                                      "1px dashed rgba(128,128,128,0.15)"
+                                  }}
+                                >
+                                  {
+                                    strGoalsA
+                                  }
+                                </div>
+
+                                <div
+                                  style={{
+                                    flex:
+                                      1,
+                                    padding:
+                                      "6px 16px",
+                                    textAlign:
+                                      "left"
+                                  }}
+                                >
+                                  {
+                                    strGoalsB
+                                  }
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        );
-                      }
-                    )}
+
+                          {/* TV */}
+
+                          <div
+                            style={{
+                              width:
+                                "160px",
+                              background:
+                                "rgba(128,128,128,0.04)",
+                              borderLeft:
+                                "1px solid rgba(128,128,128,0.15)",
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "center",
+                              padding:
+                                "8px 12px",
+                              textAlign:
+                                "center",
+                              fontSize:
+                                "0.75rem",
+                              opacity:
+                                0.7,
+                              flexShrink:
+                                0
+                            }}
+                          >
+                            {tvList ? (
+                              <span>
+                                📺{" "}
+                                {
+                                  tvList
+                                }
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  opacity:
+                                    0.4
+                                }}
+                              >
+                                -
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
                 </div>
               </section>
             )
