@@ -3,297 +3,125 @@ import Redis from "ioredis";
 
 const redis = new Redis(process.env.REDIS_URL);
 
-// =========================================================
-// EQUIPOS DE PROMIEDOS
-// team_id -> nombre del equipo
-// =========================================================
+const COMPETENCIAS = {
+  argentina: {
+    nombre: "Liga Argentina",
+    redis: "chiquifutbol_standings",
+  },
 
-const EQUIPOS_PROMIEDOS = {
-  ihc: "Vélez Sarsfield",
-  hcbh: "Defensa y Justicia",
-  bbjbf: "Gimnasia Mendoza",
+  libertadores: {
+    nombre: "Copa Libertadores",
+    redis: "chiquifutbol_libertadores",
+  },
 
-  hchc: "Instituto",
+  sudamericana: {
+    nombre: "Copa Sudamericana",
+    redis: "chiquifutbol_sudamericana",
+  },
 
-  igg: "Boca Juniors",
+  copa_argentina: {
+    nombre: "Copa Argentina",
+    redis: "chiquifutbol_copa_argentina",
+  },
 
-  ihe: "Independiente",
+  champions: {
+    nombre: "Champions League",
+    redis: "chiquifutbol_champions",
+  },
 
-  igj: "Lanús",
+  europa_league: {
+    nombre: "Europa League",
+    redis: "chiquifutbol_europa_league",
+  },
 
-  hcag: "Unión",
-
-  ihh: "Newell's Old Boys",
-
-  igf: "San Lorenzo",
-
-  igh: "Estudiantes de La Plata",
-
-  bbjea: "Deportivo Riestra",
-
-  hcah: "Platense",
-
-  jche: "Talleres",
-
-  beafh: "Central Córdoba",
-
-  ihb: "Argentinos Juniors",
-
-  hbbh: "Sarmiento",
-
-  iia: "Gimnasia La Plata",
-
-  ihf: "Rosario Central",
-
-  hcch: "Independiente Rivadavia",
-
-  fhid: "Belgrano",
-
-  igi: "River Plate",
-
-  gbfc: "Atlético Tucumán",
-
-  iie: "Huracán",
-
-  iid: "Tigre",
-
-  jafb: "Barracas Central",
-
-  ihi: "Banfield",
-
-  bheaf: "Estudiantes Río Cuarto",
-
-  hccd: "Aldosivi",
-
-  ihg: "Racing Club",
+  conference_league: {
+    nombre: "Conference League",
+    redis: "chiquifutbol_conference_league",
+  },
 };
-
-
-// =========================================================
-// AGREGAR NOMBRE DEL EQUIPO A LAS ESTADÍSTICAS
-// =========================================================
-
-function agregarEquiposAEstadisticas(playersStatistics) {
-  if (!playersStatistics) {
-    return playersStatistics;
-  }
-
-  if (!Array.isArray(playersStatistics.tables)) {
-    return playersStatistics;
-  }
-
-  return {
-    ...playersStatistics,
-
-    tables: playersStatistics.tables.map((tabla) => {
-
-      let rows = [];
-      let tipo = null;
-
-      // -----------------------------------------------
-      // Caso 1:
-      // tabla.rows
-      // -----------------------------------------------
-
-      if (Array.isArray(tabla?.rows)) {
-        rows = tabla.rows;
-        tipo = "rows";
-      }
-
-      // -----------------------------------------------
-      // Caso 2:
-      // tabla.table.rows
-      // -----------------------------------------------
-
-      else if (Array.isArray(tabla?.table?.rows)) {
-        rows = tabla.table.rows;
-        tipo = "table";
-      }
-
-      // Si no encontramos filas, dejamos la tabla igual
-      if (!rows.length) {
-        return tabla;
-      }
-
-      // -----------------------------------------------
-      // Agregamos team_name
-      // -----------------------------------------------
-
-      const nuevasRows = rows.map((fila) => {
-
-        const teamId =
-          fila?.entity?.object?.team_id ||
-          fila?.team_id ||
-          null;
-
-        const teamName =
-          teamId && EQUIPOS_PROMIEDOS[teamId]
-            ? EQUIPOS_PROMIEDOS[teamId]
-            : "-";
-
-        return {
-          ...fila,
-
-          // También lo dejamos directamente en la fila
-          team_id: teamId,
-          team_name: teamName,
-
-          // Y dentro de entity.object
-          entity: {
-            ...fila?.entity,
-
-            object: {
-              ...fila?.entity?.object,
-
-              team_id: teamId,
-              team_name: teamName,
-            },
-          },
-        };
-      });
-
-      // -----------------------------------------------
-      // Reconstruimos la tabla respetando su estructura
-      // -----------------------------------------------
-
-      if (tipo === "rows") {
-        return {
-          ...tabla,
-          rows: nuevasRows,
-        };
-      }
-
-      if (tipo === "table") {
-        return {
-          ...tabla,
-
-          table: {
-            ...tabla.table,
-            rows: nuevasRows,
-          },
-        };
-      }
-
-      return tabla;
-    }),
-  };
-}
-
-
-// =========================================================
-// API
-// =========================================================
 
 export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
 
-    // ---------------------------------------------------
-    // Leer datos principales desde Redis
-    // ---------------------------------------------------
+    const competition =
+      searchParams.get("competition") || "argentina";
 
-    let data = await redis.get(
-      "chiquifutbol_standings"
-    );
+    const config =
+      COMPETENCIAS[competition] || COMPETENCIAS.argentina;
 
-    if (!data) {
-      data = await redis.get(
-        "chiquifutbol_standings_1"
-      );
+    console.log("==========================================");
+    console.log("API STANDINGS");
+    console.log("==========================================");
+    console.log("Competencia:", competition);
+    console.log("Nombre:", config.nombre);
+    console.log("Redis:", config.redis);
+
+    let raw = await redis.get(config.redis);
+
+    // Compatibilidad con la clave anterior de Liga Argentina
+    if (!raw && competition === "argentina") {
+      raw = await redis.get("chiquifutbol_standings_1");
     }
 
-    if (!data) {
+    if (!raw) {
       return NextResponse.json(
         {
-          error:
-            "No hay datos estructurados en Redis.",
+          error: "No hay datos para esta competencia",
+          competition,
+          redis: config.redis,
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
+    const data = JSON.parse(raw);
 
-    // ---------------------------------------------------
-    // Convertir JSON
-    // ---------------------------------------------------
-
-    const json = JSON.parse(data);
-
-
-    // ---------------------------------------------------
-    // Agregar nombres de equipos a jugadores
-    // ---------------------------------------------------
-
-    if (json?.players_statistics) {
-
-      json.players_statistics =
-        agregarEquiposAEstadisticas(
-          json.players_statistics
-        );
-
-    }
-
-
-    // ---------------------------------------------------
-    // DEBUG
-    // ---------------------------------------------------
+    console.log("Datos encontrados correctamente");
+    console.log("Claves:", Object.keys(data));
 
     console.log(
-      "=========================================="
+      "tables_groups:",
+      Array.isArray(data.tables_groups)
+        ? data.tables_groups.length
+        : "NO ARRAY"
     );
 
     console.log(
-      "ESTADISTICAS DE JUGADORES PROCESADAS"
+      "brackets:",
+      Array.isArray(data.brackets)
+        ? data.brackets.length
+        : data.brackets
+          ? "EXISTE"
+          : "NO"
     );
-
-    const primeraTabla =
-      json?.players_statistics?.tables?.[0];
-
-    const primerasFilas =
-      primeraTabla?.rows ||
-      primeraTabla?.table?.rows ||
-      [];
-
-    if (primerasFilas.length > 0) {
-
-      console.log(
-        JSON.stringify(
-          primerasFilas[0],
-          null,
-          2
-        )
-      );
-
-    }
 
     console.log(
-      "=========================================="
+      "players_statistics:",
+      data.players_statistics ? "OK" : "NO"
     );
 
+    console.log("==========================================");
 
-    // ---------------------------------------------------
-    // Devolver datos
-    // ---------------------------------------------------
+    return NextResponse.json({
+      ...data,
 
-    return NextResponse.json(json);
+      competition: {
+        key: competition,
+        name: config.nombre,
+        redis: config.redis,
+      },
+    });
 
   } catch (error) {
-
-    console.error(
-      "Error en API /api/standings:",
-      error.message
-    );
+    console.error("ERROR API STANDINGS:", error);
 
     return NextResponse.json(
       {
-        error: error.message,
+        error: "Error interno",
+        message: error.message,
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
-
   }
 }
-
