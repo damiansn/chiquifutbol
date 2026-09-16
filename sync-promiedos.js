@@ -1211,39 +1211,7 @@ async function sincronizarCompetencia(page, competencia) {
   // ==========================================
 
   const standingsData = {
-  league: tablaData.league ?? null,
-
-  tables: tablasReales,
-
-  tables_groups: Array.isArray(tablaData.tables_groups)
-    ? tablaData.tables_groups
-    : [],
-
-  brackets: Array.isArray(tablaData.brackets)
-    ? tablaData.brackets
-    : [],
-
-  games: Array.isArray(tablaData.games)
-    ? tablaData.games
-    : [],
-
-  players_statistics: playersStatistics,
-
-  stats: estadisticasAnalizadas,
-
-  statistics: playersStatistics,
-
-  competition: {
-    key:
-      Object.keys(COMPETENCIAS).find(
-        key => COMPETENCIAS[key] === competencia
-      ) || null,
-
-    name: competencia.nombre,
-
-    url: competencia.url
-  }
-};
+  
 
     league:
       tablaData.league ??
