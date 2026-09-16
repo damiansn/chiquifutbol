@@ -1207,43 +1207,63 @@ async function sincronizarCompetencia(page, competencia) {
         );
 
   // ==========================================
-  // ESTRUCTURA FINAL
-  // ==========================================
+// ESTRUCTURA FINAL
+// ==========================================
 
-  const standingsData = {
-  
+const standingsData = {
 
-    league:
-      tablaData.league ??
-      null,
+  league:
+    tablaData.league ??
+    null,
 
-    tables:
-      tablasReales,
+  tables:
+    tablasReales,
 
-    tables_groups:
-      Array.isArray(
-        tablaData.tables_groups
-      )
-        ? tablaData.tables_groups
-        : [],
+  tables_groups:
+    Array.isArray(
+      tablaData.tables_groups
+    )
+      ? tablaData.tables_groups
+      : [],
 
-    games:
-      Array.isArray(
-        tablaData.games
-      )
-        ? tablaData.games
-        : [],
+  brackets:
+    Array.isArray(
+      tablaData.brackets
+    )
+      ? tablaData.brackets
+      : [],
 
-    players_statistics:
-      playersStatistics,
+  games:
+    Array.isArray(
+      tablaData.games
+    )
+      ? tablaData.games
+      : [],
 
-    stats:
-      estadisticasAnalizadas,
+  players_statistics:
+    playersStatistics,
 
-    statistics:
-      playersStatistics
+  stats:
+    estadisticasAnalizadas,
 
-  };
+  statistics:
+    playersStatistics,
+
+  competition: {
+    key:
+      Object.keys(COMPETENCIAS).find(
+        key =>
+          COMPETENCIAS[key] === competencia
+      ) || null,
+
+    name:
+      competencia.nombre,
+
+    url:
+      competencia.url
+  }
+
+};
 
   // ==========================================
   // CONTADORES
@@ -1348,12 +1368,7 @@ console.log(
   Object.keys(standingsData)
 );
 
-await redis.set(
-  competencia.redis,
-  JSON.stringify(
-    standingsData
-  )
-);
+
   // ==========================================
   // GUARDAR REDIS
   // ==========================================
