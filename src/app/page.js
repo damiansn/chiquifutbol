@@ -479,6 +479,56 @@ export default function Home() {
         )
     );
 
+    // ====================================================
+// OBTENER COMPETENCIA PARA PÁGINA DE POSICIONES
+// ====================================================
+
+const obtenerCompetition = (league) => {
+  const nombre = (league?.name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (
+    nombre.includes("libertadores")
+  ) {
+    return "libertadores";
+  }
+
+  if (
+    nombre.includes("sudamericana")
+  ) {
+    return "sudamericana";
+  }
+
+  if (
+    nombre.includes("copa argentina")
+  ) {
+    return "copa_argentina";
+  }
+
+  if (
+    nombre.includes("champions")
+  ) {
+    return "champions";
+  }
+
+  if (
+    nombre.includes("europa league")
+  ) {
+    return "europa_league";
+  }
+
+  if (
+    nombre.includes("conference league")
+  ) {
+    return "conference_league";
+  }
+
+  // Liga Argentina / Primera División
+  return "argentina";
+};
+
   // ====================================================
   // RENDER
   // ====================================================
@@ -1399,9 +1449,9 @@ export default function Home() {
                   }}
                 >
                   <Link
-                    href={`/posiciones?leagueId=${league.id}&name=${encodeURIComponent(
-                      league.name
-                    )}`}
+  href={`/posiciones?competition=${obtenerCompetition(
+    league
+  )}`}
                     style={{
                       color:
                         "#10b981",
