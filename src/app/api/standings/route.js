@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import Redis from "ioredis";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const redis = new Redis(process.env.REDIS_URL);
 
 const COMPETENCIAS = {
@@ -53,25 +56,29 @@ export async function GET(request) {
     console.log("==========================================");
     console.log("API STANDINGS");
     console.log("==========================================");
-    console.log("Competencia:", competition);
+    console.log("Competition:", competition);
     console.log("Nombre:", config.nombre);
     console.log("Redis:", config.redis);
 
     let raw = await redis.get(config.redis);
 
-    // Compatibilidad con la clave anterior de Liga Argentina
+    // Compatibilidad con la clave anterior de Argentina
     if (!raw && competition === "argentina") {
       raw = await redis.get("chiquifutbol_standings_1");
     }
 
     if (!raw) {
+      console.log("NO HAY DATOS EN REDIS");
+
       return NextResponse.json(
         {
           error: "No hay datos para esta competencia",
           competition,
           redis: config.redis,
         },
-        { status: 404 }
+        {
+          status: 404,
+        }
       );
     }
 
@@ -79,6 +86,13 @@ export async function GET(request) {
 
     console.log("Datos encontrados correctamente");
     console.log("Claves:", Object.keys(data));
+
+    console.log(
+      "tables:",
+      Array.isArray(data.tables)
+        ? data.tables.length
+        : "NO ARRAY"
+    );
 
     console.log(
       "tables_groups:",
@@ -98,30 +112,71 @@ export async function GET(request) {
 
     console.log(
       "players_statistics:",
-      data.players_statistics ? "OK" : "NO"
+      data.players_statistics
+        ? "OK"
+        : "NO"
     );
 
     console.log("==========================================");
 
-    return NextResponse.json({
-      ...data,
+    /*
+     * IMPORTANTE
+     *
+     * Algunos datos de Promiedos vienen como:
+     *
+     * tables
+     *
+     * y otros pueden venir como:
+     *
+     * tables_groups
+     *
+     * Para que el frontend pueda trabajar con ambos,
+     * creamos tables_groups solamente cuando no existe.
+     */
 
-      competition: {
-        key: competition,
-        name: config.nombre,
-        redis: config.redis,
+    const tablesGroups =
+      Array.isArray(data.tables_groups)
+        ? data.tables_groups
+        : Array.isArray(data.tables)
+          ? data.tables
+          : [];
+
+    return NextResponse.json(
+      {
+        ...data,
+
+        // Compatibilidad para el frontend
+        tables_groups: tablesGroups,
+
+        competition: {
+          key: competition,
+          name: config.nombre,
+          redis: config.redis,
+        },
       },
-    });
-
+      {
+        headers: {
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error) {
-    console.error("ERROR API STANDINGS:", error);
+    console.error(
+      "ERROR API STANDINGS:",
+      error
+    );
 
     return NextResponse.json(
       {
         error: "Error interno",
         message: error.message,
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
