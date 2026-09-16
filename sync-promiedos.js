@@ -1255,12 +1255,7 @@ const standingsData = {
       ? tablaData.tables_groups
       : [],
 
-  brackets:
-    Array.isArray(
-      tablaData.brackets
-    )
-      ? tablaData.brackets
-      : [],
+  brackets: tablaData.brackets ?? null,
 
   games:
     Array.isArray(
