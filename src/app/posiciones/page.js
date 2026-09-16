@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+
 
 export default function PosicionesPage() {
- const searchParams = useSearchParams();
-
-const competition =
-  searchParams.get("competition")?.trim().toLowerCase() || "argentina";
+ const [competition, setCompetition] = useState("argentina");
 
 console.log("POSICIONES - competition:", competition);
 
@@ -21,6 +18,19 @@ console.log("POSICIONES - competition:", competition);
   // ============================================================
 
   useEffect(() => {
+  const params = new URLSearchParams(
+    window.location.search
+  );
+
+  const competenciaURL =
+    params.get("competition") || "argentina";
+
+  setCompetition(competenciaURL);
+}, []);
+
+useEffect(() => {
+  if (!competition) return;
+
   cargarDatos();
 }, [competition]);
 
@@ -103,11 +113,15 @@ async function cargarDatos() {
   // ============================================================
 
 function obtenerTablasPosiciones() {
-  if (!Array.isArray(data?.tables_groups)) return [];
+  const grupos = Array.isArray(data?.tables)
+    ? data.tables
+    : Array.isArray(data?.tables_groups)
+      ? data.tables_groups
+      : [];
 
   const resultado = [];
 
-  data.tables_groups.forEach((grupo) => {
+  grupos.forEach((grupo) => {
     if (!Array.isArray(grupo?.tables)) return;
 
     grupo.tables.forEach((tabla) => {
