@@ -44,6 +44,13 @@ export default function PosicionesPage() {
 
       const json = await response.json();
 
+      console.log("================================");
+console.log("COMPETENCIA URL:", competition);
+console.log("COMPETENCIA API:", json?.competition);
+console.log("LIGA API:", json?.league?.name);
+console.log("TABLAS:", json?.tables);
+console.log("================================");
+
       setData(json);
     } catch (err) {
       console.error(err);
@@ -76,37 +83,28 @@ export default function PosicionesPage() {
   // OBTENER TABLAS DE POSICIONES
   // ============================================================
 
-  function obtenerTablasPosiciones() {
-    if (!Array.isArray(data?.tables_groups)) {
-      return [];
-    }
+function obtenerTablasPosiciones() {
+  if (!Array.isArray(data?.tables_groups)) return [];
 
-    const resultado = [];
+  const resultado = [];
 
-    data.tables_groups.forEach((grupo) => {
-      if (!Array.isArray(grupo?.tables)) {
-        return;
-      }
+  data.tables_groups.forEach((grupo) => {
+    if (!Array.isArray(grupo?.tables)) return;
 
-      grupo.tables.forEach((tabla) => {
-        if (!tabla?.table) {
-          return;
-        }
+    grupo.tables.forEach((tabla) => {
+      if (!tabla?.table) return;
+      if (!Array.isArray(tabla.table.rows)) return;
 
-        if (!Array.isArray(tabla.table.rows)) {
-          return;
-        }
-
-        resultado.push({
-          torneo: grupo.name || "",
-          nombre: tabla.name || "Tabla",
-          table: tabla.table,
-        });
+      resultado.push({
+        torneo: grupo.name || "",
+        nombre: tabla.name || "Tabla",
+        table: tabla.table,
       });
     });
+  });
 
-    return resultado;
-  }
+  return resultado;
+}
 
   // ============================================================
   // OBTENER VALOR DE UNA COLUMNA
