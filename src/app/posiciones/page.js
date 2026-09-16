@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 export default function PosicionesPage() {
-  const searchParams = useSearchParams();
+ const searchParams = useSearchParams();
 
-  const competition =
-    searchParams.get("competition") || "argentina";
+const competition =
+  searchParams.get("competition")?.trim().toLowerCase() || "argentina";
+
+console.log("POSICIONES - competition:", competition);
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,49 +21,66 @@ export default function PosicionesPage() {
   // ============================================================
 
   useEffect(() => {
-    cargarDatos();
-  }, [competition]);
+  cargarDatos();
+}, [competition]);
 
-  async function cargarDatos() {
-    try {
-      setLoading(true);
-      setError("");
+async function cargarDatos() {
+  try {
+    setLoading(true);
+    setError("");
 
-      const response = await fetch(
-        `/api/standings?competition=${encodeURIComponent(
-          competition
-        )}`,
-        {
-          cache: "no-store",
-        }
+    const url = `/api/standings?competition=${encodeURIComponent(
+      competition
+    )}`;
+
+    console.log("================================");
+    console.log("POSICIONES - competition:", competition);
+    console.log("POSICIONES - URL:", url);
+    console.log("================================");
+
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        "No se pudieron obtener los datos."
       );
-
-      if (!response.ok) {
-        throw new Error(
-          "No se pudieron obtener los datos."
-        );
-      }
-
-      const json = await response.json();
-
-      console.log("================================");
-console.log("COMPETENCIA URL:", competition);
-console.log("COMPETENCIA API:", json?.competition);
-console.log("LIGA API:", json?.league?.name);
-console.log("TABLAS:", json?.tables);
-console.log("================================");
-
-      setData(json);
-    } catch (err) {
-      console.error(err);
-      setError(
-        err.message ||
-          "Error al cargar los datos."
-      );
-    } finally {
-      setLoading(false);
     }
+
+    const json = await response.json();
+
+    console.log("================================");
+    console.log(
+      "POSICIONES - API competition:",
+      json?.competition
+    );
+    console.log(
+      "POSICIONES - API league:",
+      json?.league?.name
+    );
+    console.log(
+      "POSICIONES - TABLAS:",
+      json?.tables
+    );
+    console.log("================================");
+
+    setData(json);
+  } catch (err) {
+    console.error(
+      "Error cargando posiciones:",
+      err
+    );
+
+    setError(
+      err.message ||
+        "Error al cargar los datos."
+    );
+  } finally {
+    setLoading(false);
   }
+}
+  
 
   // ============================================================
   // COLORES
