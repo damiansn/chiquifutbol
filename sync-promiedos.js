@@ -1193,6 +1193,35 @@ async function sincronizarCompetencia(page, competencia) {
       playersStatistics
     );
 
+    // ==========================================
+// DEBUG BRACKETS RAW
+// ==========================================
+
+console.log("==========================================");
+console.log("DEBUG BRACKETS RAW");
+console.log("==========================================");
+
+console.log(
+  "brackets existe:",
+  tablaData.brackets !== undefined
+);
+
+console.log(
+  "brackets tipo:",
+  typeof tablaData.brackets
+);
+
+console.log(
+  "brackets es array:",
+  Array.isArray(tablaData.brackets)
+);
+
+if (tablaData.brackets !== undefined) {
+  console.log(
+    "brackets JSON:",
+    JSON.stringify(tablaData.brackets, null, 2)
+  );
+}
   // ==========================================
   // TABLAS
   // ==========================================
