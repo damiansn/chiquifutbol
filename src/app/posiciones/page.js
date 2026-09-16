@@ -1,11 +1,14 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 
 export default function PosicionesPage() {
- const [competition, setCompetition] = useState("argentina");
+ const searchParams = useSearchParams();
+
+const competition =
+  searchParams.get("competition") || "argentina";
 
 console.log("POSICIONES - competition:", competition);
 
@@ -17,16 +20,7 @@ console.log("POSICIONES - competition:", competition);
   // CARGAR DATOS
   // ============================================================
 
-  useEffect(() => {
-  const params = new URLSearchParams(
-    window.location.search
-  );
 
-  const competenciaURL =
-    params.get("competition") || "argentina";
-
-  setCompetition(competenciaURL);
-}, []);
 
 useEffect(() => {
   if (!competition) return;
