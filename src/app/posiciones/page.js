@@ -27,18 +27,19 @@ const colores = {
 
 
 // ============================================================
-// CONTENIDO PRINCIPAL
+// CONTENIDO DE POSICIONES
 // ============================================================
 
 function PosicionesContent() {
   const searchParams = useSearchParams();
 
   // ==========================================================
-  // COMPETENCIA DESDE LA URL
+  // COMPETENCIA
   // ==========================================================
 
   const competition =
     searchParams.get("competition") || "argentina";
+
 
   console.log(
     "POSICIONES - competition:",
@@ -54,8 +55,6 @@ function PosicionesContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Sirve para evitar que una respuesta vieja de la API
-  // sobrescriba los datos de una competencia nueva.
   const requestIdRef = useRef(0);
 
 
@@ -66,7 +65,8 @@ function PosicionesContent() {
   async function cargarDatos() {
     if (!competition) return;
 
-    const requestId = ++requestIdRef.current;
+    const requestId =
+      ++requestIdRef.current;
 
     try {
       setLoading(true);
@@ -89,9 +89,12 @@ function PosicionesContent() {
       console.log("================================");
 
 
-      const response = await fetch(url, {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        url,
+        {
+          cache: "no-store",
+        }
+      );
 
 
       if (!response.ok) {
@@ -101,19 +104,18 @@ function PosicionesContent() {
       }
 
 
-      const json = await response.json();
+      const json =
+        await response.json();
 
 
       // ======================================================
-      // SI YA HAY UNA PETICIÓN MÁS NUEVA, DESCARTAMOS ESTA
+      // DESCARTAR RESPUESTAS VIEJAS
       // ======================================================
 
-      if (requestId !== requestIdRef.current) {
-        console.log(
-          "RESPUESTA DESCARTADA:",
-          competition
-        );
-
+      if (
+        requestId !==
+        requestIdRef.current
+      ) {
         return;
       }
 
@@ -128,7 +130,7 @@ function PosicionesContent() {
         json?.league?.name
       );
       console.log(
-        "POSICIONES - TABLAS:",
+        "POSICIONES - TABLES:",
         json?.tables
       );
       console.log("================================");
@@ -138,7 +140,10 @@ function PosicionesContent() {
 
     } catch (err) {
 
-      if (requestId !== requestIdRef.current) {
+      if (
+        requestId !==
+        requestIdRef.current
+      ) {
         return;
       }
 
@@ -154,7 +159,10 @@ function PosicionesContent() {
 
     } finally {
 
-      if (requestId === requestIdRef.current) {
+      if (
+        requestId ===
+        requestIdRef.current
+      ) {
         setLoading(false);
       }
     }
@@ -173,11 +181,13 @@ function PosicionesContent() {
 
 
   // ==========================================================
-  // NOMBRE DE LA COMPETENCIA
+  // NOMBRE DE COMPETENCIA
   // ==========================================================
 
   function nombreCompetencia() {
+
     switch (competition) {
+
       case "libertadores":
         return "Copa Libertadores";
 
@@ -204,37 +214,87 @@ function PosicionesContent() {
 
 
   // ==========================================================
-  // OBTENER TABLAS DE POSICIONES
+  // OBTENER TORNEOS
+  //
+  // ESTRUCTURA REAL:
+  //
+  // data.tables[]
+  //   ├── name
+  //   └── tables[]
+  //        ├── name
+  //        └── table
+  //             ├── columns[]
+  //             └── rows[]
+  //
   // ==========================================================
 
   function obtenerTablasPosiciones() {
-    if (!data) return [];
-
-    if (Array.isArray(data.tables)) {
-      return data.tables;
-    }
 
     if (
-      data.tables_groups &&
-      Array.isArray(data.tables_groups)
+      !data ||
+      !Array.isArray(data.tables)
     ) {
-      const resultado = [];
-
-      for (const grupo of data.tables_groups) {
-
-        if (
-          Array.isArray(grupo.tables)
-        ) {
-          resultado.push(
-            ...grupo.tables
-          );
-        }
-      }
-
-      return resultado;
+      return [];
     }
 
-    return [];
+
+    const resultado = [];
+
+
+    data.tables.forEach(
+      (torneo) => {
+
+        if (
+          !Array.isArray(
+            torneo.tables
+          )
+        ) {
+          return;
+        }
+
+
+        torneo.tables.forEach(
+          (grupo) => {
+
+            if (
+              !grupo.table
+            ) {
+              return;
+            }
+
+
+            const tabla =
+              grupo.table;
+
+
+            if (
+              !Array.isArray(
+                tabla.rows
+              )
+            ) {
+              return;
+            }
+
+
+            resultado.push({
+              torneo:
+                torneo.name ||
+                "",
+
+              grupo:
+                grupo.name ||
+                "",
+
+              table:
+                tabla,
+            });
+          }
+        );
+      }
+    );
+
+
+    return resultado;
   }
 
 
@@ -244,74 +304,91 @@ function PosicionesContent() {
 
   function obtenerValorFila(
     fila,
-    posiblesClaves
+    clave
   ) {
-    if (!fila) return "-";
 
-    for (const clave of posiblesClaves) {
-
-      if (
-        fila[clave] !== undefined &&
-        fila[clave] !== null
-      ) {
-        return fila[clave];
-      }
-
-      if (
-        fila.values &&
-        typeof fila.values === "object"
-      ) {
-
-        if (
-          fila.values[clave] !== undefined &&
-          fila.values[clave] !== null
-        ) {
-          return fila.values[clave];
-        }
-      }
+    if (
+      !fila ||
+      !Array.isArray(
+        fila.values
+      )
+    ) {
+      return "-";
     }
+
+
+    const encontrado =
+      fila.values.find(
+        (item) =>
+          item?.key === clave
+      );
+
+
+    if (
+      encontrado &&
+      encontrado.value !==
+        undefined &&
+      encontrado.value !== null
+    ) {
+      return encontrado.value;
+    }
+
 
     return "-";
   }
 
 
   // ==========================================================
-  // ESTADÍSTICAS DE JUGADORES
+  // OBTENER ESTADÍSTICAS DE JUGADORES
   // ==========================================================
 
   function obtenerEstadisticasJugadores() {
-    if (!data) return null;
 
     if (
-      data.players_statistics
+      !data?.players_statistics
     ) {
-      return data.players_statistics;
+      return [];
     }
 
-    return null;
+
+    if (
+      Array.isArray(
+        data.players_statistics.tables
+      )
+    ) {
+      return data.players_statistics.tables;
+    }
+
+
+    return [];
   }
 
 
   // ==========================================================
-  // OBTENER TABLAS DE ESTADÍSTICAS
+  // OBTENER FILAS DE ESTADÍSTICAS
   // ==========================================================
 
   function obtenerFilasEstadisticas(
     tabla
   ) {
-    if (!tabla) return [];
 
     if (
-      Array.isArray(tabla.rows)
+      Array.isArray(
+        tabla?.rows
+      )
     ) {
       return tabla.rows;
     }
 
+
     if (
-      Array.isArray(tabla.data)
+      Array.isArray(
+        tabla?.data
+      )
     ) {
       return tabla.data;
     }
+
 
     return [];
   }
@@ -324,6 +401,7 @@ function PosicionesContent() {
   function obtenerNombreJugador(
     fila
   ) {
+
     return (
       fila?.entity?.object?.name ||
       fila?.entity?.name ||
@@ -341,40 +419,44 @@ function PosicionesContent() {
     fila
   ) {
 
-    const equipo =
+    return (
       fila?.entity?.object?.team_name ||
       fila?.entity?.object?.team?.name ||
       fila?.team_name ||
-      fila?.team?.name;
-
-    if (equipo) {
-      return equipo;
-    }
-
-    return "-";
+      fila?.team?.name ||
+      "-"
+    );
   }
 
 
   // ==========================================================
-  // VALORES DE ESTADÍSTICA
+  // VALORES DE ESTADÍSTICAS
   // ==========================================================
 
   function obtenerValoresEstadistica(
     fila
   ) {
 
-    if (!fila) return [];
+    if (!fila) {
+      return [];
+    }
+
 
     if (
-      Array.isArray(fila.values)
+      Array.isArray(
+        fila.values
+      )
     ) {
       return fila.values;
     }
 
+
     if (
       fila.values &&
-      typeof fila.values === "object"
+      typeof fila.values ===
+        "object"
     ) {
+
       return Object.entries(
         fila.values
       ).map(
@@ -385,58 +467,91 @@ function PosicionesContent() {
       );
     }
 
+
     return [];
   }
 
 
   // ==========================================================
-  // COLUMNAS DE ESTADÍSTICA
+  // COLUMNAS DE ESTADÍSTICAS
   // ==========================================================
 
   function obtenerColumnasEstadistica(
     tabla
   ) {
 
-    if (!tabla) return [];
-
-    if (
-      Array.isArray(tabla.columns)
-    ) {
-      return tabla.columns;
-    }
-
-    if (
-      Array.isArray(tabla.headers)
-    ) {
-      return tabla.headers;
-    }
-
-    const filas =
-      obtenerFilasEstadisticas(tabla);
-
-    if (!filas.length) {
+    if (!tabla) {
       return [];
     }
 
-    const columnas = new Set();
 
-    filas.forEach((fila) => {
+    if (
+      Array.isArray(
+        tabla.columns
+      )
+    ) {
 
-      obtenerValoresEstadistica(
-        fila
-      ).forEach((valor) => {
+      return tabla.columns
+        .map((columna) => {
 
-        if (valor?.key) {
-          columnas.add(
-            valor.key
-          );
-        }
-      });
-    });
+          if (
+            typeof columna ===
+            "string"
+          ) {
+            return {
+              key: columna,
+              title: columna,
+            };
+          }
 
-    return Array.from(
-      columnas
+          return columna;
+        });
+    }
+
+
+    const filas =
+      obtenerFilasEstadisticas(
+        tabla
+      );
+
+
+    const columnas = [];
+
+
+    filas.forEach(
+      (fila) => {
+
+        obtenerValoresEstadistica(
+          fila
+        ).forEach(
+          (valor) => {
+
+            if (
+              valor?.key &&
+              !columnas.some(
+                (c) =>
+                  c.key ===
+                  valor.key
+              )
+            ) {
+
+              columnas.push({
+                key:
+                  valor.key,
+
+                title:
+                  tituloColumna(
+                    valor.key
+                  ),
+              });
+            }
+          }
+        );
+      }
     );
+
+
+    return columnas;
   }
 
 
@@ -454,25 +569,30 @@ function PosicionesContent() {
         fila
       );
 
+
     const encontrado =
       valores.find(
         (item) =>
-          item?.key === columna
+          item?.key ===
+          columna
       );
+
 
     if (
       encontrado &&
-      encontrado.value !== undefined
+      encontrado.value !==
+        undefined
     ) {
       return encontrado.value;
     }
+
 
     return "-";
   }
 
 
   // ==========================================================
-  // TÍTULO DE COLUMNA
+  // TÍTULOS DE COLUMNAS
   // ==========================================================
 
   function tituloColumna(
@@ -480,25 +600,43 @@ function PosicionesContent() {
   ) {
 
     const titulos = {
-      P: "PJ",
-      PJ: "PJ",
-      W: "G",
-      D: "E",
-      L: "P",
-      GF: "GF",
-      GA: "GC",
-      GD: "DG",
-      Pts: "PTS",
+
       Points: "PTS",
 
-      Goals: "Goles",
-      GoalsScored: "Goles",
-      Assists: "Asistencias",
-      YellowCards: "Amarillas",
-      RedCards: "Rojas",
-      Minutes: "Minutos",
-      Appearances: "PJ",
+      GamePlayed: "J",
+
+      Goals: "Gol",
+
+      Ratio: "+/-",
+
+      GamesWon: "G",
+
+      GamesEven: "E",
+
+      GamesLost: "P",
+
+      "{trend}":
+        "Últimas",
+
+      GoalsScored:
+        "Goles",
+
+      Assists:
+        "Asistencias",
+
+      YellowCards:
+        "Amarillas",
+
+      RedCards:
+        "Rojas",
+
+      Minutes:
+        "Minutos",
+
+      Appearances:
+        "PJ",
     };
+
 
     return (
       titulos[columna] ||
@@ -508,47 +646,21 @@ function PosicionesContent() {
 
 
   // ==========================================================
-  // COLOR SEGÚN POSICIÓN
-  // ==========================================================
-
-  function colorPosicion(
-    posicion
-  ) {
-
-    if (
-      posicion === 1 ||
-      posicion === 2 ||
-      posicion === 3 ||
-      posicion === 4
-    ) {
-      return "#10b981";
-    }
-
-    return colores.muted;
-  }
-
-
-  // ==========================================================
-  // ÚLTIMOS PARTIDOS
+  // FORMA
   // ==========================================================
 
   function UltimosPartidos({
-    fila,
+    valor,
   }) {
 
-    const posibles =
-      fila?.form ||
-      fila?.last_matches ||
-      fila?.lastGames ||
-      fila?.results;
-
     if (
-      !Array.isArray(posibles)
+      !Array.isArray(valor)
     ) {
       return (
         <span
           style={{
-            color: colores.muted,
+            color:
+              colores.muted,
           }}
         >
           -
@@ -556,179 +668,72 @@ function PosicionesContent() {
       );
     }
 
-    return (
-      <div
-        style={{
-          display: "flex",
-          gap: 3,
-          justifyContent: "center",
-        }}
-      >
-        {posibles
-          .slice(-5)
-          .map(
-            (
-              resultado,
-              index
-            ) => {
-
-              let color =
-                colores.muted;
-
-              if (
-                resultado === "W" ||
-                resultado === "G" ||
-                resultado === "V"
-              ) {
-                color = "#10b981";
-              }
-
-              if (
-                resultado === "L" ||
-                resultado === "P" ||
-                resultado === "D"
-              ) {
-                color = "#ef4444";
-              }
-
-              return (
-                <span
-                  key={index}
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius:
-                      "50%",
-                    backgroundColor:
-                      color,
-                    display:
-                      "inline-block",
-                  }}
-                />
-              );
-            }
-          )}
-      </div>
-    );
-  }
-
-
-  // ==========================================================
-  // BRACKET
-  // ==========================================================
-
-  function BracketStage({
-    title,
-    matches,
-  }) {
-
-    if (
-      !Array.isArray(matches) ||
-      matches.length === 0
-    ) {
-      return null;
-    }
 
     return (
       <div
         style={{
-          minWidth: 220,
+          display:
+            "flex",
+          justifyContent:
+            "center",
+          gap: 4,
         }}
       >
 
-        <h3
-          style={{
-            margin:
-              "0 0 14px",
-            fontSize: 15,
-            color:
-              colores.texto,
-          }}
-        >
-          {title}
-        </h3>
+        {valor.map(
+          (
+            resultado,
+            index
+          ) => {
+
+            let color =
+              colores.muted;
 
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection:
-              "column",
-            gap: 12,
-          }}
-        >
+            // Promiedos utiliza:
+            // 0 = derrota
+            // 1 = empate
+            // 2 = victoria
 
-          {matches.map(
-            (
-              partido,
-              index
-            ) => {
-
-              const local =
-                partido?.home_team ||
-                partido?.home ||
-                partido?.local ||
-                "-";
-
-              const visitante =
-                partido?.away_team ||
-                partido?.away ||
-                partido?.visitor ||
-                "-";
-
-              const resultado =
-                partido?.score ||
-                partido?.result ||
-                "";
-
-              return (
-                <div
-                  key={index}
-                  style={{
-                    background:
-                      colores.superficie,
-                    border:
-                      `1px solid ${colores.borde}`,
-                    borderRadius: 8,
-                    padding: 10,
-                  }}
-                >
-
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      justifyContent:
-                        "space-between",
-                      gap: 10,
-                      fontSize: 13,
-                    }}
-                  >
-                    <span>
-                      {local}
-                    </span>
-
-                    <strong>
-                      {resultado}
-                    </strong>
-                  </div>
-
-
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 13,
-                    }}
-                  >
-                    {visitante}
-                  </div>
-
-                </div>
-              );
+            if (
+              resultado === 2
+            ) {
+              color =
+                "#10b981";
             }
-          )}
 
-        </div>
+            else if (
+              resultado === 1
+            ) {
+              color =
+                "#f59e0b";
+            }
+
+            else if (
+              resultado === 0
+            ) {
+              color =
+                "#ef4444";
+            }
+
+
+            return (
+              <span
+                key={index}
+                style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius:
+                    "50%",
+                  backgroundColor:
+                    color,
+                  display:
+                    "inline-block",
+                }}
+              />
+            );
+          }
+        )}
 
       </div>
     );
@@ -830,7 +835,8 @@ function PosicionesContent() {
               style={{
                 color:
                   "#ef4444",
-                marginBottom: 15,
+                marginBottom:
+                  15,
               }}
             >
               {error}
@@ -845,14 +851,17 @@ function PosicionesContent() {
                 background:
                   colores.verde,
                 color:
-                  "#ffffff",
-                border: "none",
-                borderRadius: 7,
+                  "#fff",
+                border:
+                  "none",
+                borderRadius:
+                  7,
                 padding:
                   "10px 18px",
                 cursor:
                   "pointer",
-                fontWeight: 600,
+                fontWeight:
+                  600,
               }}
             >
               Reintentar
@@ -868,23 +877,15 @@ function PosicionesContent() {
 
 
   // ==========================================================
-  // TABLAS
+  // DATOS
   // ==========================================================
 
   const tablas =
     obtenerTablasPosiciones();
 
 
-  // ==========================================================
-  // ESTADÍSTICAS
-  // ==========================================================
-
   const estadisticas =
     obtenerEstadisticasJugadores();
-
-
-  const tablasEstadisticas =
-    estadisticas?.tables || [];
 
 
   // ==========================================================
@@ -913,9 +914,9 @@ function PosicionesContent() {
         }}
       >
 
-        {/* ====================================================
+        {/* ==================================================
             ENCABEZADO
-        ==================================================== */}
+        ================================================== */}
 
         <div
           style={{
@@ -927,7 +928,7 @@ function PosicionesContent() {
               "center",
             gap: 15,
             marginBottom:
-              24,
+              25,
             flexWrap:
               "wrap",
           }}
@@ -955,7 +956,8 @@ function PosicionesContent() {
                   "8px 0 0",
                 fontSize:
                   "clamp(24px, 4vw, 32px)",
-                lineHeight: 1.2,
+                lineHeight:
+                  1.2,
               }}
             >
               {nombreCompetencia()}
@@ -975,12 +977,14 @@ function PosicionesContent() {
                 colores.texto,
               border:
                 `1px solid ${colores.borde}`,
-              borderRadius: 7,
+              borderRadius:
+                7,
               padding:
                 "9px 14px",
               cursor:
                 "pointer",
-              fontWeight: 600,
+              fontWeight:
+                600,
             }}
           >
             Actualizar
@@ -989,27 +993,31 @@ function PosicionesContent() {
         </div>
 
 
-        {/* ====================================================
-            INFORMACIÓN DE API
-        ==================================================== */}
+        {/* ==================================================
+            NOMBRE DE LA LIGA
+        ================================================== */}
 
-        {data?.league && (
+        {data?.league?.name && (
+
           <div
             style={{
-              marginBottom: 20,
+              marginBottom:
+                20,
               color:
                 colores.muted,
-              fontSize: 14,
+              fontSize:
+                14,
             }}
           >
             {data.league.name}
           </div>
+
         )}
 
 
-        {/* ====================================================
+        {/* ==================================================
             TABLAS DE POSICIONES
-        ==================================================== */}
+        ================================================== */}
 
         {tablas.length > 0 && (
 
@@ -1025,44 +1033,50 @@ function PosicionesContent() {
 
             {tablas.map(
               (
-                tabla,
+                item,
                 tablaIndex
               ) => {
 
-                const filas =
-                  tabla?.rows ||
-                  tabla?.data ||
-                  [];
+                const tabla =
+                  item.table;
 
-                if (
-                  !Array.isArray(
-                    filas
-                  ) ||
-                  filas.length === 0
-                ) {
-                  return null;
-                }
+
+                const columnas =
+                  Array.isArray(
+                    tabla.columns
+                  )
+                    ? tabla.columns
+                    : [];
+
+
+                const filas =
+                  Array.isArray(
+                    tabla.rows
+                  )
+                    ? tabla.rows
+                    : [];
 
 
                 return (
                   <section
                     key={
-                      tabla.id ||
-                      tabla.name ||
-                      tablaIndex
+                      `${item.torneo}-${item.grupo}-${tablaIndex}`
                     }
                     style={{
                       background:
                         colores.superficie,
                       border:
                         `1px solid ${colores.borde}`,
-                      borderRadius: 10,
+                      borderRadius:
+                        10,
                       overflow:
                         "hidden",
                     }}
                   >
 
-                    {/* TÍTULO */}
+                    {/* ======================================
+                        CABECERA
+                    ====================================== */}
 
                     <div
                       style={{
@@ -1070,31 +1084,44 @@ function PosicionesContent() {
                           "15px 16px",
                         borderBottom:
                           `1px solid ${colores.borde}`,
-                        display:
-                          "flex",
-                        alignItems:
-                          "center",
-                        justifyContent:
-                          "space-between",
-                        gap: 10,
                       }}
                     >
 
-                      <h2
+                      <div
                         style={{
-                          margin: 0,
-                          fontSize: 17,
+                          fontSize:
+                            18,
+                          fontWeight:
+                            700,
                         }}
                       >
-                        {tabla.name ||
-                          tabla.title ||
-                          `Tabla ${tablaIndex + 1}`}
-                      </h2>
+                        {item.torneo}
+                      </div>
+
+
+                      {item.grupo && (
+
+                        <div
+                          style={{
+                            marginTop:
+                              4,
+                            fontSize:
+                              13,
+                            color:
+                              colores.muted,
+                          }}
+                        >
+                          {item.grupo}
+                        </div>
+
+                      )}
 
                     </div>
 
 
-                    {/* TABLA */}
+                    {/* ======================================
+                        TABLA
+                    ====================================== */}
 
                     <div
                       style={{
@@ -1122,9 +1149,12 @@ function PosicionesContent() {
                                 `1px solid ${colores.borde}`,
                               color:
                                 colores.muted,
-                              fontSize: 12,
+                              fontSize:
+                                12,
                             }}
                           >
+
+                            {/* POSICIÓN */}
 
                             <th
                               style={{
@@ -1132,12 +1162,15 @@ function PosicionesContent() {
                                   "11px 10px",
                                 textAlign:
                                   "center",
-                                width: 45,
+                                width:
+                                  45,
                               }}
                             >
                               #
                             </th>
 
+
+                            {/* EQUIPO */}
 
                             <th
                               style={{
@@ -1145,120 +1178,53 @@ function PosicionesContent() {
                                   "11px 10px",
                                 textAlign:
                                   "left",
+                                minWidth:
+                                  190,
                               }}
                             >
                               Equipo
                             </th>
 
 
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              PJ
-                            </th>
+                            {/* COLUMNAS REALES
+                                DE PROMIEDOS */}
 
+                            {columnas.map(
+                              (
+                                columna,
+                                index
+                              ) => {
 
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              G
-                            </th>
+                                const key =
+                                  columna?.key ||
+                                  "";
 
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              E
-                            </th>
-
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              P
-                            </th>
-
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              GF
-                            </th>
-
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              GC
-                            </th>
-
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              DG
-                            </th>
-
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                                fontWeight:
-                                  700,
-                              }}
-                            >
-                              PTS
-                            </th>
-
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                              }}
-                            >
-                              Forma
-                            </th>
+                                return (
+                                  <th
+                                    key={
+                                      `${key}-${index}`
+                                    }
+                                    style={{
+                                      padding:
+                                        "11px 10px",
+                                      textAlign:
+                                        "center",
+                                      whiteSpace:
+                                        "nowrap",
+                                      fontWeight:
+                                        columna?.is_bold
+                                          ? 700
+                                          : 500,
+                                    }}
+                                  >
+                                    {columna.title ||
+                                      tituloColumna(
+                                        key
+                                      )}
+                                  </th>
+                                );
+                              }
+                            )}
 
                           </tr>
 
@@ -1274,112 +1240,32 @@ function PosicionesContent() {
                             ) => {
 
                               const posicion =
-                                fila.position ||
-                                fila.pos ||
+                                fila.num ||
                                 index + 1;
 
+
                               const equipo =
-                                fila.team?.name ||
-                                fila.team_name ||
-                                fila.name ||
-                                fila.entity?.object?.name ||
+                                fila?.entity
+                                  ?.object
+                                  ?.name ||
                                 "-";
 
-                              const pj =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "PJ",
-                                    "pj",
-                                    "played",
-                                    "matches",
-                                  ]
-                                );
 
-                              const ganados =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "W",
-                                    "w",
-                                    "wins",
-                                    "won",
-                                  ]
-                                );
-
-                              const empatados =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "D",
-                                    "d",
-                                    "draws",
-                                    "draw",
-                                  ]
-                                );
-
-                              const perdidos =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "L",
-                                    "l",
-                                    "losses",
-                                    "lost",
-                                  ]
-                                );
-
-                              const gf =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "GF",
-                                    "gf",
-                                    "goals_for",
-                                  ]
-                                );
-
-                              const gc =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "GA",
-                                    "ga",
-                                    "GC",
-                                    "gc",
-                                    "goals_against",
-                                  ]
-                                );
-
-                              const gd =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "GD",
-                                    "gd",
-                                    "goal_difference",
-                                  ]
-                                );
-
-                              const puntos =
-                                obtenerValorFila(
-                                  fila,
-                                  [
-                                    "Pts",
-                                    "pts",
-                                    "Points",
-                                    "points",
-                                    "Puntos",
-                                  ]
-                                );
+                              const valores =
+                                Array.isArray(
+                                  fila.values
+                                )
+                                  ? fila.values
+                                  : [];
 
 
                               return (
                                 <tr
                                   key={
-                                    fila.id ||
-                                    fila.team_id ||
-                                    index
+                                    fila?.entity
+                                      ?.object
+                                      ?.id ||
+                                    `${equipo}-${index}`
                                   }
                                   style={{
                                     borderBottom:
@@ -1387,23 +1273,27 @@ function PosicionesContent() {
                                   }}
                                 >
 
+                                  {/* POSICIÓN */}
+
                                   <td
                                     style={{
                                       padding:
                                         "11px 10px",
                                       textAlign:
                                         "center",
-                                      color:
-                                        colorPosicion(
-                                          posicion
-                                        ),
                                       fontWeight:
                                         700,
+                                      color:
+                                        posicion <= 4
+                                          ? colores.verde
+                                          : colores.muted,
                                     }}
                                   >
                                     {posicion}
                                   </td>
 
+
+                                  {/* EQUIPO */}
 
                                   <td
                                     style={{
@@ -1413,126 +1303,100 @@ function PosicionesContent() {
                                         "left",
                                       fontWeight:
                                         600,
+                                      whiteSpace:
+                                        "nowrap",
                                     }}
                                   >
+
                                     {equipo}
+
                                   </td>
 
 
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {pj}
-                                  </td>
+                                  {/* VALORES */}
+
+                                  {columnas.map(
+                                    (
+                                      columna,
+                                      columnaIndex
+                                    ) => {
+
+                                      const key =
+                                        columna?.key ||
+                                        "";
 
 
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {ganados}
-                                  </td>
+                                      const valor =
+                                        obtenerValorFila(
+                                          fila,
+                                          key
+                                        );
 
 
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {empatados}
-                                  </td>
+                                      // =================================
+                                      // ÚLTIMOS PARTIDOS
+                                      // =================================
 
+                                      if (
+                                        key ===
+                                        "{trend}"
+                                      ) {
 
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {perdidos}
-                                  </td>
-
-
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {gf}
-                                  </td>
-
-
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {gc}
-                                  </td>
-
-
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {gd}
-                                  </td>
-
-
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                      fontWeight:
-                                        800,
-                                      color:
-                                        colores.verde,
-                                    }}
-                                  >
-                                    {puntos}
-                                  </td>
-
-
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    <UltimosPartidos
-                                      fila={
-                                        fila
+                                        return (
+                                          <td
+                                            key={
+                                              `${key}-${columnaIndex}`
+                                            }
+                                            style={{
+                                              padding:
+                                                "11px 10px",
+                                              textAlign:
+                                                "center",
+                                            }}
+                                          >
+                                            <UltimosPartidos
+                                              valor={
+                                                valor
+                                              }
+                                            />
+                                          </td>
+                                        );
                                       }
-                                    />
-                                  </td>
+
+
+                                      // =================================
+                                      // VALOR NORMAL
+                                      // =================================
+
+                                      return (
+                                        <td
+                                          key={
+                                            `${key}-${columnaIndex}`
+                                          }
+                                          style={{
+                                            padding:
+                                              "11px 10px",
+                                            textAlign:
+                                              "center",
+                                            fontWeight:
+                                              key ===
+                                              "Points"
+                                                ? 800
+                                                : 500,
+                                            color:
+                                              key ===
+                                              "Points"
+                                                ? colores.verde
+                                                : colores.texto,
+                                            whiteSpace:
+                                              "nowrap",
+                                          }}
+                                        >
+                                          {valor}
+                                        </td>
+                                      );
+                                    }
+                                  )}
 
                                 </tr>
                               );
@@ -1551,12 +1415,13 @@ function PosicionesContent() {
             )}
 
           </div>
+
         )}
 
 
-        {/* ====================================================
-            SI NO HAY TABLAS
-        ==================================================== */}
+        {/* ==================================================
+            SIN TABLAS
+        ================================================== */}
 
         {tablas.length === 0 && (
 
@@ -1566,31 +1431,34 @@ function PosicionesContent() {
                 colores.superficie,
               border:
                 `1px solid ${colores.borde}`,
-              borderRadius: 10,
-              padding: 25,
-              color:
-                colores.muted,
+              borderRadius:
+                10,
+              padding:
+                25,
               textAlign:
                 "center",
+              color:
+                colores.muted,
             }}
           >
-            No hay tablas de posiciones
-            disponibles para esta competencia.
+            No se encontraron tablas
+            de posiciones para esta
+            competencia.
           </div>
 
         )}
 
 
-        {/* ====================================================
+        {/* ==================================================
             ESTADÍSTICAS DE JUGADORES
-        ==================================================== */}
+        ================================================== */}
 
-        {tablasEstadisticas.length >
-          0 && (
+        {estadisticas.length > 0 && (
 
           <section
             style={{
-              marginTop: 30,
+              marginTop:
+                35,
             }}
           >
 
@@ -1598,7 +1466,8 @@ function PosicionesContent() {
               style={{
                 margin:
                   "0 0 18px",
-                fontSize: 21,
+                fontSize:
+                  21,
               }}
             >
               Estadísticas de jugadores
@@ -1615,7 +1484,7 @@ function PosicionesContent() {
               }}
             >
 
-              {tablasEstadisticas.map(
+              {estadisticas.map(
                 (
                   tabla,
                   tablaIndex
@@ -1625,6 +1494,7 @@ function PosicionesContent() {
                     obtenerFilasEstadisticas(
                       tabla
                     );
+
 
                   const columnas =
                     obtenerColumnasEstadistica(
@@ -1651,7 +1521,8 @@ function PosicionesContent() {
                           colores.superficie,
                         border:
                           `1px solid ${colores.borde}`,
-                        borderRadius: 10,
+                        borderRadius:
+                          10,
                         overflow:
                           "hidden",
                       }}
@@ -1669,7 +1540,8 @@ function PosicionesContent() {
                         <h3
                           style={{
                             margin: 0,
-                            fontSize: 17,
+                            fontSize:
+                              17,
                           }}
                         >
                           {tabla.name ||
@@ -1694,7 +1566,7 @@ function PosicionesContent() {
                             borderCollapse:
                               "collapse",
                             minWidth:
-                              500,
+                              550,
                           }}
                         >
 
@@ -1706,7 +1578,8 @@ function PosicionesContent() {
                                   `1px solid ${colores.borde}`,
                                 color:
                                   colores.muted,
-                                fontSize: 12,
+                                fontSize:
+                                  12,
                               }}
                             >
 
@@ -1716,7 +1589,6 @@ function PosicionesContent() {
                                     "11px 10px",
                                   textAlign:
                                     "center",
-                                  width: 45,
                                 }}
                               >
                                 #
@@ -1749,28 +1621,43 @@ function PosicionesContent() {
 
                               {columnas.map(
                                 (
-                                  columna
-                                ) => (
-                                  <th
-                                    key={
-                                      columna
-                                    }
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                    }}
-                                  >
-                                    {tituloColumna(
-                                      typeof columna ===
-                                        "object"
-                                        ? columna.key ||
-                                            columna.name
-                                        : columna
-                                    )}
-                                  </th>
-                                )
+                                  columna,
+                                  index
+                                ) => {
+
+                                  const key =
+                                    typeof columna ===
+                                    "string"
+                                      ? columna
+                                      : columna.key;
+
+
+                                  return (
+                                    <th
+                                      key={
+                                        `${key}-${index}`
+                                      }
+                                      style={{
+                                        padding:
+                                          "11px 10px",
+                                        textAlign:
+                                          "center",
+                                        whiteSpace:
+                                          "nowrap",
+                                      }}
+                                    >
+                                      {typeof columna ===
+                                      "object"
+                                        ? columna.title ||
+                                          tituloColumna(
+                                            key
+                                          )
+                                        : tituloColumna(
+                                            key
+                                          )}
+                                    </th>
+                                  );
+                                }
                               )}
 
                             </tr>
@@ -1790,6 +1677,7 @@ function PosicionesContent() {
                                   obtenerNombreJugador(
                                     fila
                                   );
+
 
                                 const equipo =
                                   obtenerEquipoJugador(
@@ -1831,6 +1719,8 @@ function PosicionesContent() {
                                           "11px 10px",
                                         fontWeight:
                                           600,
+                                        whiteSpace:
+                                          "nowrap",
                                       }}
                                     >
                                       {jugador}
@@ -1843,6 +1733,8 @@ function PosicionesContent() {
                                           "11px 10px",
                                         color:
                                           colores.muted2,
+                                        whiteSpace:
+                                          "nowrap",
                                       }}
                                     >
                                       {equipo}
@@ -1851,20 +1743,21 @@ function PosicionesContent() {
 
                                     {columnas.map(
                                       (
-                                        columna
+                                        columna,
+                                        columnaIndex
                                       ) => {
 
                                         const key =
                                           typeof columna ===
-                                          "object"
-                                            ? columna.key ||
-                                              columna.name
-                                            : columna;
+                                          "string"
+                                            ? columna
+                                            : columna.key;
+
 
                                         return (
                                           <td
                                             key={
-                                              key
+                                              `${key}-${columnaIndex}`
                                             }
                                             style={{
                                               padding:
@@ -1906,93 +1799,24 @@ function PosicionesContent() {
         )}
 
 
-        {/* ====================================================
-            ELIMINATORIAS / BRACKETS
-        ==================================================== */}
-
-        {data?.brackets &&
-          Array.isArray(
-            data.brackets
-          ) &&
-          data.brackets.length > 0 && (
-
-            <section
-              style={{
-                marginTop: 30,
-              }}
-            >
-
-              <h2
-                style={{
-                  margin:
-                    "0 0 18px",
-                  fontSize: 21,
-                }}
-              >
-                Eliminatorias
-              </h2>
-
-
-              <div
-                style={{
-                  display:
-                    "flex",
-                  gap: 24,
-                  overflowX:
-                    "auto",
-                  paddingBottom:
-                    10,
-                }}
-              >
-
-                {data.brackets.map(
-                  (
-                    etapa,
-                    index
-                  ) => (
-
-                    <BracketStage
-                      key={
-                        etapa.id ||
-                        etapa.name ||
-                        index
-                      }
-                      title={
-                        etapa.name ||
-                        etapa.title ||
-                        `Etapa ${index + 1}`
-                      }
-                      matches={
-                        etapa.matches ||
-                        etapa.games ||
-                        []
-                      }
-                    />
-
-                  )
-                )}
-
-              </div>
-
-            </section>
-          )}
-
-
-        {/* ====================================================
-            ACTUALIZACIÓN
-        ==================================================== */}
+        {/* ==================================================
+            PIE
+        ================================================== */}
 
         <div
           style={{
-            marginTop: 30,
-            paddingTop: 15,
+            marginTop:
+              35,
+            paddingTop:
+              15,
             borderTop:
               `1px solid ${colores.borde}`,
-            color:
-              colores.muted,
-            fontSize: 12,
             textAlign:
               "center",
+            color:
+              colores.muted,
+            fontSize:
+              12,
           }}
         >
           Datos actualizados desde Promiedos.
@@ -2008,12 +1832,9 @@ function PosicionesContent() {
 // ============================================================
 // SUSPENSE
 // ============================================================
-// IMPORTANTE:
-// useSearchParams() necesita estar dentro de Suspense para que
-// Next.js pueda hacer correctamente el build/prerender en Vercel.
-// ============================================================
 
 export default function PosicionesPage() {
+
   return (
     <Suspense
       fallback={
@@ -2025,24 +1846,30 @@ export default function PosicionesPage() {
               colores.fondo,
             color:
               colores.texto,
-            padding: 24,
+            padding:
+              24,
           }}
         >
+
           <div
             style={{
-              maxWidth: 1200,
+              maxWidth:
+                1200,
               margin:
                 "0 auto",
             }}
           >
+
             <div
               style={{
                 background:
                   colores.superficie,
                 border:
                   `1px solid ${colores.borde}`,
-                borderRadius: 10,
-                padding: 30,
+                borderRadius:
+                  10,
+                padding:
+                  30,
                 textAlign:
                   "center",
                 color:
@@ -2051,11 +1878,15 @@ export default function PosicionesPage() {
             >
               Cargando posiciones...
             </div>
+
           </div>
+
         </main>
       }
     >
+
       <PosicionesContent />
+
     </Suspense>
   );
 }
