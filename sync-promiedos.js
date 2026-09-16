@@ -1335,7 +1335,25 @@ async function sincronizarCompetencia(page, competencia) {
     return false;
 
   }
+console.log("DEBUG STANDINGS DATA");
+console.log("brackets existe:", Array.isArray(standingsData.brackets));
+console.log(
+  "brackets cantidad:",
+  Array.isArray(standingsData.brackets)
+    ? standingsData.brackets.length
+    : "NO ARRAY"
+);
+console.log(
+  "claves standingsData:",
+  Object.keys(standingsData)
+);
 
+await redis.set(
+  competencia.redis,
+  JSON.stringify(
+    standingsData
+  )
+);
   // ==========================================
   // GUARDAR REDIS
   // ==========================================
