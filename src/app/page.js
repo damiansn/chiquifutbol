@@ -49,6 +49,11 @@ export default function Home() {
   const [teamFixturesLoading, setTeamFixturesLoading] =
     useState(false);
 
+  // Se usa para actualizar visualmente el tiempo de los partidos
+  // sin tener que esperar siempre al fetch de 30 segundos.
+  const [ahora, setAhora] =
+    useState(Date.now());
+
   const searchInputRef =
     useRef(null);
 
@@ -113,7 +118,7 @@ export default function Home() {
   }, [date]);
 
   // ========================================
-  // ACTUALIZACIÓN AUTOMÁTICA
+  // ACTUALIZACIÓN AUTOMÁTICA DE PARTIDOS
   // ========================================
 
   useEffect(() => {
@@ -129,6 +134,28 @@ export default function Home() {
       clearInterval(interval);
 
   }, [date]);
+
+  // ========================================
+  // RELOJ INTERNO
+  // ========================================
+  //
+  // Sirve para actualizar el minuto de los
+  // partidos en vivo sin esperar al fetch.
+  //
+
+  useEffect(() => {
+
+    const interval =
+      setInterval(() => {
+
+        setAhora(Date.now());
+
+      }, 15000);
+
+    return () =>
+      clearInterval(interval);
+
+  }, []);
 
   // ========================================
   // CARGAR EQUIPOS
@@ -177,7 +204,7 @@ export default function Home() {
   }
 
   // ========================================
-  // CARGAR EQUIPOS AL ENFOCAR BÚSQUEDA
+  // CARGAR EQUIPOS AL INICIAR
   // ========================================
 
   useEffect(() => {
@@ -351,7 +378,7 @@ export default function Home() {
   }
 
   // ========================================
-  // OBTENER NOMBRE DE LEAGUE
+  // NOMBRE DE LEAGUE
   // ========================================
 
   function obtenerNombreLeague(
@@ -367,13 +394,152 @@ export default function Home() {
   }
 
   // ========================================
-  // FORMATEAR HORA
+  // OBTENER FECHA BASE DEL PARTIDO
   // ========================================
 
-  function formatearHora(
+  function obtenerFechaPartido(
     game
   ) {
 
+    return (
+      game?.date ||
+      game?.datetime ||
+      game?.start_time ||
+      game?.startTime ||
+      game?.kickoff ||
+      game?.timestamp ||
+      game?.start ||
+      null
+    );
+  }
+
+  // ========================================
+  // PARSEAR FECHA
+  // ========================================
+
+  function obtenerFechaObjeto(
+    game
+  ) {
+
+    const valor =
+      obtenerFechaPartido(game);
+
+    if (
+      valor === null ||
+      valor === undefined ||
+      valor === ""
+    ) {
+      return null;
+    }
+
+    // Timestamp en segundos
+    if (
+      typeof valor === "number"
+    ) {
+
+      const timestamp =
+        valor < 10000000000
+          ? valor * 1000
+          : valor;
+
+      const fecha =
+        new Date(timestamp);
+
+      if (
+        !Number.isNaN(
+          fecha.getTime()
+        )
+      ) {
+        return fecha;
+      }
+    }
+
+    const fecha =
+      new Date(valor);
+
+    if (
+      !Number.isNaN(
+        fecha.getTime()
+      )
+    ) {
+      return fecha;
+    }
+
+    return null;
+  }
+
+  // ========================================
+  // FORMATEAR FECHA + HORA ARGENTINA
+  // ========================================
+
+  function formatearFechaHoraArgentina(
+    game
+  ) {
+
+    const fecha =
+      obtenerFechaObjeto(game);
+
+    if (!fecha) {
+      return null;
+    }
+
+    try {
+
+      return fecha.toLocaleString(
+        "es-AR",
+        {
+          timeZone:
+            "America/Argentina/Buenos_Aires",
+
+          day: "2-digit",
+          month: "2-digit",
+
+          hour: "2-digit",
+          minute: "2-digit",
+
+          hour12: false
+        }
+      );
+
+    } catch {
+
+      return null;
+    }
+  }
+
+  // ========================================
+  // FORMATEAR SOLAMENTE HORA ARGENTINA
+  // ========================================
+
+  function formatearHoraArgentina(
+    game
+  ) {
+
+    const fecha =
+      obtenerFechaObjeto(game);
+
+    if (fecha) {
+
+      try {
+
+        return fecha.toLocaleTimeString(
+          "es-AR",
+          {
+            timeZone:
+              "America/Argentina/Buenos_Aires",
+
+            hour: "2-digit",
+            minute: "2-digit",
+
+            hour12: false
+          }
+        );
+
+      } catch {}
+    }
+
+    // Si no hay fecha completa, usamos
+    // la hora entregada directamente.
     if (
       game?.time
     ) {
@@ -386,34 +552,269 @@ export default function Home() {
       return game.hour;
     }
 
-    if (
-      game?.date
+    return null;
+  }
+
+  // ========================================
+  // FORMATEAR HORA
+  // ========================================
+
+  function formatearHora(
+    game
+  ) {
+
+    const hora =
+      formatearHoraArgentina(game);
+
+    return hora || "--:--";
+  }
+
+  // ========================================
+  // OBTENER MINUTO EN VIVO
+  // ========================================
+
+  function obtenerMinutoLive(
+    game
+  ) {
+
+    const status =
+      game?.status || {};
+
+    // --------------------------------------
+    // Primero intentamos datos explícitos
+    // entregados por Promiedos.
+    // --------------------------------------
+
+    const candidatos = [
+      status.minute,
+      status.minutes,
+      status.elapsed,
+      status.match_minute,
+      status.matchMinute,
+      status.elapsed_minutes,
+      status.elapsedMinutes,
+      game?.minute,
+      game?.minutes,
+      game?.match_minute,
+      game?.matchMinute
+    ];
+
+    for (
+      const valor of candidatos
     ) {
 
-      try {
-
-        const fecha =
-          new Date(game.date);
+      if (
+        valor !== undefined &&
+        valor !== null &&
+        valor !== ""
+      ) {
 
         if (
-          !Number.isNaN(
-            fecha.getTime()
-          )
+          typeof valor === "number"
         ) {
-
-          return fecha.toLocaleTimeString(
-            "es-AR",
-            {
-              hour: "2-digit",
-              minute: "2-digit"
-            }
+          return Math.max(
+            0,
+            Math.floor(valor)
           );
         }
 
-      } catch {}
+        const numero =
+          parseInt(
+            String(valor).replace(
+              /[^0-9]/g,
+              ""
+            ),
+            10
+          );
+
+        if (
+          !Number.isNaN(numero)
+        ) {
+          return numero;
+        }
+      }
     }
 
-    return "--:--";
+    // --------------------------------------
+    // Si Promiedos no entrega el minuto,
+    // calculamos aproximadamente desde
+    // la hora de comienzo.
+    // --------------------------------------
+
+    const fecha =
+      obtenerFechaObjeto(game);
+
+    if (fecha) {
+
+      const diferencia =
+        ahora -
+        fecha.getTime();
+
+      if (
+        diferencia >= 0
+      ) {
+
+        const minutos =
+          Math.floor(
+            diferencia / 60000
+          );
+
+        // No mostramos tiempos absurdos.
+        if (
+          minutos >= 0 &&
+          minutos <= 130
+        ) {
+          return minutos;
+        }
+      }
+    }
+
+    // --------------------------------------
+    // Algunos estados pueden tener nombres
+    // como "37'", "1T 37'", etc.
+    // --------------------------------------
+
+    const nombre =
+      status?.name ||
+      status?.label ||
+      status?.text ||
+      "";
+
+    if (
+      typeof nombre === "string"
+    ) {
+
+      const encontrado =
+        nombre.match(
+          /(\d{1,3})\s*['′]/
+        );
+
+      if (
+        encontrado
+      ) {
+
+        return parseInt(
+          encontrado[1],
+          10
+        );
+      }
+    }
+
+    return null;
+  }
+
+  // ========================================
+  // ESTADO DEL PARTIDO
+  // ========================================
+
+  function obtenerEstado(
+    game
+  ) {
+
+    const estado =
+      game?.status || {};
+
+    const enumEstado =
+      Number(
+        estado?.enum
+      );
+
+    // --------------------------------------
+    // EN VIVO
+    // --------------------------------------
+
+    if (
+      enumEstado === 2
+    ) {
+
+      const minuto =
+        obtenerMinutoLive(game);
+
+      return {
+
+        texto:
+          minuto !== null
+            ? `EN VIVO ${minuto}'`
+            : "EN VIVO",
+
+        color:
+          "#10b981",
+
+        live:
+          true
+      };
+    }
+
+    // --------------------------------------
+    // FINALIZADO
+    // --------------------------------------
+
+    if (
+      enumEstado === 3
+    ) {
+
+      return {
+
+        texto:
+          "FINAL",
+
+        color:
+          "#9ca3af",
+
+        live:
+          false
+      };
+    }
+
+    // --------------------------------------
+    // PRÓXIMO
+    // --------------------------------------
+
+    if (
+      enumEstado === 1
+    ) {
+
+      const fechaHora =
+        formatearFechaHoraArgentina(
+          game
+        );
+
+      return {
+
+        texto:
+          fechaHora ||
+          formatearHora(game),
+
+        color:
+          "#3b82f6",
+
+        live:
+          false
+      };
+    }
+
+    // --------------------------------------
+    // ESTADO DESCONOCIDO
+    // --------------------------------------
+
+    const fechaHora =
+      formatearFechaHoraArgentina(
+        game
+      );
+
+    return {
+
+      texto:
+        fechaHora ||
+        estado?.name ||
+        formatearHora(game),
+
+      color:
+        "#9ca3af",
+
+      live:
+        false
+    };
   }
 
   // ========================================
@@ -438,59 +839,6 @@ export default function Home() {
     }
 
     return "-";
-  }
-
-  // ========================================
-  // ESTADO DEL PARTIDO
-  // ========================================
-
-  function obtenerEstado(
-    game
-  ) {
-
-    const estado =
-      game?.status;
-
-    if (
-      estado?.enum === 2
-    ) {
-      return {
-        texto: "EN VIVO",
-        color: "#10b981",
-        live: true
-      };
-    }
-
-    if (
-      estado?.enum === 3
-    ) {
-      return {
-        texto: "FINAL",
-        color: "#9ca3af",
-        live: false
-      };
-    }
-
-    if (
-      estado?.enum === 1
-    ) {
-      return {
-        texto:
-          formatearHora(game),
-        color: "#3b82f6",
-        live: false
-      };
-    }
-
-    return {
-      texto:
-        estado?.name ||
-        formatearHora(game),
-
-      color: "#9ca3af",
-
-      live: false
-    };
   }
 
   // ========================================
@@ -558,33 +906,11 @@ export default function Home() {
     const global =
       game.global;
 
-    const teamA =
-      obtenerEquipo(
-        game,
-        0
-      );
-
-    const teamB =
-      obtenerEquipo(
-        game,
-        1
-      );
-
-    // --------------------------------------
-    // El sync guarda el global siguiendo
-    // el orden del partido actual.
-    // --------------------------------------
-
     let scoreA =
       global.score1;
 
     let scoreB =
       global.score2;
-
-    // --------------------------------------
-    // Si por alguna razón no existen score1/2
-    // intentamos leer team1/team2.
-    // --------------------------------------
 
     if (
       scoreA === undefined ||
@@ -612,6 +938,7 @@ export default function Home() {
     }
 
     return {
+
       scoreA,
       scoreB,
 
@@ -673,16 +1000,16 @@ export default function Home() {
       }}
     >
 
-      {/* ================================== */}
-      {/* HEADER */}
-      {/* ================================== */}
-
       <div
         style={{
           maxWidth: "1400px",
           margin: "0 auto"
         }}
       >
+
+        {/* ================================== */}
+        {/* HEADER */}
+        {/* ================================== */}
 
         <div
           style={{
@@ -720,7 +1047,7 @@ export default function Home() {
           </div>
 
           {/* ================================= */}
-          {/* BUSCADOR DE EQUIPOS */}
+          {/* BUSCADOR */}
           {/* ================================= */}
 
           <div
@@ -735,6 +1062,7 @@ export default function Home() {
               ref={searchInputRef}
               value={search}
               onChange={e => {
+
                 setSearch(
                   e.target.value
                 );
@@ -742,6 +1070,7 @@ export default function Home() {
                 if (
                   selectedTeam
                 ) {
+
                   setSelectedTeam(
                     null
                   );
@@ -756,9 +1085,11 @@ export default function Home() {
                 width: "100%",
                 boxSizing: "border-box",
                 background: "#121821",
-                border: "1px solid #263244",
+                border:
+                  "1px solid #263244",
                 borderRadius: "8px",
-                padding: "10px 12px",
+                padding:
+                  "10px 12px",
                 color: "#e6edf3",
                 outline: "none",
                 fontSize: "14px"
@@ -772,15 +1103,20 @@ export default function Home() {
 
               <div
                 style={{
-                  position: "absolute",
+                  position:
+                    "absolute",
                   top: "44px",
                   left: 0,
                   right: 0,
                   zIndex: 50,
-                  background: "#121821",
-                  border: "1px solid #263244",
-                  borderRadius: "8px",
-                  overflow: "hidden",
+                  background:
+                    "#121821",
+                  border:
+                    "1px solid #263244",
+                  borderRadius:
+                    "8px",
+                  overflow:
+                    "hidden",
                   boxShadow:
                     "0 10px 30px rgba(0,0,0,.35)"
                 }}
@@ -802,16 +1138,21 @@ export default function Home() {
                       }
                       style={{
                         width: "100%",
-                        textAlign: "left",
-                        padding: "10px 12px",
+                        textAlign:
+                          "left",
+                        padding:
+                          "10px 12px",
                         border: "none",
                         borderBottom:
                           "1px solid #263244",
                         background:
                           "transparent",
-                        color: "#e6edf3",
-                        cursor: "pointer",
-                        fontSize: "14px"
+                        color:
+                          "#e6edf3",
+                        cursor:
+                          "pointer",
+                        fontSize:
+                          "14px"
                       }}
                     >
                       {nombreEquipo(
@@ -823,7 +1164,6 @@ export default function Home() {
                 )}
 
               </div>
-
             )}
 
           </div>
@@ -831,30 +1171,38 @@ export default function Home() {
         </div>
 
         {/* ================================== */}
-        {/* FIXTURE DEL EQUIPO */}
+        {/* FIXTURE EQUIPO */}
         {/* ================================== */}
 
         {selectedTeam && (
 
           <section
             style={{
-              marginBottom: "20px",
-              background: "#121821",
+              marginBottom:
+                "20px",
+              background:
+                "#121821",
               border:
                 "1px solid #263244",
-              borderRadius: "10px",
-              padding: "16px"
+              borderRadius:
+                "10px",
+              padding:
+                "16px"
             }}
           >
 
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
                 justifyContent:
                   "space-between",
-                alignItems: "center",
-                marginBottom: "12px",
-                gap: "10px"
+                alignItems:
+                  "center",
+                marginBottom:
+                  "12px",
+                gap:
+                  "10px"
               }}
             >
 
@@ -862,8 +1210,10 @@ export default function Home() {
 
                 <div
                   style={{
-                    fontSize: "12px",
-                    color: "#8b949e",
+                    fontSize:
+                      "12px",
+                    color:
+                      "#8b949e",
                     textTransform:
                       "uppercase"
                   }}
@@ -873,9 +1223,12 @@ export default function Home() {
 
                 <div
                   style={{
-                    fontSize: "20px",
-                    fontWeight: 700,
-                    marginTop: "3px"
+                    fontSize:
+                      "20px",
+                    fontWeight:
+                      700,
+                    marginTop:
+                      "3px"
                   }}
                 >
                   {nombreEquipo(
@@ -887,6 +1240,7 @@ export default function Home() {
 
               <button
                 onClick={() => {
+
                   setSelectedTeam(
                     null
                   );
@@ -895,18 +1249,24 @@ export default function Home() {
                     []
                   );
 
-                  setSearch("");
+                  setSearch(
+                    ""
+                  );
+
                 }}
                 style={{
                   background:
                     "transparent",
                   border:
                     "1px solid #263244",
-                  color: "#9ca3af",
-                  borderRadius: "6px",
+                  color:
+                    "#9ca3af",
+                  borderRadius:
+                    "6px",
                   padding:
                     "6px 10px",
-                  cursor: "pointer"
+                  cursor:
+                    "pointer"
                 }}
               >
                 Cerrar
@@ -918,8 +1278,10 @@ export default function Home() {
 
               <div
                 style={{
-                  color: "#8b949e",
-                  fontSize: "14px"
+                  color:
+                    "#8b949e",
+                  fontSize:
+                    "14px"
                 }}
               >
                 Cargando fixture...
@@ -930,8 +1292,10 @@ export default function Home() {
 
               <div
                 style={{
-                  color: "#8b949e",
-                  fontSize: "14px"
+                  color:
+                    "#8b949e",
+                  fontSize:
+                    "14px"
                 }}
               >
                 No se encontraron próximos
@@ -942,13 +1306,18 @@ export default function Home() {
 
               <div
                 style={{
-                  display: "grid",
-                  gap: "8px"
+                  display:
+                    "grid",
+                  gap:
+                    "8px"
                 }}
               >
 
                 {teamFixtures.map(
-                  (fixture, index) => {
+                  (
+                    fixture,
+                    index
+                  ) => {
 
                     const teamsFixture =
                       fixture?.teams ||
@@ -963,18 +1332,21 @@ export default function Home() {
                       {};
 
                     return (
+
                       <div
                         key={
                           fixture.id ||
                           index
                         }
                         style={{
-                          display: "grid",
+                          display:
+                            "grid",
                           gridTemplateColumns:
                             "100px 1fr 160px",
                           alignItems:
                             "center",
-                          gap: "12px",
+                          gap:
+                            "12px",
                           padding:
                             "10px 12px",
                           background:
@@ -1034,11 +1406,9 @@ export default function Home() {
                 )}
 
               </div>
-
             )}
 
           </section>
-
         )}
 
         {/* ================================== */}
@@ -1047,9 +1417,12 @@ export default function Home() {
 
         <div
           style={{
-            display: "flex",
-            gap: "8px",
-            marginBottom: "20px"
+            display:
+              "flex",
+            gap:
+              "8px",
+            marginBottom:
+              "20px"
           }}
         >
 
@@ -1061,9 +1434,13 @@ export default function Home() {
             ([value, label]) => (
 
               <button
-                key={value}
+                key={
+                  value
+                }
                 onClick={() =>
-                  setDate(value)
+                  setDate(
+                    value
+                  )
                 }
                 style={{
                   background:
@@ -1112,14 +1489,18 @@ export default function Home() {
 
           <div
             style={{
-              marginBottom: "20px",
-              padding: "12px",
+              marginBottom:
+                "20px",
+              padding:
+                "12px",
               border:
                 "1px solid #5b2525",
               background:
                 "#211416",
-              color: "#fca5a5",
-              borderRadius: "8px"
+              color:
+                "#fca5a5",
+              borderRadius:
+                "8px"
             }}
           >
             {error}
@@ -1128,16 +1509,19 @@ export default function Home() {
         )}
 
         {/* ================================== */}
-        {/* LOADING */}
+        {/* CONTENIDO */}
         {/* ================================== */}
 
         {loading ? (
 
           <div
             style={{
-              padding: "40px 0",
-              textAlign: "center",
-              color: "#8b949e"
+              padding:
+                "40px 0",
+              textAlign:
+                "center",
+              color:
+                "#8b949e"
             }}
           >
             Cargando partidos...
@@ -1147,17 +1531,18 @@ export default function Home() {
 
           <div
             style={{
-              display: "grid",
-              gap: "20px"
+              display:
+                "grid",
+              gap:
+                "20px"
             }}
           >
 
-            {/* ================================= */}
-            {/* LIGAS */}
-            {/* ================================= */}
-
             {data.map(
-              (league, leagueIndex) => {
+              (
+                league,
+                leagueIndex
+              ) => {
 
                 const games =
                   Array.isArray(
@@ -1171,6 +1556,23 @@ export default function Home() {
                 ) {
                   return null;
                 }
+
+                const competition =
+                  obtenerCompetition(
+                    league
+                  );
+
+                const nombreLeague =
+                  obtenerNombreLeague(
+                    league
+                  );
+
+                // =================================
+                // LINK A POSICIONES
+                // =================================
+
+                const posicionesHref =
+                  `/posiciones?competition=${competition}`;
 
                 return (
 
@@ -1198,7 +1600,8 @@ export default function Home() {
 
                     <div
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
                         alignItems:
                           "center",
                         justifyContent:
@@ -1212,30 +1615,70 @@ export default function Home() {
                       }}
                     >
 
-                      <div
+                      {/* LINK RESTAURADO */}
+
+                      <Link
+                        href={
+                          posicionesHref
+                        }
                         style={{
-                          fontSize:
-                            "16px",
-                          fontWeight:
-                            700
+                          color:
+                            "#e6edf3",
+                          textDecoration:
+                            "none",
+                          display:
+                            "flex",
+                          alignItems:
+                            "center",
+                          gap:
+                            "8px",
+                          minWidth:
+                            0
                         }}
                       >
-                        {obtenerNombreLeague(
-                          league
-                        )}
-                      </div>
 
-                      <div
+                        <span
+                          style={{
+                            fontSize:
+                              "16px",
+                            fontWeight:
+                              700
+                          }}
+                        >
+                          {nombreLeague}
+                        </span>
+
+                        <span
+                          style={{
+                            color:
+                              "#64748b",
+                            fontSize:
+                              "13px"
+                          }}
+                        >
+                          ↗
+                        </span>
+
+                      </Link>
+
+                      <Link
+                        href={
+                          posicionesHref
+                        }
                         style={{
+                          color:
+                            "#64748b",
+                          textDecoration:
+                            "none",
                           fontSize:
                             "12px",
-                          color:
-                            "#64748b"
+                          whiteSpace:
+                            "nowrap"
                         }}
                       >
                         {games.length}{" "}
                         partidos
-                      </div>
+                      </Link>
 
                     </div>
 
@@ -1300,11 +1743,6 @@ export default function Home() {
                               game
                             );
 
-                          const competition =
-                            obtenerCompetition(
-                              league
-                            );
-
                           return (
 
                             <div
@@ -1328,7 +1766,7 @@ export default function Home() {
                                   display:
                                     "grid",
                                   gridTemplateColumns:
-                                    "95px 1fr 160px",
+                                    "120px 1fr 160px",
                                   alignItems:
                                     "center",
                                   gap:
@@ -1354,10 +1792,14 @@ export default function Home() {
                                       fontWeight:
                                         700,
                                       color:
-                                        estado.color
+                                        estado.color,
+                                      lineHeight:
+                                        "1.3"
                                     }}
                                   >
+
                                     {estado.live && (
+
                                       <span
                                         style={{
                                           display:
@@ -1376,9 +1818,11 @@ export default function Home() {
                                             "middle"
                                         }}
                                       />
+
                                     )}
 
                                     {estado.texto}
+
                                   </div>
 
                                 </div>
@@ -1642,49 +2086,63 @@ export default function Home() {
                                             "right"
                                         }}
                                       >
+
                                         {golesA.map(
                                           (
                                             goal,
                                             index
                                           ) => (
+
                                             <div
                                               key={
                                                 index
                                               }
                                             >
+
                                               {goal.player_name ||
                                                 goal.player ||
                                                 goal.name ||
                                                 "Gol"}
+
                                               {goal.minute !=
                                                 null &&
                                                 ` ${goal.minute}'`}
+
                                             </div>
+
                                           )
                                         )}
+
                                       </div>
 
                                       <div>
+
                                         {golesB.map(
                                           (
                                             goal,
                                             index
                                           ) => (
+
                                             <div
                                               key={
                                                 index
                                               }
                                             >
+
                                               {goal.player_name ||
                                                 goal.player ||
                                                 goal.name ||
                                                 "Gol"}
+
                                               {goal.minute !=
                                                 null &&
                                                 ` ${goal.minute}'`}
+
                                             </div>
+
                                           )
                                         )}
+
                                       </div>
 
                                     </div>
@@ -1751,7 +2209,6 @@ export default function Home() {
                   </section>
 
                 );
-
               }
             )}
 
@@ -1799,7 +2256,8 @@ export default function Home() {
 
         <div
           style={{
-            marginTop: "30px",
+            marginTop:
+              "30px",
             padding:
               "15px 0",
             textAlign:
