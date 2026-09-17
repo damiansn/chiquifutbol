@@ -855,7 +855,68 @@ async function sincronizarCompetencia(
       "claves standingsData:",
       Object.keys(standingsData)
     );
+    
+    if (standingsData.brackets?.stages) {
+  const primeraEtapa =
+    standingsData.brackets.stages.find(
+      stage =>
+        stage.groups?.some(
+          group =>
+            group.games?.length > 1
+        )
+    );
 
+  const primerGrupo =
+    primeraEtapa?.groups?.find(
+      group =>
+        group.games?.length > 1
+    );
+
+  if (primerGrupo) {
+    console.log(
+      "DEBUG SERIE ELIMINATORIA"
+    );
+
+    console.log(
+      "Etapa:",
+      primeraEtapa.name
+    );
+
+    console.log(
+      "Equipos:",
+      primerGrupo.participants?.map(
+        team => ({
+          id: team.id,
+          name: team.name
+        })
+      )
+    );
+
+    console.log(
+      "Cantidad de partidos:",
+      primerGrupo.games.length
+    );
+
+    primerGrupo.games.forEach(
+      (game, index) => {
+        console.log(
+          `PARTIDO ${index + 1}:`,
+          {
+            id: game.id,
+            winner: game.winner,
+            teams: game.teams?.map(
+              team => ({
+                id: team.id,
+                name: team.name
+              })
+            ),
+            scores: game.scores
+          }
+        );
+      }
+    );
+  }
+}
     // ------------------------------------------
     // GUARDAR REDIS
     // ------------------------------------------
