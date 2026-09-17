@@ -1715,6 +1715,18 @@ async function sincronizarCompetencia(
       estadisticasAnalizadas.arrays.length
     );
 
+  console.log("==========================================");
+console.log("DEBUG TABLES_GROUPS");
+console.log("==========================================");
+
+console.log(
+  JSON.stringify(
+    tablaData?.tables_groups,
+    null,
+    2
+  )
+);
+
     // --------------------------------------
     // STANDINGS DATA
     // --------------------------------------
