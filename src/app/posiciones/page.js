@@ -56,9 +56,13 @@ const COMPETENCIAS = {
 // ============================================================
 
 function obtenerValor(fila, key) {
-  if (!fila || !Array.isArray(fila.values)) return "";
+  if (!fila || !Array.isArray(fila.values)) {
+    return "";
+  }
 
-  const valor = fila.values.find((v) => v.key === key);
+  const valor = fila.values.find(
+    (v) => v.key === key
+  );
 
   return valor?.value ?? "";
 }
@@ -72,11 +76,17 @@ function obtenerNombreEquipo(fila) {
 }
 
 function obtenerColorEquipo(fila) {
-  return fila?.entity?.object?.colors?.color || "#334155";
+  return (
+    fila?.entity?.object?.colors?.color ||
+    "#334155"
+  );
 }
 
 function obtenerTextoColorEquipo(fila) {
-  return fila?.entity?.object?.colors?.text_color || "#ffffff";
+  return (
+    fila?.entity?.object?.colors?.text_color ||
+    "#ffffff"
+  );
 }
 
 function formatearFecha(fecha) {
@@ -84,23 +94,31 @@ function formatearFecha(fecha) {
 
   const partes = String(fecha).split(" ");
 
-  if (partes.length !== 2) return fecha;
+  if (partes.length !== 2) {
+    return fecha;
+  }
 
   const [fechaParte, hora] = partes;
 
-  const [dia, mes, anio] = fechaParte.split("-");
+  const [dia, mes, anio] =
+    fechaParte.split("-");
 
-  if (!dia || !mes || !anio) return fecha;
+  if (!dia || !mes || !anio) {
+    return fecha;
+  }
 
   return `${dia}/${mes}/${anio} ${hora}`;
 }
 
 // ============================================================
-// OBTENER SCORE NUMÉRICO
+// SCORE
 // ============================================================
 
 function obtenerScore(score) {
-  if (score === null || score === undefined) {
+  if (
+    score === null ||
+    score === undefined
+  ) {
     return null;
   }
 
@@ -121,13 +139,18 @@ function PosicionesContent() {
   const searchParams = useSearchParams();
 
   const competition =
-    searchParams.get("competition") || "argentina";
+    searchParams.get("competition") ||
+    "argentina";
 
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] =
+    useState(true);
 
-  const requestIdRef = useRef(0);
+  const [error, setError] =
+    useState("");
+
+  const requestIdRef =
+    useRef(0);
 
   // ==========================================================
   // CARGAR DATOS
@@ -137,7 +160,8 @@ function PosicionesContent() {
     let cancelado = false;
 
     async function cargarDatos() {
-      const requestId = ++requestIdRef.current;
+      const requestId =
+        ++requestIdRef.current;
 
       try {
         setLoading(true);
@@ -148,9 +172,10 @@ function PosicionesContent() {
             competition
           )}`;
 
-        const response = await fetch(url, {
-          cache: "no-store",
-        });
+        const response =
+          await fetch(url, {
+            cache: "no-store",
+          });
 
         if (!response.ok) {
           throw new Error(
@@ -158,11 +183,15 @@ function PosicionesContent() {
           );
         }
 
-        const json = await response.json();
+        const json =
+          await response.json();
 
         if (cancelado) return;
 
-        if (requestId !== requestIdRef.current) {
+        if (
+          requestId !==
+          requestIdRef.current
+        ) {
           return;
         }
 
@@ -170,7 +199,10 @@ function PosicionesContent() {
       } catch (err) {
         if (cancelado) return;
 
-        if (requestId !== requestIdRef.current) {
+        if (
+          requestId !==
+          requestIdRef.current
+        ) {
           return;
         }
 
@@ -181,7 +213,8 @@ function PosicionesContent() {
       } finally {
         if (
           !cancelado &&
-          requestId === requestIdRef.current
+          requestId ===
+            requestIdRef.current
         ) {
           setLoading(false);
         }
@@ -196,70 +229,207 @@ function PosicionesContent() {
   }, [competition]);
 
   // ==========================================================
-  // NOMBRE DE COMPETENCIA
+  // NOMBRE COMPETENCIA
   // ==========================================================
 
   const competenciaConfig =
     COMPETENCIAS[competition] || {
       nombre:
-        data?.league?.name || "Competencia",
+        data?.league?.name ||
+        "Competencia",
+
       corto:
-        data?.league?.name || "Competencia",
+        data?.league?.name ||
+        "Competencia",
     };
 
   // ==========================================================
-  // TABLAS
+  // TABLAS DE POSICIONES
+  //
+  // IMPORTANTE:
+  //
+  // Se mantienen las estructuras anteriores:
+  //
+  // data.tables
+  //
+  // Y se agrega:
+  //
+  // data.tables_groups
+  //
+  // Sin modificar la información original.
   // ==========================================================
 
   function obtenerTablasPosiciones() {
-    if (!data || !Array.isArray(data.tables)) {
+    if (!data) {
       return [];
     }
 
     const resultado = [];
 
-    data.tables.forEach((torneo) => {
-      if (!Array.isArray(torneo.tables)) {
-        return;
-      }
+    // ========================================================
+    // ESTRUCTURA ANTERIOR
+    //
+    // Esta es la que ya funciona para:
+    // Liga Argentina
+    // Copa Argentina cuando corresponda
+    // Libertadores
+    // Sudamericana
+    //
+    // NO SE MODIFICA.
+    // ========================================================
 
-      torneo.tables.forEach((grupo) => {
-        if (!grupo?.table) {
+    if (Array.isArray(data.tables)) {
+      data.tables.forEach((torneo) => {
+        if (
+          !Array.isArray(torneo?.tables)
+        ) {
           return;
         }
 
-        const tabla = grupo.table;
+        torneo.tables.forEach((grupo) => {
+          if (!grupo?.table) {
+            return;
+          }
 
-        if (!Array.isArray(tabla.rows)) {
-          return;
-        }
+          const tabla = grupo.table;
 
-        resultado.push({
-          torneo: torneo.name || "",
-          grupo: grupo.name || "",
-          table: tabla,
+          if (
+            !Array.isArray(tabla.rows)
+          ) {
+            return;
+          }
+
+          resultado.push({
+            torneo:
+              torneo.name || "",
+
+            grupo:
+              grupo.name || "",
+
+            table: tabla,
+          });
         });
       });
-    });
+    }
+
+    // ========================================================
+    // NUEVA ESTRUCTURA DE PROMIEDOS
+    //
+    // tables_groups
+    //   └── tables
+    //        └── table
+    //
+    // Ejemplo Champions:
+    //
+    // tables_groups[0].tables[0]
+    //      name: "Temporada Regular"
+    //
+    //      table:
+    //        columns
+    //        rows
+    //
+    // ========================================================
+
+    if (
+      Array.isArray(
+        data.tables_groups
+      )
+    ) {
+      data.tables_groups.forEach(
+        (grupoCompetencia) => {
+          if (
+            !Array.isArray(
+              grupoCompetencia?.tables
+            )
+          ) {
+            return;
+          }
+
+          grupoCompetencia.tables.forEach(
+            (tablaGrupo) => {
+              if (
+                !tablaGrupo?.table
+              ) {
+                return;
+              }
+
+              const tabla =
+                tablaGrupo.table;
+
+              if (
+                !Array.isArray(
+                  tabla.rows
+                )
+              ) {
+                return;
+              }
+
+              // ==================================================
+              // EVITAR DUPLICADOS
+              //
+              // Por seguridad, si la misma tabla ya fue agregada
+              // desde data.tables, no la repetimos.
+              // ==================================================
+
+              const yaExiste =
+                resultado.some(
+                  (item) =>
+                    item.torneo ===
+                      (grupoCompetencia.name ||
+                        "") &&
+                    item.grupo ===
+                      (tablaGrupo.name ||
+                        "") &&
+                    item.table === tabla
+                );
+
+              if (yaExiste) {
+                return;
+              }
+
+              resultado.push({
+                torneo:
+                  grupoCompetencia.name ||
+                  "",
+
+                grupo:
+                  tablaGrupo.name ||
+                  "",
+
+                table: tabla,
+              });
+            }
+          );
+        }
+      );
+    }
 
     return resultado;
   }
 
   // ==========================================================
   // BRACKETS
+  //
+  // ESTA PARTE SE MANTIENE IGUAL.
+  // Es importante para Copa Argentina,
+  // Libertadores y Sudamericana.
   // ==========================================================
 
   function obtenerBrackets() {
     if (
       !data?.brackets ||
-      !Array.isArray(data.brackets.stages)
+      !Array.isArray(
+        data.brackets.stages
+      )
     ) {
       return [];
     }
 
     return data.brackets.stages.filter(
       (stage) =>
-        Array.isArray(stage?.groups) &&
+        Array.isArray(
+          stage?.groups
+        ) &&
         stage.groups.length > 0
     );
   }
@@ -315,9 +485,13 @@ function PosicionesContent() {
 
           <div style={styles.header}>
             <div>
+
               <h1 style={styles.title}>
-                {competenciaConfig.nombre}
+                {
+                  competenciaConfig.nombre
+                }
               </h1>
+
             </div>
           </div>
 
@@ -334,13 +508,18 @@ function PosicionesContent() {
   // DATOS
   // ==========================================================
 
-  const tablas = obtenerTablasPosiciones();
-  const brackets = obtenerBrackets();
+  const tablas =
+    obtenerTablasPosiciones();
+
+  const brackets =
+    obtenerBrackets();
+
   const estadisticas =
     obtenerEstadisticasJugadores();
 
   return (
     <main style={styles.page}>
+
       <div style={styles.container}>
 
         {/* ====================================================
@@ -362,7 +541,9 @@ function PosicionesContent() {
 
           <div>
 
-            <div style={styles.eyebrow}>
+            <div
+              style={styles.eyebrow}
+            >
               POSICIONES Y ESTADÍSTICAS
             </div>
 
@@ -379,13 +560,17 @@ function PosicionesContent() {
             NAVEGACIÓN
         ==================================================== */}
 
-        <nav style={styles.competitionNav}>
+        <nav
+          style={styles.competitionNav}
+        >
 
           <Link
             href="/posiciones?competition=argentina"
             style={{
               ...styles.competitionButton,
-              ...(competition === "argentina"
+
+              ...(competition ===
+              "argentina"
                 ? styles.competitionButtonActive
                 : {}),
             }}
@@ -397,7 +582,9 @@ function PosicionesContent() {
             href="/posiciones?competition=copa_argentina"
             style={{
               ...styles.competitionButton,
-              ...(competition === "copa_argentina"
+
+              ...(competition ===
+              "copa_argentina"
                 ? styles.competitionButtonActive
                 : {}),
             }}
@@ -409,7 +596,9 @@ function PosicionesContent() {
             href="/posiciones?competition=libertadores"
             style={{
               ...styles.competitionButton,
-              ...(competition === "libertadores"
+
+              ...(competition ===
+              "libertadores"
                 ? styles.competitionButtonActive
                 : {}),
             }}
@@ -421,7 +610,9 @@ function PosicionesContent() {
             href="/posiciones?competition=sudamericana"
             style={{
               ...styles.competitionButton,
-              ...(competition === "sudamericana"
+
+              ...(competition ===
+              "sudamericana"
                 ? styles.competitionButtonActive
                 : {}),
             }}
@@ -433,7 +624,9 @@ function PosicionesContent() {
             href="/posiciones?competition=champions"
             style={{
               ...styles.competitionButton,
-              ...(competition === "champions"
+
+              ...(competition ===
+              "champions"
                 ? styles.competitionButtonActive
                 : {}),
             }}
@@ -445,7 +638,9 @@ function PosicionesContent() {
             href="/posiciones?competition=europa_league"
             style={{
               ...styles.competitionButton,
-              ...(competition === "europa_league"
+
+              ...(competition ===
+              "europa_league"
                 ? styles.competitionButtonActive
                 : {}),
             }}
@@ -457,7 +652,9 @@ function PosicionesContent() {
             href="/posiciones?competition=conference_league"
             style={{
               ...styles.competitionButton,
-              ...(competition === "conference_league"
+
+              ...(competition ===
+              "conference_league"
                 ? styles.competitionButtonActive
                 : {}),
             }}
@@ -472,24 +669,38 @@ function PosicionesContent() {
         ==================================================== */}
 
         {tablas.length > 0 && (
-          <section style={styles.section}>
 
-            <div style={styles.sectionTitle}>
+          <section
+            style={styles.section}
+          >
+
+            <div
+              style={
+                styles.sectionTitle
+              }
+            >
               Tablas de posiciones
             </div>
 
-            <div style={styles.tablesGrid}>
+            <div
+              style={styles.tablesGrid}
+            >
 
-              {tablas.map((item, index) => (
-                <TablaPosiciones
-                  key={`${item.torneo}-${item.grupo}-${index}`}
-                  item={item}
-                />
-              ))}
+              {tablas.map(
+                (item, index) => (
+
+                  <TablaPosiciones
+                    key={`${item.torneo}-${item.grupo}-${index}`}
+                    item={item}
+                  />
+
+                )
+              )}
 
             </div>
 
           </section>
+
         )}
 
         {/* ====================================================
@@ -497,24 +708,40 @@ function PosicionesContent() {
         ==================================================== */}
 
         {brackets.length > 0 && (
-          <section style={styles.section}>
 
-            <div style={styles.sectionTitle}>
+          <section
+            style={styles.section}
+          >
+
+            <div
+              style={
+                styles.sectionTitle
+              }
+            >
               Eliminatorias
             </div>
 
-            <div style={styles.bracketsContainer}>
+            <div
+              style={
+                styles.bracketsContainer
+              }
+            >
 
-              {brackets.map((stage, index) => (
-                <StageBracket
-                  key={`${stage.name}-${index}`}
-                  stage={stage}
-                />
-              ))}
+              {brackets.map(
+                (stage, index) => (
+
+                  <StageBracket
+                    key={`${stage.name}-${index}`}
+                    stage={stage}
+                  />
+
+                )
+              )}
 
             </div>
 
           </section>
+
         )}
 
         {/* ====================================================
@@ -522,26 +749,40 @@ function PosicionesContent() {
         ==================================================== */}
 
         {estadisticas.length > 0 && (
-          <section style={styles.section}>
 
-            <div style={styles.sectionTitle}>
+          <section
+            style={styles.section}
+          >
+
+            <div
+              style={
+                styles.sectionTitle
+              }
+            >
               Estadísticas de jugadores
             </div>
 
-            <div style={styles.playerTables}>
+            <div
+              style={
+                styles.playerTables
+              }
+            >
 
               {estadisticas.map(
                 (tabla, index) => (
+
                   <EstadisticasJugadores
                     key={`${tabla.name || "tabla"}-${index}`}
                     tabla={tabla}
                   />
+
                 )
               )}
 
             </div>
 
           </section>
+
         )}
 
         {/* ====================================================
@@ -552,14 +793,18 @@ function PosicionesContent() {
           brackets.length === 0 &&
           estadisticas.length === 0 && (
 
-            <div style={styles.empty}>
-              No hay información disponible para
-              esta competencia.
+            <div
+              style={styles.empty}
+            >
+              No hay información
+              disponible para esta
+              competencia.
             </div>
 
           )}
 
       </div>
+
     </main>
   );
 }
@@ -569,46 +814,68 @@ function PosicionesContent() {
 // ============================================================
 
 function TablaPosiciones({ item }) {
-  const { torneo, grupo, table } = item;
 
-  const columns = Array.isArray(table.columns)
-    ? table.columns
-    : [];
+  const {
+    torneo,
+    grupo,
+    table,
+  } = item;
 
-  const rows = Array.isArray(table.rows)
-    ? table.rows
-    : [];
+  const columns =
+    Array.isArray(table.columns)
+      ? table.columns
+      : [];
+
+  const rows =
+    Array.isArray(table.rows)
+      ? table.rows
+      : [];
 
   return (
     <div style={styles.tableCard}>
 
-      <div style={styles.tableHeader}>
+      <div
+        style={styles.tableHeader}
+      >
 
         <div>
 
           {torneo && (
-            <div style={styles.tableTournament}>
+            <div
+              style={
+                styles.tableTournament
+              }
+            >
               {torneo}
             </div>
           )}
 
-          <div style={styles.tableName}>
-            {grupo || "Tabla de posiciones"}
+          <div
+            style={styles.tableName}
+          >
+            {grupo ||
+              "Tabla de posiciones"}
           </div>
 
         </div>
 
       </div>
 
-      <div style={styles.tableScroll}>
+      <div
+        style={styles.tableScroll}
+      >
 
-        <table style={styles.table}>
+        <table
+          style={styles.table}
+        >
 
           <thead>
 
             <tr>
 
-              <th style={styles.posHeader}>
+              <th
+                style={styles.posHeader}
+              >
                 #
               </th>
 
@@ -621,20 +888,25 @@ function TablaPosiciones({ item }) {
                 Equipo
               </th>
 
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  style={{
-                    ...styles.statHeader,
-                    fontWeight:
-                      column.is_bold
-                        ? 800
-                        : 600,
-                  }}
-                >
-                  {column.title}
-                </th>
-              ))}
+              {columns.map(
+                (column) => (
+
+                  <th
+                    key={column.key}
+                    style={{
+                      ...styles.statHeader,
+
+                      fontWeight:
+                        column.is_bold
+                          ? 800
+                          : 600,
+                    }}
+                  >
+                    {column.title}
+                  </th>
+
+                )
+              )}
 
             </tr>
 
@@ -642,75 +914,105 @@ function TablaPosiciones({ item }) {
 
           <tbody>
 
-            {rows.map((fila, index) => {
+            {rows.map(
+              (fila, index) => {
 
-              const nombre =
-                obtenerNombreEquipo(fila);
+                const nombre =
+                  obtenerNombreEquipo(
+                    fila
+                  );
 
-              const color =
-                obtenerColorEquipo(fila);
+                const color =
+                  obtenerColorEquipo(
+                    fila
+                  );
 
-              const textColor =
-                obtenerTextoColorEquipo(fila);
+                const textColor =
+                  obtenerTextoColorEquipo(
+                    fila
+                  );
 
-              const posicion =
-                fila.num ?? index + 1;
+                const posicion =
+                  fila.num ??
+                  index + 1;
 
-              return (
-                <tr
-                  key={`${nombre}-${index}`}
-                  style={styles.tableRow}
-                >
+                return (
+                  <tr
+                    key={`${nombre}-${index}`}
+                    style={
+                      styles.tableRow
+                    }
+                  >
 
-                  <td style={styles.position}>
-                    {posicion}
-                  </td>
+                    <td
+                      style={
+                        styles.position
+                      }
+                    >
+                      {posicion}
+                    </td>
 
-                  <td style={styles.teamCell}>
+                    <td
+                      style={
+                        styles.teamCell
+                      }
+                    >
 
-                    <div
-                      style={{
-                        ...styles.teamBadge,
-                        backgroundColor: color,
-                        color: textColor,
-                      }}
-                    />
-
-                    <span>
-                      {nombre}
-                    </span>
-
-                  </td>
-
-                  {columns.map((column) => {
-
-                    const valor =
-                      obtenerValor(
-                        fila,
-                        column.key
-                      );
-
-                    return (
-                      <td
-                        key={column.key}
+                      <div
                         style={{
-                          ...styles.statCell,
-                          fontWeight:
-                            column.is_bold
-                              ? 800
-                              : 500,
+                          ...styles.teamBadge,
+                          backgroundColor:
+                            color,
+                          color:
+                            textColor,
                         }}
-                      >
-                        {Array.isArray(valor)
-                          ? valor.join(" ")
-                          : valor}
-                      </td>
-                    );
-                  })}
+                      />
 
-                </tr>
-              );
-            })}
+                      <span>
+                        {nombre}
+                      </span>
+
+                    </td>
+
+                    {columns.map(
+                      (column) => {
+
+                        const valor =
+                          obtenerValor(
+                            fila,
+                            column.key
+                          );
+
+                        return (
+                          <td
+                            key={
+                              column.key
+                            }
+                            style={{
+                              ...styles.statCell,
+
+                              fontWeight:
+                                column.is_bold
+                                  ? 800
+                                  : 500,
+                            }}
+                          >
+                            {Array.isArray(
+                              valor
+                            )
+                              ? valor.join(
+                                  " "
+                                )
+                              : valor}
+                          </td>
+                        );
+                      }
+                    )}
+
+                  </tr>
+                );
+              }
+            )}
 
           </tbody>
 
@@ -727,27 +1029,37 @@ function TablaPosiciones({ item }) {
 // ============================================================
 
 function StageBracket({ stage }) {
-  const groups = Array.isArray(stage?.groups)
-    ? stage.groups
-    : [];
+
+  const groups =
+    Array.isArray(stage?.groups)
+      ? stage.groups
+      : [];
 
   return (
     <div style={styles.stage}>
 
-      <div style={styles.stageTitle}>
+      <div
+        style={styles.stageTitle}
+      >
         {stage.name}
       </div>
 
-      <div style={styles.bracketGrid}>
+      <div
+        style={styles.bracketGrid}
+      >
 
-        {groups.map((group, index) => (
-          <BracketGroup
-            key={`${group?.participants
-              ?.map((p) => p.id)
-              .join("-") || "llave"}-${index}`}
-            group={group}
-          />
-        ))}
+        {groups.map(
+          (group, index) => (
+
+            <BracketGroup
+              key={`${group?.participants
+                ?.map((p) => p.id)
+                .join("-") || "llave"}-${index}`}
+              group={group}
+            />
+
+          )
+        )}
 
       </div>
 
@@ -760,15 +1072,18 @@ function StageBracket({ stage }) {
 // ============================================================
 
 function BracketGroup({ group }) {
-  const participants = Array.isArray(
-    group?.participants
-  )
-    ? group.participants
-    : [];
 
-  const games = Array.isArray(group?.games)
-    ? group.games
-    : [];
+  const participants =
+    Array.isArray(
+      group?.participants
+    )
+      ? group.participants
+      : [];
+
+  const games =
+    Array.isArray(group?.games)
+      ? group.games
+      : [];
 
   // ==========================================================
   // CLASIFICADO
@@ -793,7 +1108,6 @@ function BracketGroup({ group }) {
 
         qualifiedId =
           game.teams[indice].id;
-
       }
     }
   }
@@ -802,7 +1116,10 @@ function BracketGroup({ group }) {
   // PARTIDO ÚNICO
   // ==========================================================
 
-  if (!qualifiedId && games.length === 1) {
+  if (
+    !qualifiedId &&
+    games.length === 1
+  ) {
 
     const game = games[0];
 
@@ -821,104 +1138,119 @@ function BracketGroup({ group }) {
 
         qualifiedId =
           game.teams[indice].id;
-
       }
     }
   }
 
   // ==========================================================
-  // DETERMINAR SI ES SERIE
-  //
-  // Dos o más partidos entre los mismos equipos.
+  // SERIE
   // ==========================================================
 
   const esSerie =
     games.length > 1;
 
   // ==========================================================
-  // CALCULAR GLOBALES
-  //
-  // MUY IMPORTANTE:
-  // Se suma por team.id y NO por posición.
+  // GLOBALES
   // ==========================================================
 
   const globales = {};
 
-  participants.forEach((participant) => {
+  participants.forEach(
+    (participant) => {
 
-    if (participant?.id) {
-      globales[participant.id] = 0;
-    }
-
-  });
-
-  games.forEach((game) => {
-
-    const teams = Array.isArray(game?.teams)
-      ? game.teams
-      : [];
-
-    const scores = Array.isArray(game?.scores)
-      ? game.scores
-      : [];
-
-    teams.forEach((team, index) => {
-
-      if (!team?.id) return;
-
-      const score =
-        obtenerScore(scores[index]);
-
-      if (score === null) return;
-
-      if (
-        globales[team.id] === undefined
-      ) {
-        globales[team.id] = 0;
+      if (participant?.id) {
+        globales[
+          participant.id
+        ] = 0;
       }
 
-      globales[team.id] += score;
+    }
+  );
 
-    });
+  games.forEach(
+    (game) => {
 
-  });
+      const teams =
+        Array.isArray(
+          game?.teams
+        )
+          ? game.teams
+          : [];
+
+      const scores =
+        Array.isArray(
+          game?.scores
+        )
+          ? game.scores
+          : [];
+
+      teams.forEach(
+        (team, index) => {
+
+          if (!team?.id) {
+            return;
+          }
+
+          const score =
+            obtenerScore(
+              scores[index]
+            );
+
+          if (score === null) {
+            return;
+          }
+
+          if (
+            globales[team.id] ===
+            undefined
+          ) {
+            globales[team.id] = 0;
+          }
+
+          globales[team.id] +=
+            score;
+        }
+      );
+    }
+  );
 
   // ==========================================================
-  // SABER SI YA HAY GOLES VÁLIDOS PARA EL GLOBAL
+  // HAY GLOBAL
   // ==========================================================
 
   const hayGlobal =
     esSerie &&
-    games.some((game) =>
-      Array.isArray(game?.scores) &&
-      game.scores.some(
-        (score) =>
-          obtenerScore(score) !== null
-      )
+    games.some(
+      (game) =>
+        Array.isArray(
+          game?.scores
+        ) &&
+        game.scores.some(
+          (score) =>
+            obtenerScore(
+              score
+            ) !== null
+        )
     );
-
-  // ==========================================================
-  // ORDEN DE PARTIDOS
-  //
-  // Generalmente Promiedos los entrega en orden.
-  // Los etiquetamos como IDA / VUELTA.
-  // ==========================================================
 
   return (
     <div
       style={{
         ...styles.bracketCard,
+
         ...(qualifiedId
           ? styles.bracketCardWithWinner
           : {}),
       }}
     >
 
-      {/* ======================================================
-          CABECERA DEL CRUCE
-      ====================================================== */}
+      {/* ====================================================
+          EQUIPOS
+      ==================================================== */}
 
-      <div style={styles.bracketTeams}>
+      <div
+        style={styles.bracketTeams}
+      >
 
         {participants.map(
           (participant, index) => {
@@ -928,7 +1260,9 @@ function BracketGroup({ group }) {
               participant.id;
 
             const global =
-              globales[participant.id];
+              globales[
+                participant.id
+              ];
 
             return (
               <div
@@ -938,6 +1272,7 @@ function BracketGroup({ group }) {
                 }
                 style={{
                   ...styles.participant,
+
                   ...(clasificado
                     ? styles.participantQualified
                     : {}),
@@ -961,22 +1296,25 @@ function BracketGroup({ group }) {
                     participant.name}
                 </div>
 
-                {/* GLOBAL */}
+                {esSerie &&
+                  hayGlobal && (
 
-                {esSerie && hayGlobal && (
-                  <div
-                    style={{
-                      ...styles.participantGlobal,
-                      ...(clasificado
-                        ? styles.participantGlobalQualified
-                        : {}),
-                    }}
-                  >
-                    {global}
-                  </div>
-                )}
+                    <div
+                      style={{
+                        ...styles.participantGlobal,
+
+                        ...(clasificado
+                          ? styles.participantGlobalQualified
+                          : {}),
+                      }}
+                    >
+                      {global}
+                    </div>
+
+                  )}
 
                 {clasificado && (
+
                   <div
                     style={
                       styles.qualifiedLabel
@@ -984,6 +1322,7 @@ function BracketGroup({ group }) {
                   >
                     CLASIF.
                   </div>
+
                 )}
 
               </div>
@@ -993,96 +1332,118 @@ function BracketGroup({ group }) {
 
       </div>
 
-      {/* ======================================================
-          PARTIDOS DE LA SERIE
-      ====================================================== */}
+      {/* ====================================================
+          PARTIDOS
+      ==================================================== */}
 
       {games.length > 0 && (
-        <div style={styles.games}>
 
-          {games.map((game, index) => (
+        <div
+          style={styles.games}
+        >
 
-            <BracketGame
-              key={
-                game?.id ||
-                `partido-${index}`
-              }
-              game={game}
-              numeroPartido={index}
-              esSerie={esSerie}
-            />
+          {games.map(
+            (game, index) => (
 
-          ))}
+              <BracketGame
+                key={
+                  game?.id ||
+                  `partido-${index}`
+                }
+                game={game}
+                numeroPartido={index}
+                esSerie={esSerie}
+              />
+
+            )
+          )}
 
         </div>
+
       )}
 
-      {/* ======================================================
+      {/* ====================================================
           GLOBAL
-      ====================================================== */}
+      ==================================================== */}
 
-      {esSerie && hayGlobal && (
-        <div style={styles.globalBox}>
+      {esSerie &&
+        hayGlobal && (
 
-          <div style={styles.globalLabel}>
-            GLOBAL
-          </div>
+          <div
+            style={styles.globalBox}
+          >
 
-          <div style={styles.globalScores}>
-
-            {participants.map(
-              (participant, index) => {
-
-                const global =
-                  globales[
-                    participant.id
-                  ];
-
-                const clasificado =
-                  qualifiedId ===
-                  participant.id;
-
-                return (
-                  <div
-                    key={
-                      participant.id ||
-                      index
-                    }
-                    style={{
-                      ...styles.globalTeam,
-                      ...(clasificado
-                        ? styles.globalTeamQualified
-                        : {}),
-                    }}
-                  >
-
-                    <span
-                      style={
-                        styles.globalTeamName
-                      }
-                    >
-                      {participant.short_name ||
-                        participant.name}
-                    </span>
-
-                    <span
-                      style={
-                        styles.globalTeamScore
-                      }
-                    >
-                      {global ?? 0}
-                    </span>
-
-                  </div>
-                );
-
+            <div
+              style={
+                styles.globalLabel
               }
-            )}
+            >
+              GLOBAL
+            </div>
+
+            <div
+              style={
+                styles.globalScores
+              }
+            >
+
+              {participants.map(
+                (
+                  participant,
+                  index
+                ) => {
+
+                  const global =
+                    globales[
+                      participant.id
+                    ];
+
+                  const clasificado =
+                    qualifiedId ===
+                    participant.id;
+
+                  return (
+                    <div
+                      key={
+                        participant.id ||
+                        index
+                      }
+                      style={{
+                        ...styles.globalTeam,
+
+                        ...(clasificado
+                          ? styles.globalTeamQualified
+                          : {}),
+                      }}
+                    >
+
+                      <span
+                        style={
+                          styles.globalTeamName
+                        }
+                      >
+                        {participant.short_name ||
+                          participant.name}
+                      </span>
+
+                      <span
+                        style={
+                          styles.globalTeamScore
+                        }
+                      >
+                        {global ?? 0}
+                      </span>
+
+                    </div>
+                  );
+                }
+              )}
+
+            </div>
 
           </div>
 
-        </div>
-      )}
+        )}
 
     </div>
   );
@@ -1098,138 +1459,166 @@ function BracketGame({
   esSerie,
 }) {
 
-  const teams = Array.isArray(game?.teams)
-    ? game.teams
-    : [];
+  const teams =
+    Array.isArray(game?.teams)
+      ? game.teams
+      : [];
 
-  const scores = Array.isArray(game?.scores)
-    ? game.scores
-    : [];
+  const scores =
+    Array.isArray(game?.scores)
+      ? game.scores
+      : [];
 
   let etiqueta = "";
 
   if (esSerie) {
 
-    if (numeroPartido === 0) {
+    if (
+      numeroPartido === 0
+    ) {
       etiqueta = "IDA";
-    } else if (numeroPartido === 1) {
+    } else if (
+      numeroPartido === 1
+    ) {
       etiqueta = "VUELTA";
     } else {
-      etiqueta = `PARTIDO ${numeroPartido + 1}`;
+      etiqueta =
+        `PARTIDO ${
+          numeroPartido + 1
+        }`;
     }
-
   }
 
   return (
     <div style={styles.game}>
 
-      {/* ====================================================
-          ENCABEZADO DEL PARTIDO
-      ==================================================== */}
-
-      <div style={styles.gameHeader}>
+      <div
+        style={styles.gameHeader}
+      >
 
         {etiqueta && (
-          <span style={styles.gameRound}>
+
+          <span
+            style={
+              styles.gameRound
+            }
+          >
             {etiqueta}
           </span>
+
         )}
 
         {game?.start_time && (
-          <span style={styles.gameDate}>
+
+          <span
+            style={styles.gameDate}
+          >
             {formatearFecha(
               game.start_time
             )}
           </span>
+
         )}
 
       </div>
 
-      {/* ====================================================
-          EQUIPOS
-      ==================================================== */}
+      <div
+        style={styles.gameTeams}
+      >
 
-      <div style={styles.gameTeams}>
+        {teams.map(
+          (team, index) => {
 
-        {teams.map((team, index) => {
+            const score =
+              scores[index] ?? "-";
 
-          const score =
-            scores[index] ?? "-";
+            const esGanador =
+              game?.winner ===
+              index + 1;
 
-          const esGanador =
-            game?.winner === index + 1;
+            const clasifica =
+              game?.to_qualify ===
+              index + 1;
 
-          const clasifica =
-            game?.to_qualify === index + 1;
-
-          return (
-            <div
-              key={
-                team?.id ||
-                `${team?.name}-${index}`
-              }
-              style={{
-                ...styles.gameTeam,
-                ...(esGanador
-                  ? styles.gameWinner
-                  : {}),
-              }}
-            >
-
-              <div style={styles.gameTeamName}>
-
-                <div
-                  style={{
-                    ...styles.teamDot,
-                    backgroundColor:
-                      team?.colors?.color ||
-                      "#334155",
-                  }}
-                />
-
-                <span>
-                  {team?.short_name ||
-                    team?.name ||
-                    "Equipo"}
-                </span>
-
-              </div>
-
+            return (
               <div
+                key={
+                  team?.id ||
+                  `${team?.name}-${index}`
+                }
                 style={{
-                  ...styles.gameScore,
+                  ...styles.gameTeam,
+
                   ...(esGanador
-                    ? styles.gameScoreWinner
+                    ? styles.gameWinner
                     : {}),
                 }}
               >
-                {score}
-              </div>
 
-              {clasifica && (
                 <div
                   style={
-                    styles.gameQualified
+                    styles.gameTeamName
                   }
                 >
-                  ✓
-                </div>
-              )}
 
-            </div>
-          );
-        })}
+                  <div
+                    style={{
+                      ...styles.teamDot,
+
+                      backgroundColor:
+                        team?.colors
+                          ?.color ||
+                        "#334155",
+                    }}
+                  />
+
+                  <span>
+                    {team?.short_name ||
+                      team?.name ||
+                      "Equipo"}
+                  </span>
+
+                </div>
+
+                <div
+                  style={{
+                    ...styles.gameScore,
+
+                    ...(esGanador
+                      ? styles.gameScoreWinner
+                      : {}),
+                  }}
+                >
+                  {score}
+                </div>
+
+                {clasifica && (
+
+                  <div
+                    style={
+                      styles.gameQualified
+                    }
+                  >
+                    ✓
+                  </div>
+
+                )}
+
+              </div>
+            );
+          }
+        )}
 
       </div>
 
-      {/* ====================================================
-          ESTADO
-      ==================================================== */}
-
       {game?.status?.name && (
-        <div style={styles.gameStatus}>
+
+        <div
+          style={styles.gameStatus}
+        >
           {game.status.name}
         </div>
+
       )}
 
     </div>
@@ -1244,68 +1633,201 @@ function EstadisticasJugadores({
   tabla,
 }) {
 
-  const rows = Array.isArray(tabla?.rows)
-    ? tabla.rows
-    : [];
+  const rows =
+    Array.isArray(tabla?.rows)
+      ? tabla.rows
+      : [];
 
   if (rows.length === 0) {
     return null;
   }
 
+  // ==========================================================
+  // OBTENER COLUMNAS
+  // ==========================================================
+
   const keys = [];
 
-  rows.forEach((row) => {
-
-    if (!Array.isArray(row?.values)) {
-      return;
-    }
-
-    row.values.forEach((value) => {
+  rows.forEach(
+    (row) => {
 
       if (
-        value?.key &&
-        !keys.includes(value.key)
+        !Array.isArray(
+          row?.values
+        )
       ) {
-        keys.push(value.key);
+        return;
       }
 
-    });
+      row.values.forEach(
+        (value) => {
 
-  });
+          if (
+            value?.key &&
+            !keys.includes(
+              value.key
+            )
+          ) {
+            keys.push(
+              value.key
+            );
+          }
+
+        }
+      );
+    }
+  );
 
   function obtenerValorJugador(
     row,
     key
   ) {
 
-    const valor = row?.values?.find(
-      (v) => v.key === key
-    );
+    const valor =
+      row?.values?.find(
+        (v) =>
+          v.key === key
+      );
 
-    return valor?.value ?? "-";
+    return (
+      valor?.value ?? "-"
+    );
+  }
+
+  // ==========================================================
+  // OBTENER EQUIPO DEL JUGADOR
+  //
+  // Promiedos puede entregar el equipo
+  // dentro de diferentes propiedades.
+  //
+  // Buscamos varias posibilidades sin
+  // romper la estructura actual.
+  // ==========================================================
+
+  function obtenerEquipoJugador(
+    row
+  ) {
+
+    const jugador =
+      row?.entity?.object;
+
+    const posibilidades = [
+
+      jugador?.team?.name,
+
+      jugador?.team?.short_name,
+
+      jugador?.club?.name,
+
+      jugador?.club?.short_name,
+
+      row?.team?.name,
+
+      row?.team?.short_name,
+
+      row?.club?.name,
+
+      row?.club?.short_name,
+
+      row?.entity?.team?.name,
+
+      row?.entity?.team?.short_name,
+
+      row?.entity?.object
+        ?.team_name,
+
+      row?.entity?.object
+        ?.club_name,
+
+      row?.entity?.object
+        ?.team,
+
+      row?.entity?.object
+        ?.club,
+
+    ];
+
+    for (
+      const posibilidad
+      of posibilidades
+    ) {
+
+      if (
+        posibilidad &&
+        typeof posibilidad ===
+          "string"
+      ) {
+        return posibilidad;
+      }
+
+    }
+
+    // ========================================================
+    // ALGUNAS RESPUESTAS PUEDEN TRAER
+    // EL EQUIPO COMO ENTITY SECUNDARIA.
+    // ========================================================
+
+    if (
+      Array.isArray(
+        row?.entities
+      )
+    ) {
+
+      const equipo =
+        row.entities.find(
+          (entity) =>
+            entity?.type ===
+              1 ||
+            entity?.object?.type ===
+              "team"
+        );
+
+      if (
+        equipo?.object?.name
+      ) {
+        return equipo.object.name;
+      }
+
+    }
+
+    return "-";
   }
 
   return (
-    <div style={styles.playerCard}>
+    <div
+      style={styles.playerCard}
+    >
 
-      <div style={styles.tableHeader}>
+      <div
+        style={styles.tableHeader}
+      >
 
-        <div style={styles.tableName}>
+        <div
+          style={styles.tableName}
+        >
           {tabla.name ||
             "Estadísticas"}
         </div>
 
       </div>
 
-      <div style={styles.tableScroll}>
+      <div
+        style={styles.tableScroll}
+      >
 
-        <table style={styles.table}>
+        <table
+          style={styles.table}
+        >
 
           <thead>
 
             <tr>
 
-              <th style={styles.posHeader}>
+              <th
+                style={
+                  styles.posHeader
+                }
+              >
                 #
               </th>
 
@@ -1327,14 +1849,20 @@ function EstadisticasJugadores({
                 Equipo
               </th>
 
-              {keys.map((key) => (
-                <th
-                  key={key}
-                  style={styles.statHeader}
-                >
-                  {key}
-                </th>
-              ))}
+              {keys.map(
+                (key) => (
+
+                  <th
+                    key={key}
+                    style={
+                      styles.statHeader
+                    }
+                  >
+                    {key}
+                  </th>
+
+                )
+              )}
 
             </tr>
 
@@ -1352,18 +1880,28 @@ function EstadisticasJugadores({
                   jugador?.name ||
                   "Jugador";
 
-                const equipo = "-";
+                const equipo =
+                  obtenerEquipoJugador(
+                    row
+                  );
 
                 return (
                   <tr
                     key={
+                      jugador?.id ||
                       jugador?.name ||
                       `jugador-${index}`
                     }
-                    style={styles.tableRow}
+                    style={
+                      styles.tableRow
+                    }
                   >
 
-                    <td style={styles.position}>
+                    <td
+                      style={
+                        styles.position
+                      }
+                    >
                       {row?.num ??
                         index + 1}
                     </td>
@@ -1380,25 +1918,30 @@ function EstadisticasJugadores({
                     <td
                       style={{
                         ...styles.teamCell,
-                        color: "#8b949e",
+                        color:
+                          "#8b949e",
                       }}
                     >
                       {equipo}
                     </td>
 
-                    {keys.map((key) => (
-                      <td
-                        key={key}
-                        style={
-                          styles.statCell
-                        }
-                      >
-                        {obtenerValorJugador(
-                          row,
-                          key
-                        )}
-                      </td>
-                    ))}
+                    {keys.map(
+                      (key) => (
+
+                        <td
+                          key={key}
+                          style={
+                            styles.statCell
+                          }
+                        >
+                          {obtenerValorJugador(
+                            row,
+                            key
+                          )}
+                        </td>
+
+                      )
+                    )}
 
                   </tr>
                 );
@@ -1420,19 +1963,32 @@ function EstadisticasJugadores({
 // ============================================================
 
 export default function PosicionesPage() {
+
   return (
     <Suspense
       fallback={
-        <main style={styles.page}>
-          <div style={styles.container}>
-            <div style={styles.loading}>
+        <main
+          style={styles.page}
+        >
+
+          <div
+            style={styles.container}
+          >
+
+            <div
+              style={styles.loading}
+            >
               Cargando...
             </div>
+
           </div>
+
         </main>
       }
     >
+
       <PosicionesContent />
+
     </Suspense>
   );
 }
@@ -1447,7 +2003,8 @@ const styles = {
     minHeight: "100vh",
     backgroundColor: "#0d131a",
     color: "#e6edf3",
-    padding: "24px 16px 60px",
+    padding:
+      "24px 16px 60px",
   },
 
   container: {
@@ -1507,7 +2064,8 @@ const styles = {
     minHeight: "34px",
     padding: "0 12px",
     borderRadius: "6px",
-    border: "1px solid #263244",
+    border:
+      "1px solid #263244",
     backgroundColor: "#121821",
     color: "#9ca3af",
     textDecoration: "none",
@@ -1541,14 +2099,16 @@ const styles = {
 
   tableCard: {
     backgroundColor: "#121821",
-    border: "1px solid #263244",
+    border:
+      "1px solid #263244",
     borderRadius: "8px",
     overflow: "hidden",
   },
 
   playerCard: {
     backgroundColor: "#121821",
-    border: "1px solid #263244",
+    border:
+      "1px solid #263244",
     borderRadius: "8px",
     overflow: "hidden",
     marginBottom: "12px",
@@ -1556,7 +2116,8 @@ const styles = {
 
   tableHeader: {
     padding: "12px 14px",
-    borderBottom: "1px solid #263244",
+    borderBottom:
+      "1px solid #263244",
     backgroundColor: "#151d28",
   },
 
@@ -1593,7 +2154,8 @@ const styles = {
     fontSize: "10px",
     fontWeight: 800,
     textAlign: "center",
-    borderBottom: "1px solid #263244",
+    borderBottom:
+      "1px solid #263244",
   },
 
   teamHeader: {
@@ -1602,7 +2164,8 @@ const styles = {
     fontSize: "10px",
     fontWeight: 800,
     textTransform: "uppercase",
-    borderBottom: "1px solid #263244",
+    borderBottom:
+      "1px solid #263244",
     whiteSpace: "nowrap",
   },
 
@@ -1612,12 +2175,14 @@ const styles = {
     fontSize: "10px",
     fontWeight: 700,
     textAlign: "center",
-    borderBottom: "1px solid #263244",
+    borderBottom:
+      "1px solid #263244",
     whiteSpace: "nowrap",
   },
 
   tableRow: {
-    borderBottom: "1px solid #1e2937",
+    borderBottom:
+      "1px solid #1e2937",
   },
 
   position: {
@@ -1644,7 +2209,8 @@ const styles = {
     borderRadius: "50%",
     marginRight: "7px",
     verticalAlign: "middle",
-    border: "1px solid rgba(255,255,255,.12)",
+    border:
+      "1px solid rgba(255,255,255,.12)",
   },
 
   statCell: {
@@ -1668,7 +2234,8 @@ const styles = {
 
   stage: {
     backgroundColor: "#121821",
-    border: "1px solid #263244",
+    border:
+      "1px solid #263244",
     borderRadius: "8px",
     overflow: "hidden",
   },
@@ -1676,7 +2243,8 @@ const styles = {
   stageTitle: {
     padding: "11px 14px",
     backgroundColor: "#151d28",
-    borderBottom: "1px solid #263244",
+    borderBottom:
+      "1px solid #263244",
     color: "#e6edf3",
     fontSize: "14px",
     fontWeight: 800,
@@ -1692,7 +2260,8 @@ const styles = {
 
   bracketCard: {
     backgroundColor: "#0d131a",
-    border: "1px solid #263244",
+    border:
+      "1px solid #263244",
     borderRadius: "7px",
     overflow: "hidden",
   },
@@ -1717,7 +2286,8 @@ const styles = {
   },
 
   participantQualified: {
-    backgroundColor: "rgba(16,185,129,.09)",
+    backgroundColor:
+      "rgba(16,185,129,.09)",
     color: "#f1f5f9",
   },
 
@@ -1764,7 +2334,8 @@ const styles = {
   },
 
   game: {
-    border: "1px solid #263244",
+    border:
+      "1px solid #263244",
     borderRadius: "5px",
     overflow: "hidden",
     backgroundColor: "#121821",
@@ -1776,7 +2347,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "7px",
-    borderBottom: "1px solid #1e2937",
+    borderBottom:
+      "1px solid #1e2937",
   },
 
   gameRound: {
@@ -1805,7 +2377,8 @@ const styles = {
   },
 
   gameWinner: {
-    backgroundColor: "rgba(16,185,129,.05)",
+    backgroundColor:
+      "rgba(16,185,129,.05)",
   },
 
   gameTeamName: {
@@ -1824,7 +2397,8 @@ const styles = {
     height: "7px",
     borderRadius: "50%",
     flexShrink: 0,
-    border: "1px solid rgba(255,255,255,.1)",
+    border:
+      "1px solid rgba(255,255,255,.1)",
   },
 
   gameScore: {
@@ -1850,7 +2424,8 @@ const styles = {
 
   gameStatus: {
     padding: "3px 7px",
-    borderTop: "1px solid #1e2937",
+    borderTop:
+      "1px solid #1e2937",
     color: "#64748b",
     fontSize: "9px",
   },
@@ -1862,7 +2437,8 @@ const styles = {
   globalBox: {
     margin: "0 6px 6px",
     padding: "7px 9px",
-    borderTop: "1px solid #263244",
+    borderTop:
+      "1px solid #263244",
     backgroundColor: "#151d28",
   },
 
@@ -1904,11 +2480,26 @@ const styles = {
     fontWeight: 900,
   },
 
+  // ==========================================================
+  // ESTADÍSTICAS
+  // ==========================================================
+
+  playerTables: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
+
+  // ==========================================================
+  // ESTADOS
+  // ==========================================================
+
   empty: {
     padding: "40px 20px",
     textAlign: "center",
     backgroundColor: "#121821",
-    border: "1px solid #263244",
+    border:
+      "1px solid #263244",
     borderRadius: "8px",
     color: "#8b949e",
     fontSize: "14px",
@@ -1917,16 +2508,10 @@ const styles = {
   errorBox: {
     padding: "18px",
     backgroundColor: "#121821",
-    border: "1px solid #7f1d1d",
+    border:
+      "1px solid #7f1d1d",
     borderRadius: "8px",
     color: "#fca5a5",
     fontSize: "14px",
   },
-
-  playerTables: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "12px",
-  },
 };
-
