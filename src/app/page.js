@@ -52,9 +52,9 @@ export default function Home() {
   const searchInputRef =
     useRef(null);
 
-  // ========================================
+  // ==========================================
   // CARGAR PARTIDOS
-  // ========================================
+  // ==========================================
 
   async function cargarPartidos() {
 
@@ -100,9 +100,9 @@ export default function Home() {
     }
   }
 
-  // ========================================
+  // ==========================================
   // CARGA INICIAL + CAMBIO DE FECHA
-  // ========================================
+  // ==========================================
 
   useEffect(() => {
 
@@ -112,9 +112,9 @@ export default function Home() {
 
   }, [date]);
 
-  // ========================================
-  // ACTUALIZACIÓN AUTOMÁTICA DE PARTIDOS
-  // ========================================
+  // ==========================================
+  // ACTUALIZACIÓN AUTOMÁTICA
+  // ==========================================
 
   useEffect(() => {
 
@@ -130,9 +130,9 @@ export default function Home() {
 
   }, [date]);
 
-  // ========================================
+  // ==========================================
   // CARGAR EQUIPOS
-  // ========================================
+  // ==========================================
 
   async function cargarEquipos() {
 
@@ -176,23 +176,19 @@ export default function Home() {
     }
   }
 
-  // ========================================
+  // ==========================================
   // CARGAR EQUIPOS AL INICIAR
-  // ========================================
+  // ==========================================
 
   useEffect(() => {
 
-    if (
-      searchInputRef.current
-    ) {
-      cargarEquipos();
-    }
+    cargarEquipos();
 
   }, []);
 
-  // ========================================
+  // ==========================================
   // BUSCAR EQUIPOS
-  // ========================================
+  // ==========================================
 
   const equiposFiltrados =
     useMemo(() => {
@@ -220,6 +216,7 @@ export default function Home() {
           return nombre.includes(
             texto
           );
+
         })
         .slice(0, 10);
 
@@ -228,9 +225,9 @@ export default function Home() {
       teams
     ]);
 
-  // ========================================
+  // ==========================================
   // SELECCIONAR EQUIPO
-  // ========================================
+  // ==========================================
 
   async function seleccionarEquipo(
     team
@@ -274,10 +271,19 @@ export default function Home() {
       const json =
         await response.json();
 
+      console.log(
+        "FIXTURES RECIBIDOS:",
+        json
+      );
+
       setTeamFixtures(
         Array.isArray(json)
           ? json
-          : json.fixtures || []
+          : Array.isArray(json.fixtures)
+            ? json.fixtures
+            : Array.isArray(json.matches)
+              ? json.matches
+              : []
       );
 
     } catch (err) {
@@ -295,9 +301,9 @@ export default function Home() {
     }
   }
 
-  // ========================================
+  // ==========================================
   // COMPETENCIA
-  // ========================================
+  // ==========================================
 
   function obtenerCompetition(
     league
@@ -350,9 +356,9 @@ export default function Home() {
     return "argentina";
   }
 
-  // ========================================
+  // ==========================================
   // NOMBRE DE LEAGUE
-  // ========================================
+  // ==========================================
 
   function obtenerNombreLeague(
     league
@@ -366,9 +372,9 @@ export default function Home() {
     );
   }
 
-  // ========================================
-  // OBTENER FECHA BASE DEL PARTIDO
-  // ========================================
+  // ==========================================
+  // FECHA PARTIDO
+  // ==========================================
 
   function obtenerFechaPartido(
     game
@@ -386,9 +392,9 @@ export default function Home() {
     );
   }
 
-  // ========================================
+  // ==========================================
   // PARSEAR FECHA
-  // ========================================
+  // ==========================================
 
   function obtenerFechaObjeto(
     game
@@ -405,7 +411,6 @@ export default function Home() {
       return null;
     }
 
-    // Timestamp en segundos
     if (
       typeof valor === "number"
     ) {
@@ -441,9 +446,9 @@ export default function Home() {
     return null;
   }
 
-  // ========================================
-  // FORMATEAR FECHA + HORA ARGENTINA
-  // ========================================
+  // ==========================================
+  // FORMATEAR FECHA HORA ARGENTINA
+  // ==========================================
 
   function formatearFechaHoraArgentina(
     game
@@ -480,9 +485,9 @@ export default function Home() {
     }
   }
 
-  // ========================================
-  // FORMATEAR SOLAMENTE HORA ARGENTINA
-  // ========================================
+  // ==========================================
+  // FORMATEAR HORA ARGENTINA
+  // ==========================================
 
   function formatearHoraArgentina(
     game
@@ -526,196 +531,145 @@ export default function Home() {
     return null;
   }
 
-// ========================================
-// FORMATEAR HORA
-// ========================================
+  // ==========================================
+  // FORMATEAR HORA
+  // ==========================================
 
-function formatearHora(
-  game
-) {
-
-  // ========================================
-  // PRIMERA OPCIÓN
-  // Usar la función actual
-  // ========================================
-
-  const hora =
-    formatearHoraArgentina(game);
-
-  // ========================================
-  // OBTENER start_time
-  //
-  // Ejemplo:
-  // "18-09-2026 20:30"
-  // ========================================
-
-  if (
-    game?.start_time
+  function formatearHora(
+    game
   ) {
 
-    const texto =
-      String(
-        game.start_time
-      ).trim();
-
-    const encontrado =
-      texto.match(
-        /^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/
-      );
+    const hora =
+      formatearHoraArgentina(game);
 
     if (
-      encontrado
+      game?.start_time
     ) {
 
-      const dia =
-        encontrado[1];
+      const texto =
+        String(
+          game.start_time
+        ).trim();
 
-      const mes =
-        encontrado[2];
-
-      const anio =
-        encontrado[3];
-
-      const horaInicio =
-        encontrado[4];
-
-      const minutoInicio =
-        encontrado[5];
-
-      // ========================================
-      // FECHA ACTUAL EN ARGENTINA
-      // ========================================
-
-      const ahora =
-        new Date();
-
-      const fechaArgentina =
-        new Intl.DateTimeFormat(
-          "en-CA",
-          {
-            timeZone:
-              "America/Argentina/Buenos_Aires",
-            year:
-              "numeric",
-            month:
-              "2-digit",
-            day:
-              "2-digit"
-          }
-        ).formatToParts(
-          ahora
+      const encontrado =
+        texto.match(
+          /^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/
         );
 
-      const partes = {};
+      if (
+        encontrado
+      ) {
 
-      fechaArgentina.forEach(
-        parte => {
-          partes[parte.type] =
-            parte.value;
+        const dia =
+          encontrado[1];
+
+        const mes =
+          encontrado[2];
+
+        const anio =
+          encontrado[3];
+
+        const horaInicio =
+          encontrado[4];
+
+        const minutoInicio =
+          encontrado[5];
+
+        const ahora =
+          new Date();
+
+        const fechaArgentina =
+          new Intl.DateTimeFormat(
+            "en-CA",
+            {
+              timeZone:
+                "America/Argentina/Buenos_Aires",
+
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit"
+            }
+          ).formatToParts(
+            ahora
+          );
+
+        const partes = {};
+
+        fechaArgentina.forEach(
+          parte => {
+            partes[parte.type] =
+              parte.value;
+          }
+        );
+
+        const hoy =
+          `${partes.day}-${partes.month}-${partes.year}`;
+
+        if (
+          `${dia}-${mes}-${anio}` !== hoy
+        ) {
+
+          return (
+            `${dia}/${mes} ` +
+            `${horaInicio}:${minutoInicio}`
+          );
         }
-      );
+      }
+    }
 
-      const hoy =
-        `${partes.day}-${partes.month}-${partes.year}`;
+    if (
+      hora &&
+      hora !== "--:--"
+    ) {
 
-      // ========================================
-      // SI ES OTRO DÍA
-      // MOSTRAR FECHA + HORA
-      // ========================================
+      return hora;
+    }
+
+    if (
+      game?.start_time
+    ) {
+
+      const texto =
+        String(
+          game.start_time
+        ).trim();
+
+      const encontrado =
+        texto.match(
+          /(\d{2}):(\d{2})/
+        );
 
       if (
-        `${dia}-${mes}-${anio}` !== hoy
+        encontrado
       ) {
 
         return (
-          `${dia}/${mes} ` +
-          `${horaInicio}:${minutoInicio}`
+          encontrado[1] +
+          ":" +
+          encontrado[2]
         );
       }
     }
+
+    return "--:--";
   }
 
-  // ========================================
-  // SI ES HOY
-  // MOSTRAR SOLAMENTE LA HORA
-  // ========================================
-
-  if (
-    hora &&
-    hora !== "--:--"
-  ) {
-
-    return hora;
-  }
-
-  // ========================================
-  // RESPALDO
-  // ========================================
-
-  if (
-    game?.start_time
-  ) {
-
-    const texto =
-      String(
-        game.start_time
-      ).trim();
-
-    const encontrado =
-      texto.match(
-        /(\d{2}):(\d{2})/
-      );
-
-    if (
-      encontrado
-    ) {
-
-      return (
-        encontrado[1] +
-        ":" +
-        encontrado[2]
-      );
-    }
-  }
-
-  return "--:--";
-}
-
-  // ========================================
-  // OBTENER MINUTO EN VIVO
-  // ========================================
-  //
-  // Promiedos ya entrega el minuto exacto.
-  // Ejemplo:
-  //
-  // game_time: 71
-  // game_time_status_to_display: "70'"
-  // game_time_to_display: "70'"
-  //
-  // Usamos primero game_time_to_display.
-  // NO calculamos el minuto desde start_time.
-  //
+  // ==========================================
+  // MINUTO LIVE
+  // ==========================================
 
   function obtenerMinutoLive(
     game
   ) {
 
-    // ========================================
-    // PRIMERA OPCIÓN:
-    // TEXTO EXACTO PARA MOSTRAR
-    // ========================================
-
     if (
       game?.game_time_to_display
     ) {
 
-      const texto =
+      const encontrado =
         String(
           game.game_time_to_display
-        );
-
-      const encontrado =
-        texto.match(
+        ).match(
           /(\d{1,3})/
         );
 
@@ -729,22 +683,15 @@ function formatearHora(
         );
       }
     }
-
-    // ========================================
-    // SEGUNDA OPCIÓN
-    // ========================================
 
     if (
       game?.game_time_status_to_display
     ) {
 
-      const texto =
+      const encontrado =
         String(
           game.game_time_status_to_display
-        );
-
-      const encontrado =
-        texto.match(
+        ).match(
           /(\d{1,3})/
         );
 
@@ -758,11 +705,6 @@ function formatearHora(
         );
       }
     }
-
-    // ========================================
-    // TERCERA OPCIÓN
-    // game_time NUMÉRICO
-    // ========================================
 
     if (
       game?.game_time !== undefined &&
@@ -789,9 +731,9 @@ function formatearHora(
     return null;
   }
 
-  // ========================================
-  // ESTADO DEL PARTIDO
-  // ========================================
+  // ==========================================
+  // ESTADO
+  // ==========================================
 
   function obtenerEstado(
     game
@@ -804,10 +746,6 @@ function formatearHora(
       Number(
         estado?.enum
       );
-
-    // --------------------------------------
-    // EN VIVO
-    // --------------------------------------
 
     if (
       enumEstado === 2
@@ -823,7 +761,6 @@ function formatearHora(
             ? `EN VIVO ${minuto}'`
             : "EN VIVO",
 
-        // ROJO PARA EN VIVO
         color:
           "#ef4444",
 
@@ -831,10 +768,6 @@ function formatearHora(
           true
       };
     }
-
-    // --------------------------------------
-    // FINALIZADO
-    // --------------------------------------
 
     if (
       enumEstado === 3
@@ -852,10 +785,6 @@ function formatearHora(
           false
       };
     }
-
-    // --------------------------------------
-    // PRÓXIMO
-    // --------------------------------------
 
     if (
       enumEstado === 1
@@ -880,10 +809,6 @@ function formatearHora(
       };
     }
 
-    // --------------------------------------
-    // ESTADO DESCONOCIDO
-    // --------------------------------------
-
     const fechaHora =
       formatearFechaHoraArgentina(
         game
@@ -904,9 +829,9 @@ function formatearHora(
     };
   }
 
-  // ========================================
-  // OBTENER SCORE
-  // ========================================
+  // ==========================================
+  // SCORE
+  // ==========================================
 
   function obtenerScore(
     game,
@@ -928,9 +853,9 @@ function formatearHora(
     return "-";
   }
 
-  // ========================================
+  // ==========================================
   // EQUIPO
-  // ========================================
+  // ==========================================
 
   function obtenerEquipo(
     game,
@@ -943,13 +868,19 @@ function formatearHora(
     );
   }
 
-  // ========================================
+  // ==========================================
   // NOMBRE EQUIPO
-  // ========================================
+  // ==========================================
 
   function nombreEquipo(
     team
   ) {
+
+    if (
+      typeof team === "string"
+    ) {
+      return team;
+    }
 
     return (
       team?.name ||
@@ -959,9 +890,9 @@ function formatearHora(
     );
   }
 
-  // ========================================
-  // LOGO EQUIPO
-  // ========================================
+  // ==========================================
+  // LOGO
+  // ==========================================
 
   function logoEquipo(
     team
@@ -976,9 +907,9 @@ function formatearHora(
     );
   }
 
-  // ========================================
+  // ==========================================
   // GLOBAL
-  // ========================================
+  // ==========================================
 
   function obtenerGlobal(
     game
@@ -1035,9 +966,9 @@ function formatearHora(
     };
   }
 
-  // ========================================
+  // ==========================================
   // GOLES
-  // ========================================
+  // ==========================================
 
   function obtenerGoles(
     team
@@ -1054,9 +985,9 @@ function formatearHora(
     return team.goals;
   }
 
-  // ========================================
+  // ==========================================
   // TV
-  // ========================================
+  // ==========================================
 
   function obtenerTV(
     game
@@ -1073,9 +1004,126 @@ function formatearHora(
     return game.tv_networks;
   }
 
-  // ========================================
+  // ==========================================
+  // FIXTURE - NOMBRE RIVAL
+  // ==========================================
+
+  function obtenerRivalFixture(
+    fixture
+  ) {
+
+    return (
+      fixture?.opponent ||
+      fixture?.rival ||
+      fixture?.opponent_name ||
+      fixture?.rival_name ||
+      fixture?.vs ||
+      fixture?.team_opponent ||
+      fixture?.teamOpponent ||
+      ""
+    );
+  }
+
+  // ==========================================
+  // FIXTURE - LOCAL / VISITANTE
+  // ==========================================
+
+  function obtenerCondicionFixture(
+    fixture
+  ) {
+
+    const condicion =
+      String(
+        fixture?.homeAway ||
+        fixture?.home_away ||
+        fixture?.condition ||
+        fixture?.local_visitante ||
+        fixture?.localVisitante ||
+        ""
+      )
+        .trim()
+        .toUpperCase();
+
+    if (
+      condicion === "L"
+    ) {
+      return "L";
+    }
+
+    if (
+      condicion === "V"
+    ) {
+      return "V";
+    }
+
+    if (
+      condicion.includes("LOCAL")
+    ) {
+      return "L";
+    }
+
+    if (
+      condicion.includes("VISIT")
+    ) {
+      return "V";
+    }
+
+    return "";
+  }
+
+  // ==========================================
+  // FIXTURE - FECHA
+  // ==========================================
+
+  function obtenerFechaFixture(
+    fixture
+  ) {
+
+    return (
+      fixture?.date ||
+      fixture?.fecha ||
+      fixture?.day ||
+      "--/--"
+    );
+  }
+
+  // ==========================================
+  // FIXTURE - HORA
+  // ==========================================
+
+  function obtenerHoraFixture(
+    fixture
+  ) {
+
+    return (
+      fixture?.time ||
+      fixture?.hour ||
+      fixture?.hora ||
+      fixture?.start_time ||
+      "--:--"
+    );
+  }
+
+  // ==========================================
+  // FIXTURE - COMPETENCIA
+  // ==========================================
+
+  function obtenerCompetenciaFixture(
+    fixture
+  ) {
+
+    return (
+      fixture?.competition ||
+      fixture?.league ||
+      fixture?.tournament ||
+      fixture?.competencia ||
+      ""
+    );
+  }
+
+  // ==========================================
   // RENDER
-  // ========================================
+  // ==========================================
 
   return (
     <main
@@ -1094,9 +1142,9 @@ function formatearHora(
         }}
       >
 
-        {/* ================================== */}
-        {/* HEADER */}
-        {/* ================================== */}
+        {/* ==================================
+            HEADER
+        ================================== */}
 
         <div
           style={{
@@ -1133,9 +1181,9 @@ function formatearHora(
 
           </div>
 
-          {/* ================================= */}
-          {/* BUSCADOR */}
-          {/* ================================= */}
+          {/* =================================
+              BUSCADOR
+          ================================= */}
 
           <div
             style={{
@@ -1166,6 +1214,7 @@ function formatearHora(
                     []
                   );
                 }
+
               }}
               placeholder="Buscar equipo..."
               style={{
@@ -1183,27 +1232,26 @@ function formatearHora(
               }}
             />
 
+            {/* =================================
+                SUGERENCIAS
+            ================================= */}
+
             {search.trim() &&
               !selectedTeam &&
-              equiposFiltrados.length >
-                0 && (
+              equiposFiltrados.length > 0 && (
 
               <div
                 style={{
-                  position:
-                    "absolute",
+                  position: "absolute",
                   top: "44px",
                   left: 0,
                   right: 0,
                   zIndex: 50,
-                  background:
-                    "#121821",
+                  background: "#121821",
                   border:
                     "1px solid #263244",
-                  borderRadius:
-                    "8px",
-                  overflow:
-                    "hidden",
+                  borderRadius: "8px",
+                  overflow: "hidden",
                   boxShadow:
                     "0 10px 30px rgba(0,0,0,.35)"
                 }}
@@ -1225,8 +1273,7 @@ function formatearHora(
                       }
                       style={{
                         width: "100%",
-                        textAlign:
-                          "left",
+                        textAlign: "left",
                         padding:
                           "10px 12px",
                         border: "none",
@@ -1251,45 +1298,63 @@ function formatearHora(
                 )}
 
               </div>
+
+            )}
+
+            {/* =================================
+                ESTADO DE CARGA DE EQUIPOS
+            ================================= */}
+
+            {teamSearchLoading &&
+              search.trim() && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "44px",
+                  left: 0,
+                  right: 0,
+                  zIndex: 50,
+                  background: "#121821",
+                  border:
+                    "1px solid #263244",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  color: "#8b949e",
+                  fontSize: "13px"
+                }}
+              >
+                Cargando equipos...
+              </div>
             )}
 
           </div>
 
         </div>
 
-        {/* ================================== */}
-        {/* FIXTURE EQUIPO */}
-        {/* ================================== */}
+        {/* ==================================
+            FIXTURE DEL EQUIPO
+        ================================== */}
 
         {selectedTeam && (
 
           <section
             style={{
-              marginBottom:
-                "20px",
-              background:
-                "#121821",
+              marginBottom: "20px",
+              background: "#121821",
               border:
                 "1px solid #263244",
-              borderRadius:
-                "10px",
-              padding:
-                "16px"
+              borderRadius: "10px",
+              padding: "16px"
             }}
           >
 
             <div
               style={{
-                display:
-                  "flex",
-                justifyContent:
-                  "space-between",
-                alignItems:
-                  "center",
-                marginBottom:
-                  "12px",
-                gap:
-                  "10px"
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "12px",
+                gap: "10px"
               }}
             >
 
@@ -1297,10 +1362,8 @@ function formatearHora(
 
                 <div
                   style={{
-                    fontSize:
-                      "12px",
-                    color:
-                      "#8b949e",
+                    fontSize: "12px",
+                    color: "#8b949e",
                     textTransform:
                       "uppercase"
                   }}
@@ -1310,12 +1373,9 @@ function formatearHora(
 
                 <div
                   style={{
-                    fontSize:
-                      "20px",
-                    fontWeight:
-                      700,
-                    marginTop:
-                      "3px"
+                    fontSize: "20px",
+                    fontWeight: 700,
+                    marginTop: "3px"
                   }}
                 >
                   {nombreEquipo(
@@ -1328,17 +1388,11 @@ function formatearHora(
               <button
                 onClick={() => {
 
-                  setSelectedTeam(
-                    null
-                  );
+                  setSelectedTeam(null);
 
-                  setTeamFixtures(
-                    []
-                  );
+                  setTeamFixtures([]);
 
-                  setSearch(
-                    ""
-                  );
+                  setSearch("");
 
                 }}
                 style={{
@@ -1361,42 +1415,38 @@ function formatearHora(
 
             </div>
 
+            {/* =================================
+                CARGANDO
+            ================================= */}
+
             {teamFixturesLoading ? (
 
               <div
                 style={{
-                  color:
-                    "#8b949e",
-                  fontSize:
-                    "14px"
+                  color: "#8b949e",
+                  fontSize: "14px"
                 }}
               >
                 Cargando fixture...
               </div>
 
-            ) : teamFixtures.length ===
-              0 ? (
+            ) : teamFixtures.length === 0 ? (
 
               <div
                 style={{
-                  color:
-                    "#8b949e",
-                  fontSize:
-                    "14px"
+                  color: "#8b949e",
+                  fontSize: "14px"
                 }}
               >
-                No se encontraron próximos
-                partidos.
+                No se encontraron próximos partidos.
               </div>
 
             ) : (
 
               <div
                 style={{
-                  display:
-                    "grid",
-                  gap:
-                    "8px"
+                  display: "grid",
+                  gap: "8px"
                 }}
               >
 
@@ -1406,36 +1456,93 @@ function formatearHora(
                     index
                   ) => {
 
-                    const teamsFixture =
-                      fixture?.teams ||
-                      [];
+                    // ==================================
+                    // DATOS DEL FIXTURE
+                    // ==================================
 
-                    const local =
-                      teamsFixture[0] ||
-                      {};
+                    const rival =
+                      obtenerRivalFixture(
+                        fixture
+                      );
 
-                    const visitante =
-                      teamsFixture[1] ||
-                      {};
+                    const condicion =
+                      obtenerCondicionFixture(
+                        fixture
+                      );
+
+                    const fecha =
+                      obtenerFechaFixture(
+                        fixture
+                      );
+
+                    const hora =
+                      obtenerHoraFixture(
+                        fixture
+                      );
+
+                    const competencia =
+                      obtenerCompetenciaFixture(
+                        fixture
+                      );
+
+                    // ==================================
+                    // NOMBRES
+                    // ==================================
+
+                    let equipoLocal = "";
+                    let equipoVisitante = "";
+
+                    if (
+                      condicion === "L"
+                    ) {
+
+                      equipoLocal =
+                        nombreEquipo(
+                          selectedTeam
+                        );
+
+                      equipoVisitante =
+                        rival;
+
+                    } else if (
+                      condicion === "V"
+                    ) {
+
+                      equipoLocal =
+                        rival;
+
+                      equipoVisitante =
+                        nombreEquipo(
+                          selectedTeam
+                        );
+
+                    } else {
+
+                      equipoLocal =
+                        nombreEquipo(
+                          selectedTeam
+                        );
+
+                      equipoVisitante =
+                        rival;
+
+                    }
 
                     return (
 
                       <div
                         key={
-                          fixture.id ||
-                          index
+                          fixture?.id ||
+                          `${fecha}-${rival}-${index}`
                         }
                         style={{
-                          display:
-                            "grid",
+                          display: "grid",
                           gridTemplateColumns:
-                            "100px 1fr 160px",
-                          alignItems:
-                            "center",
-                          gap:
-                            "12px",
+                            "90px 45px minmax(180px, 1fr) 80px 180px",
+                          alignItems: "center",
+                          gap: "12px",
                           padding:
-                            "10px 12px",
+                            "11px 12px",
                           background:
                             "#0d131a",
                           border:
@@ -1445,71 +1552,174 @@ function formatearHora(
                         }}
                       >
 
+                        {/* =================================
+                            FECHA
+                        ================================= */}
+
                         <div
                           style={{
                             color:
                               "#8b949e",
                             fontSize:
-                              "13px"
+                              "13px",
+                            fontWeight:
+                              600
                           }}
                         >
-                          {fixture.date ||
-                            ""}
+                          {fecha}
                         </div>
+
+                        {/* =================================
+                            L / V
+                        ================================= */}
 
                         <div
                           style={{
+                            textAlign:
+                              "center",
+                            fontSize:
+                              "12px",
+                            fontWeight:
+                              800,
+                            color:
+                              condicion === "L"
+                                ? "#10b981"
+                                : condicion === "V"
+                                  ? "#3b82f6"
+                                  : "#8b949e"
+                          }}
+                        >
+                          {condicion}
+                        </div>
+
+                        {/* =================================
+                            PARTIDO
+                        ================================= */}
+
+                        <div
+                          style={{
+                            display:
+                              "grid",
+                            gridTemplateColumns:
+                              "1fr 20px 1fr",
+                            alignItems:
+                              "center",
+                            gap:
+                              "8px",
                             fontSize:
                               "14px"
                           }}
                         >
-                          {nombreEquipo(
-                            local
-                          )}
-                          {" - "}
-                          {nombreEquipo(
-                            visitante
-                          )}
+
+                          <div
+                            style={{
+                              textAlign:
+                                "right",
+                              fontWeight:
+                                equipoLocal ===
+                                nombreEquipo(
+                                  selectedTeam
+                                )
+                                  ? 700
+                                  : 500
+                            }}
+                          >
+                            {equipoLocal ||
+                              "Equipo"}
+                          </div>
+
+                          <div
+                            style={{
+                              textAlign:
+                                "center",
+                              color:
+                                "#64748b",
+                              fontWeight:
+                                700
+                            }}
+                          >
+                            -
+                          </div>
+
+                          <div
+                            style={{
+                              textAlign:
+                                "left",
+                              fontWeight:
+                                equipoVisitante ===
+                                nombreEquipo(
+                                  selectedTeam
+                                )
+                                  ? 700
+                                  : 500
+                            }}
+                          >
+                            {equipoVisitante ||
+                              "Equipo"}
+                          </div>
+
                         </div>
+
+                        {/* =================================
+                            HORA
+                        ================================= */}
+
+                        <div
+                          style={{
+                            textAlign:
+                              "center",
+                            fontSize:
+                              "13px",
+                            color:
+                              "#e6edf3",
+                            fontWeight:
+                              700
+                          }}
+                        >
+                          {hora}
+                        </div>
+
+                        {/* =================================
+                            COMPETENCIA
+                        ================================= */}
 
                         <div
                           style={{
                             textAlign:
                               "right",
-                            color:
-                              "#8b949e",
                             fontSize:
-                              "13px"
+                              "11px",
+                            color:
+                              "#8b949e"
                           }}
                         >
-                          {fixture.competition ||
-                            fixture.league ||
-                            ""}
+                          {competencia}
                         </div>
 
                       </div>
+
                     );
+
                   }
                 )}
 
               </div>
+
             )}
 
           </section>
+
         )}
 
-        {/* ================================== */}
-        {/* FECHAS */}
-        {/* ================================== */}
+        {/* ==================================
+            FECHAS
+        ================================== */}
 
         <div
           style={{
-            display:
-              "flex",
-            gap:
-              "8px",
-            marginBottom:
-              "20px"
+            display: "flex",
+            gap: "8px",
+            marginBottom: "20px"
           }}
         >
 
@@ -1521,13 +1731,9 @@ function formatearHora(
             ([value, label]) => (
 
               <button
-                key={
-                  value
-                }
+                key={value}
                 onClick={() =>
-                  setDate(
-                    value
-                  )
+                  setDate(value)
                 }
                 style={{
                   background:
@@ -1568,18 +1774,16 @@ function formatearHora(
 
         </div>
 
-        {/* ================================== */}
-        {/* ERROR */}
-        {/* ================================== */}
+        {/* ==================================
+            ERROR
+        ================================== */}
 
         {error && (
 
           <div
             style={{
-              marginBottom:
-                "20px",
-              padding:
-                "12px",
+              marginBottom: "20px",
+              padding: "12px",
               border:
                 "1px solid #5b2525",
               background:
@@ -1595,20 +1799,17 @@ function formatearHora(
 
         )}
 
-        {/* ================================== */}
-        {/* CONTENIDO */}
-        {/* ================================== */}
+        {/* ==================================
+            CONTENIDO
+        ================================== */}
 
         {loading ? (
 
           <div
             style={{
-              padding:
-                "40px 0",
-              textAlign:
-                "center",
-              color:
-                "#8b949e"
+              padding: "40px 0",
+              textAlign: "center",
+              color: "#8b949e"
             }}
           >
             Cargando partidos...
@@ -1618,10 +1819,8 @@ function formatearHora(
 
           <div
             style={{
-              display:
-                "grid",
-              gap:
-                "20px"
+              display: "grid",
+              gap: "20px"
             }}
           >
 
@@ -1654,10 +1853,6 @@ function formatearHora(
                     league
                   );
 
-                // =================================
-                // LINK A POSICIONES
-                // =================================
-
                 const posicionesHref =
                   `/posiciones?competition=${competition}`;
 
@@ -1681,9 +1876,9 @@ function formatearHora(
                     }}
                   >
 
-                    {/* ======================= */}
-                    {/* HEADER LIGA */}
-                    {/* ======================= */}
+                    {/* =================================
+                        HEADER LIGA
+                    ================================= */}
 
                     <div
                       style={{
@@ -1767,9 +1962,9 @@ function formatearHora(
 
                     </div>
 
-                    {/* ======================= */}
-                    {/* PARTIDOS */}
-                    {/* ======================= */}
+                    {/* =================================
+                        PARTIDOS
+                    ================================= */}
 
                     <div>
 
@@ -1859,9 +2054,7 @@ function formatearHora(
                                 }}
                               >
 
-                                {/* ================= */}
                                 {/* ESTADO */}
-                                {/* ================= */}
 
                                 <div
                                   style={{
@@ -1895,7 +2088,6 @@ function formatearHora(
                                             "6px",
                                           borderRadius:
                                             "50%",
-                                          // ROJO
                                           background:
                                             "#ef4444",
                                           marginRight:
@@ -1913,9 +2105,7 @@ function formatearHora(
 
                                 </div>
 
-                                {/* ================= */}
                                 {/* PARTIDO */}
-                                {/* ================= */}
 
                                 <div>
 
@@ -1955,10 +2145,10 @@ function formatearHora(
                                             "14px",
                                           fontWeight:
                                             600,
-                                            color:
-                                          estado.live
-                                            ? "#ef4444"
-                                            : "#e6edf3"
+                                          color:
+                                            estado.live
+                                              ? "#ef4444"
+                                              : "#e6edf3"
                                         }}
                                       >
                                         {nombreEquipo(
@@ -1987,7 +2177,7 @@ function formatearHora(
 
                                     </div>
 
-                                   {/* MARCADOR */}
+                                    {/* MARCADOR */}
 
                                     <div
                                       style={{
@@ -2067,10 +2257,10 @@ function formatearHora(
                                             "14px",
                                           fontWeight:
                                             600,
-                                            color:
-                                          estado.live
-                                            ? "#ef4444"
-                                            : "#e6edf3"
+                                          color:
+                                            estado.live
+                                              ? "#ef4444"
+                                              : "#e6edf3"
                                         }}
                                       >
                                         {nombreEquipo(
@@ -2082,9 +2272,7 @@ function formatearHora(
 
                                   </div>
 
-                                  {/* ================= */}
                                   {/* GLOBAL */}
-                                  {/* ================= */}
 
                                   {global && (
 
@@ -2118,9 +2306,7 @@ function formatearHora(
                                           fontSize:
                                             "11px",
                                           fontWeight:
-                                            600,
-                                          letterSpacing:
-                                            "0.3px"
+                                            600
                                         }}
                                       >
 
@@ -2154,14 +2340,10 @@ function formatearHora(
 
                                   )}
 
-                                  {/* ================= */}
                                   {/* GOLES */}
-                                  {/* ================= */}
 
-                                  {(golesA.length >
-                                    0 ||
-                                    golesB.length >
-                                    0) && (
+                                  {(golesA.length > 0 ||
+                                    golesB.length > 0) && (
 
                                     <div
                                       style={{
@@ -2251,9 +2433,7 @@ function formatearHora(
 
                                 </div>
 
-                                {/* ================= */}
                                 {/* TV */}
-                                {/* ================= */}
 
                                 <div
                                   style={{
@@ -2266,9 +2446,7 @@ function formatearHora(
                                   }}
                                 >
 
-                                  {tv.length >
-                                  0 ? (
-
+                                  {tv.length > 0 &&
                                     tv.map(
                                       (
                                         network,
@@ -2290,9 +2468,7 @@ function formatearHora(
                                         </div>
 
                                       )
-                                    )
-
-                                  ) : null}
+                                    )}
 
                                 </div>
 
@@ -2312,9 +2488,9 @@ function formatearHora(
               }
             )}
 
-            {/* ================================= */}
-            {/* SIN PARTIDOS */}
-            {/* ================================= */}
+            {/* =================================
+                SIN PARTIDOS
+            ================================= */}
 
             {data.every(
               league =>
@@ -2340,8 +2516,7 @@ function formatearHora(
                     "10px"
                 }}
               >
-                No hay partidos para
-                esta fecha.
+                No hay partidos para esta fecha.
               </div>
 
             )}
@@ -2350,9 +2525,9 @@ function formatearHora(
 
         )}
 
-        {/* ================================== */}
-        {/* FOOTER */}
-        {/* ================================== */}
+        {/* ==================================
+            FOOTER
+        ================================== */}
 
         <div
           style={{
