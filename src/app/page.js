@@ -980,6 +980,24 @@ function obtenerGoles(team) {
 
   return team.goals;
 }
+  // ==========================================
+  // TV
+  // ==========================================
+
+  function obtenerTV(
+    game
+  ) {
+
+    if (
+      !Array.isArray(
+        game?.tv_networks
+      )
+    ) {
+      return [];
+    }
+
+    return game.tv_networks;
+  }
 
   // ==========================================
   // FIXTURE - NOMBRE RIVAL
