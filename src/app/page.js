@@ -967,19 +967,95 @@ export default function Home() {
   }
 
   // ==========================================
-// GOLES
-// ==========================================
+  // GOLES
+  // ==========================================
 
-function obtenerGoles(team) {
+  function obtenerGoles(
+    team
+  ) {
 
-  if (!Array.isArray(team?.goals)) {
-    return [];
+    if (
+      !Array.isArray(
+        team?.goals
+      )
+    ) {
+      return [];
+    }
+
+    return team.goals;
   }
 
-  console.log("GOLES RECIBIDOS:", team.goals);
+  // ==========================================
+  // DATOS DEL GOLEADOR
+  // ==========================================
 
-  return team.goals;
-}
+  function obtenerNombreGol(
+    goal
+  ) {
+
+    return (
+      goal?.player_sname ||
+      goal?.player_name ||
+      goal?.player ||
+      goal?.name ||
+      "Gol"
+    );
+  }
+
+  // ==========================================
+  // MINUTO DEL GOL
+  // ==========================================
+
+  function obtenerMinutoGol(
+    goal
+  ) {
+
+    // Primero usamos el formato que
+    // entrega directamente Promiedos:
+    // "45'"
+    if (
+      goal?.time_to_display !== undefined &&
+      goal?.time_to_display !== null &&
+      goal?.time_to_display !== ""
+    ) {
+
+      return String(
+        goal.time_to_display
+      );
+    }
+
+    // Respaldo: campo numérico "time"
+    if (
+      goal?.time !== undefined &&
+      goal?.time !== null &&
+      goal?.time !== ""
+    ) {
+
+      return `${goal.time}'`;
+    }
+
+    // Otros posibles formatos
+    if (
+      goal?.minute !== undefined &&
+      goal?.minute !== null &&
+      goal?.minute !== ""
+    ) {
+
+      return `${goal.minute}'`;
+    }
+
+    if (
+      goal?.min !== undefined &&
+      goal?.min !== null &&
+      goal?.min !== ""
+    ) {
+
+      return `${goal.min}'`;
+    }
+
+    return "";
+  }
+
   // ==========================================
   // TV
   // ==========================================
@@ -1451,10 +1527,6 @@ function obtenerGoles(team) {
                     index
                   ) => {
 
-                    // ==================================
-                    // DATOS DEL FIXTURE
-                    // ==================================
-
                     const rival =
                       obtenerRivalFixture(
                         fixture
@@ -1479,10 +1551,6 @@ function obtenerGoles(team) {
                       obtenerCompetenciaFixture(
                         fixture
                       );
-
-                    // ==================================
-                    // NOMBRES
-                    // ==================================
 
                     let equipoLocal = "";
                     let equipoVisitante = "";
@@ -1547,10 +1615,6 @@ function obtenerGoles(team) {
                         }}
                       >
 
-                        {/* =================================
-                            FECHA
-                        ================================= */}
-
                         <div
                           style={{
                             color:
@@ -1563,10 +1627,6 @@ function obtenerGoles(team) {
                         >
                           {fecha}
                         </div>
-
-                        {/* =================================
-                            L / V
-                        ================================= */}
 
                         <div
                           style={{
@@ -1586,10 +1646,6 @@ function obtenerGoles(team) {
                         >
                           {condicion}
                         </div>
-
-                        {/* =================================
-                            PARTIDO
-                        ================================= */}
 
                         <div
                           style={{
@@ -1655,10 +1711,6 @@ function obtenerGoles(team) {
 
                         </div>
 
-                        {/* =================================
-                            HORA
-                        ================================= */}
-
                         <div
                           style={{
                             textAlign:
@@ -1673,10 +1725,6 @@ function obtenerGoles(team) {
                         >
                           {hora}
                         </div>
-
-                        {/* =================================
-                            COMPETENCIA
-                        ================================= */}
 
                         <div
                           style={{
@@ -2357,6 +2405,8 @@ function obtenerGoles(team) {
                                       }}
                                     >
 
+                                      {/* GOLES LOCAL */}
+
                                       <div
                                         style={{
                                           textAlign:
@@ -2368,29 +2418,51 @@ function obtenerGoles(team) {
                                           (
                                             goal,
                                             index
-                                          ) => (
+                                          ) => {
 
-                                            <div
-                                              key={
-                                                index
-                                              }
-                                            >
+                                            const nombre =
+                                              obtenerNombreGol(
+                                                goal
+                                              );
 
-                                              {goal.player_name ||
-                                                goal.player ||
-                                                goal.name ||
-                                                "Gol"}
+                                            const minuto =
+                                              obtenerMinutoGol(
+                                                goal
+                                              );
 
-                                              {goal.minute !=
-                                                null &&
-                                                ` ${goal.minute}'`}
+                                            return (
 
-                                            </div>
+                                              <div
+                                                key={
+                                                  index
+                                                }
+                                              >
 
-                                          )
+                                                {nombre}
+
+                                                {minuto && (
+                                                  <span
+                                                    style={{
+                                                      marginLeft:
+                                                        "4px",
+                                                      color:
+                                                        "#64748b"
+                                                    }}
+                                                  >
+                                                    {minuto}
+                                                  </span>
+                                                )}
+
+                                              </div>
+
+                                            );
+
+                                          }
                                         )}
 
                                       </div>
+
+                                      {/* GOLES VISITANTE */}
 
                                       <div>
 
@@ -2398,26 +2470,46 @@ function obtenerGoles(team) {
                                           (
                                             goal,
                                             index
-                                          ) => (
+                                          ) => {
 
-                                            <div
-                                              key={
-                                                index
-                                              }
-                                            >
+                                            const nombre =
+                                              obtenerNombreGol(
+                                                goal
+                                              );
 
-                                              {goal.player_name ||
-                                                goal.player ||
-                                                goal.name ||
-                                                "Gol"}
+                                            const minuto =
+                                              obtenerMinutoGol(
+                                                goal
+                                              );
 
-                                              {goal.minute !=
-                                                null &&
-                                                ` ${goal.minute}'`}
+                                            return (
 
-                                            </div>
+                                              <div
+                                                key={
+                                                  index
+                                                }
+                                              >
 
-                                          )
+                                                {nombre}
+
+                                                {minuto && (
+                                                  <span
+                                                    style={{
+                                                      marginLeft:
+                                                        "4px",
+                                                      color:
+                                                        "#64748b"
+                                                    }}
+                                                  >
+                                                    {minuto}
+                                                  </span>
+                                                )}
+
+                                              </div>
+
+                                            );
+
+                                          }
                                         )}
 
                                       </div>
