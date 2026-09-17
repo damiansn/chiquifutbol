@@ -1,2036 +1,1820 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef
+} from "react";
+
 import Link from "next/link";
 
-// ======================================================
-// FORMATEAR FECHA
-// ======================================================
-
-const formatFullDateTime = (dateStr, timeStr) => {
-  if (!dateStr) return timeStr ? `Hora: ${timeStr}` : "";
-
-  const cleanDate = dateStr.trim();
-
-  try {
-    const parsedDate = new Date(
-      cleanDate.includes("T")
-        ? cleanDate
-        : `${cleanDate}T00:00:00`
-    );
-
-    if (!isNaN(parsedDate)) {
-      const options = {
-        weekday: "long",
-        day: "numeric",
-        month: "short"
-      };
-
-      const formattedDate = parsedDate.toLocaleDateString(
-        "es-AR",
-        options
-      );
-
-      const capitalized =
-        formattedDate.charAt(0).toUpperCase() +
-        formattedDate.slice(1);
-
-      return timeStr
-        ? `${capitalized} - ${timeStr} hs`
-        : capitalized;
-    }
-  } catch (e) {
-    // Si es texto plano, seguimos abajo
-  }
-
-  return timeStr
-    ? `${cleanDate} - ${timeStr} hs`
-    : cleanDate;
-};
-
-// ======================================================
-// HOME
-// ======================================================
+// ==========================================
+// PÁGINA PRINCIPAL
+// ==========================================
 
 export default function Home() {
-  // ----------------------------------------------------
-  // PARTIDOS
-  // ----------------------------------------------------
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // ========================================
+  // ESTADOS
+  // ========================================
 
-  // Ayer / Hoy / Mañana
-  const [selectedDate, setSelectedDate] = useState("today");
+  const [date, setDate] =
+    useState("today");
 
-  // Ligas ocultas
-  const [hiddenLeagues, setHiddenLeagues] = useState([]);
-
-  // ----------------------------------------------------
-  // BUSCADOR DE EQUIPOS
-  // ----------------------------------------------------
-
-  const [teamSearchQuery, setTeamSearchQuery] = useState("");
-
-  const [selectedTeamFilter, setSelectedTeamFilter] =
-    useState(null);
-
-  const [showFullFixture, setShowFullFixture] =
-    useState(false);
-
-  const [teamFixtureData, setTeamFixtureData] =
+  const [data, setData] =
     useState([]);
 
-  const [nextFetchDate, setNextFetchDate] =
-    useState(null);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [loadingFixture, setLoadingFixture] =
-    useState(false);
+  const [error, setError] =
+    useState("");
 
-  const [availableTeams, setAvailableTeams] =
+  const [search, setSearch] =
+    useState("");
+
+  const [teams, setTeams] =
     useState([]);
 
-  // ----------------------------------------------------
-  // BUSCADOR
-  // ----------------------------------------------------
-
-  const searchContainerRef = useRef(null);
-
-  const [isSearchFocused, setIsSearchFocused] =
+  const [teamSearchLoading, setTeamSearchLoading] =
     useState(false);
 
-  // ====================================================
+  const [selectedTeam, setSelectedTeam] =
+    useState(null);
+
+  const [teamFixtures, setTeamFixtures] =
+    useState([]);
+
+  const [teamFixturesLoading, setTeamFixturesLoading] =
+    useState(false);
+
+  const searchInputRef =
+    useRef(null);
+
+  // ========================================
   // CARGAR PARTIDOS
-  // ====================================================
+  // ========================================
 
-  const fetchMatches = async (date = selectedDate) => {
+  async function cargarPartidos() {
+
     try {
-      setLoading(true);
 
-      const res = await fetch(
-        `/api/matches?date=${date}`,
-        {
-          cache: "no-store"
-        }
-      );
+      setError("");
 
-      if (!res.ok) {
+      const response =
+        await fetch(
+          `/api/matches?date=${date}`,
+          {
+            cache: "no-store"
+          }
+        );
+
+      if (!response.ok) {
         throw new Error(
-          "Error al obtener los partidos"
+          "No se pudieron cargar los partidos."
         );
       }
 
-      const json = await res.json();
+      const json =
+        await response.json();
 
-      setData(json);
-      setError(null);
-    } catch (err) {
-      console.error(
-        "Error cargando partidos:",
-        err
+      setData(
+        Array.isArray(json)
+          ? json
+          : []
       );
 
-      setError(err.message);
+    } catch (err) {
+
+      console.error(err);
+
+      setError(
+        err.message ||
+        "Error cargando partidos."
+      );
+
     } finally {
+
       setLoading(false);
     }
-  };
+  }
 
-  // ====================================================
-  // CARGAR LISTA DE EQUIPOS
-  // ====================================================
-
-  useEffect(() => {
-    const loadAvailableTeams = async () => {
-      try {
-        const res = await fetch(
-          "/api/team-fixture?list=true"
-        );
-
-        if (!res.ok) {
-          throw new Error(
-            "No se pudo obtener la lista de equipos"
-          );
-        }
-
-        const json = await res.json();
-
-        setAvailableTeams(
-          Array.isArray(json.teams)
-            ? json.teams
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "Error cargando lista de equipos:",
-          error
-        );
-      }
-    };
-
-    loadAvailableTeams();
-  }, []);
-
-  // ====================================================
-  // CLICK FUERA DEL BUSCADOR
-  // ====================================================
+  // ========================================
+  // CARGA INICIAL + CAMBIO DE FECHA
+  // ========================================
 
   useEffect(() => {
-    const savedHidden = localStorage.getItem(
-      "chiquifutbol_hidden_leagues"
-    );
 
-    if (savedHidden) {
-      try {
-        setHiddenLeagues(
-          JSON.parse(savedHidden)
-        );
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    setLoading(true);
 
-    const handleClickOutside = (event) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(
-          event.target
-        )
-      ) {
-        setIsSearchFocused(false);
-      }
-    };
+    cargarPartidos();
 
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside
-    );
+  }, [date]);
 
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
-    };
-  }, []);
-
-  // ====================================================
-  // CAMBIO DE FECHA
-  // ====================================================
-
-  const handleDateChange = (newDate) => {
-    setSelectedDate(newDate);
-
-    setSelectedTeamFilter(null);
-    setShowFullFixture(false);
-    setTeamSearchQuery("");
-    setTeamFixtureData([]);
-    setNextFetchDate(null);
-
-    fetchMatches(newDate);
-  };
-
-  // ====================================================
-  // SUGERENCIAS DE EQUIPOS
-  // ====================================================
-
-  const filteredSuggestions = useMemo(() => {
-    if (!teamSearchQuery.trim()) {
-      return [];
-    }
-
-    const query = teamSearchQuery
-      .toLowerCase()
-      .trim();
-
-    return availableTeams
-      .filter((teamName) =>
-        teamName
-          .toLowerCase()
-          .includes(query)
-      )
-      .map((teamName) => ({
-        teamName,
-        leagueName: "Fixture del equipo",
-        leagueId: `team-${teamName}`
-      }));
-  }, [
-    teamSearchQuery,
-    availableTeams
-  ]);
-
-  // ====================================================
-  // SELECCIONAR EQUIPO
-  // ====================================================
-
-  const handleSelectTeam = (item) => {
-    setSelectedTeamFilter(item);
-
-    setTeamSearchQuery(
-      item.teamName
-    );
-
-    setShowFullFixture(true);
-
-    setIsSearchFocused(false);
-
-    loadTeamFixture(item.teamName);
-  };
-
-  // ====================================================
-  // LIMPIAR EQUIPO
-  // ====================================================
-
-  const handleClearTeamFilter = () => {
-    setSelectedTeamFilter(null);
-
-    setTeamSearchQuery("");
-
-    setShowFullFixture(false);
-
-    setTeamFixtureData([]);
-
-    setNextFetchDate(null);
-  };
-
-  // ====================================================
-  // CARGAR FIXTURE DEL EQUIPO
-  // ====================================================
-
-  const loadTeamFixture = async (
-    teamName,
-    dateStr = null,
-    append = false
-  ) => {
-    setLoadingFixture(true);
-
-    try {
-      let url =
-        `/api/team-fixture?team=` +
-        encodeURIComponent(teamName);
-
-      if (dateStr) {
-        url += `&date=${dateStr}`;
-      }
-
-      const res = await fetch(url);
-
-      if (!res.ok) {
-        throw new Error(
-          "Error al obtener el fixture"
-        );
-      }
-
-      const json = await res.json();
-
-      const newMatches =
-        json.matches || [];
-
-      if (append) {
-        setTeamFixtureData((prev) => {
-          const existingIds =
-            new Set(
-              prev.map(
-                (m) =>
-                  m.id ||
-                  `${m.date}-${m.rawText}`
-              )
-            );
-
-          const filteredNew =
-            newMatches.filter(
-              (m) =>
-                !existingIds.has(
-                  m.id ||
-                  `${m.date}-${m.rawText}`
-                )
-            );
-
-          return [
-            ...prev,
-            ...filteredNew
-          ];
-        });
-      } else {
-        setTeamFixtureData(
-          newMatches
-        );
-      }
-
-      setNextFetchDate(
-        json.nextDateParam || null
-      );
-    } catch (err) {
-      console.error(
-        "Error cargando fixture:",
-        err
-      );
-    } finally {
-      setLoadingFixture(false);
-    }
-  };
-
-  // ====================================================
-  // FILTROS DE LIGAS
-  // ====================================================
-
-  const toggleLeagueFilter = (
-    leagueId
-  ) => {
-    const updated =
-      hiddenLeagues.includes(leagueId)
-        ? hiddenLeagues.filter(
-            (id) => id !== leagueId
-          )
-        : [
-            ...hiddenLeagues,
-            leagueId
-          ];
-
-    setHiddenLeagues(updated);
-
-    localStorage.setItem(
-      "chiquifutbol_hidden_leagues",
-      JSON.stringify(updated)
-    );
-  };
-
-  const hideAllLeagues = () => {
-    const allIds = Array.isArray(data)
-      ? data.map((l) => l.id)
-      : data?.leagues
-        ? data.leagues.map(
-            (l) => l.id
-          )
-        : [];
-
-    setHiddenLeagues(allIds);
-
-    localStorage.setItem(
-      "chiquifutbol_hidden_leagues",
-      JSON.stringify(allIds)
-    );
-  };
-
-  const showAllLeagues = () => {
-    setHiddenLeagues([]);
-
-    localStorage.setItem(
-      "chiquifutbol_hidden_leagues",
-      JSON.stringify([])
-    );
-  };
-
-  // ====================================================
-  // CARGA INICIAL + ACTUALIZACIÓN CADA 30 SEGUNDOS
-  // ====================================================
+  // ========================================
+  // ACTUALIZACIÓN AUTOMÁTICA
+  // ========================================
 
   useEffect(() => {
-    fetchMatches(selectedDate);
 
     const interval =
       setInterval(() => {
-        fetchMatches(selectedDate);
+
+        cargarPartidos();
+
       }, 30000);
 
     return () =>
       clearInterval(interval);
-  }, [selectedDate]);
 
-  // ====================================================
-  // ERROR
-  // ====================================================
+  }, [date]);
 
-  if (error) {
+  // ========================================
+  // CARGAR EQUIPOS
+  // ========================================
+
+  async function cargarEquipos() {
+
+    try {
+
+      setTeamSearchLoading(true);
+
+      const response =
+        await fetch(
+          "/api/team-fixture?list=true",
+          {
+            cache: "no-store"
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "No se pudieron cargar los equipos."
+        );
+      }
+
+      const json =
+        await response.json();
+
+      setTeams(
+        Array.isArray(json)
+          ? json
+          : []
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Error cargando equipos:",
+        err
+      );
+
+    } finally {
+
+      setTeamSearchLoading(false);
+    }
+  }
+
+  // ========================================
+  // CARGAR EQUIPOS AL ENFOCAR BÚSQUEDA
+  // ========================================
+
+  useEffect(() => {
+
+    if (
+      searchInputRef.current
+    ) {
+      cargarEquipos();
+    }
+
+  }, []);
+
+  // ========================================
+  // BUSCAR EQUIPOS
+  // ========================================
+
+  const equiposFiltrados =
+    useMemo(() => {
+
+      const texto =
+        search
+          .trim()
+          .toLowerCase();
+
+      if (!texto) {
+        return [];
+      }
+
+      return teams
+        .filter(team => {
+
+          const nombre =
+            (
+              team.name ||
+              team.nombre ||
+              ""
+            )
+              .toLowerCase();
+
+          return nombre.includes(
+            texto
+          );
+        })
+        .slice(0, 10);
+
+    }, [
+      search,
+      teams
+    ]);
+
+  // ========================================
+  // SELECCIONAR EQUIPO
+  // ========================================
+
+  async function seleccionarEquipo(
+    team
+  ) {
+
+    setSelectedTeam(team);
+
+    setSearch(
+      team.name ||
+      team.nombre ||
+      ""
+    );
+
+    setTeamFixtures([]);
+
+    try {
+
+      setTeamFixturesLoading(true);
+
+      const teamId =
+        team.id ||
+        team.team_id ||
+        team.teamId;
+
+      const response =
+        await fetch(
+          `/api/team-fixture?team=${encodeURIComponent(
+            teamId
+          )}`,
+          {
+            cache: "no-store"
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "No se pudieron cargar los próximos partidos."
+        );
+      }
+
+      const json =
+        await response.json();
+
+      setTeamFixtures(
+        Array.isArray(json)
+          ? json
+          : json.fixtures || []
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Error cargando fixture:",
+        err
+      );
+
+      setTeamFixtures([]);
+
+    } finally {
+
+      setTeamFixturesLoading(false);
+    }
+  }
+
+  // ========================================
+  // COMPETENCIA
+  // ========================================
+
+  function obtenerCompetition(
+    league
+  ) {
+
+    const nombre = (
+      league?.name ||
+      league?.nombre ||
+      league?.title ||
+      ""
+    )
+      .toLowerCase();
+
+    if (
+      nombre.includes("libertadores")
+    ) {
+      return "libertadores";
+    }
+
+    if (
+      nombre.includes("sudamericana")
+    ) {
+      return "sudamericana";
+    }
+
+    if (
+      nombre.includes("copa argentina")
+    ) {
+      return "copa_argentina";
+    }
+
+    if (
+      nombre.includes("champions")
+    ) {
+      return "champions";
+    }
+
+    if (
+      nombre.includes("europa league")
+    ) {
+      return "europa_league";
+    }
+
+    if (
+      nombre.includes("conference")
+    ) {
+      return "conference_league";
+    }
+
+    return "argentina";
+  }
+
+  // ========================================
+  // OBTENER NOMBRE DE LEAGUE
+  // ========================================
+
+  function obtenerNombreLeague(
+    league
+  ) {
+
     return (
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          color: "#ef4444"
-        }}
-      >
-        <p>Error: {error}</p>
-      </div>
+      league?.name ||
+      league?.nombre ||
+      league?.title ||
+      "Partidos"
     );
   }
 
-  // ====================================================
-  // LIGAS
-  // ====================================================
+  // ========================================
+  // FORMATEAR HORA
+  // ========================================
 
-  // IMPORTANTE:
-  // /api/matches devuelve directamente un ARRAY de ligas.
-  // También dejamos compatibilidad con { leagues: [...] }.
+  function formatearHora(
+    game
+  ) {
 
-  const leagues = Array.isArray(data)
-    ? data
-    : data?.leagues || [];
+    if (
+      game?.time
+    ) {
+      return game.time;
+    }
 
-  const filteredLeagues =
-    leagues.filter(
-      (league) =>
-        !hiddenLeagues.includes(
-          league.id
-        )
+    if (
+      game?.hour
+    ) {
+      return game.hour;
+    }
+
+    if (
+      game?.date
+    ) {
+
+      try {
+
+        const fecha =
+          new Date(game.date);
+
+        if (
+          !Number.isNaN(
+            fecha.getTime()
+          )
+        ) {
+
+          return fecha.toLocaleTimeString(
+            "es-AR",
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          );
+        }
+
+      } catch {}
+    }
+
+    return "--:--";
+  }
+
+  // ========================================
+  // OBTENER SCORE
+  // ========================================
+
+  function obtenerScore(
+    game,
+    indice
+  ) {
+
+    if (
+      Array.isArray(
+        game?.scores
+      )
+    ) {
+
+      return (
+        game.scores[indice] ??
+        "-"
+      );
+    }
+
+    return "-";
+  }
+
+  // ========================================
+  // ESTADO DEL PARTIDO
+  // ========================================
+
+  function obtenerEstado(
+    game
+  ) {
+
+    const estado =
+      game?.status;
+
+    if (
+      estado?.enum === 2
+    ) {
+      return {
+        texto: "EN VIVO",
+        color: "#10b981",
+        live: true
+      };
+    }
+
+    if (
+      estado?.enum === 3
+    ) {
+      return {
+        texto: "FINAL",
+        color: "#9ca3af",
+        live: false
+      };
+    }
+
+    if (
+      estado?.enum === 1
+    ) {
+      return {
+        texto:
+          formatearHora(game),
+        color: "#3b82f6",
+        live: false
+      };
+    }
+
+    return {
+      texto:
+        estado?.name ||
+        formatearHora(game),
+
+      color: "#9ca3af",
+
+      live: false
+    };
+  }
+
+  // ========================================
+  // EQUIPO
+  // ========================================
+
+  function obtenerEquipo(
+    game,
+    indice
+  ) {
+
+    return (
+      game?.teams?.[indice] ||
+      {}
     );
-
-    // ====================================================
-// OBTENER COMPETENCIA PARA PÁGINA DE POSICIONES
-// ====================================================
-
-const obtenerCompetition = (league) => {
-  const nombre = (league?.name || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
-  if (
-    nombre.includes("libertadores")
-  ) {
-    return "libertadores";
   }
 
-  if (
-    nombre.includes("sudamericana")
+  // ========================================
+  // NOMBRE EQUIPO
+  // ========================================
+
+  function nombreEquipo(
+    team
   ) {
-    return "sudamericana";
+
+    return (
+      team?.name ||
+      team?.short_name ||
+      team?.team_name ||
+      "Equipo"
+    );
   }
 
-  if (
-    nombre.includes("copa argentina")
+  // ========================================
+  // LOGO EQUIPO
+  // ========================================
+
+  function logoEquipo(
+    team
   ) {
-    return "copa_argentina";
+
+    return (
+      team?.logo ||
+      team?.image ||
+      team?.icon ||
+      team?.symbol ||
+      null
+    );
   }
 
-  if (
-    nombre.includes("champions")
+  // ========================================
+  // GLOBAL
+  // ========================================
+
+  function obtenerGlobal(
+    game
   ) {
-    return "champions";
+
+    if (
+      !game?.global
+    ) {
+      return null;
+    }
+
+    const global =
+      game.global;
+
+    const teamA =
+      obtenerEquipo(
+        game,
+        0
+      );
+
+    const teamB =
+      obtenerEquipo(
+        game,
+        1
+      );
+
+    // --------------------------------------
+    // El sync guarda el global siguiendo
+    // el orden del partido actual.
+    // --------------------------------------
+
+    let scoreA =
+      global.score1;
+
+    let scoreB =
+      global.score2;
+
+    // --------------------------------------
+    // Si por alguna razón no existen score1/2
+    // intentamos leer team1/team2.
+    // --------------------------------------
+
+    if (
+      scoreA === undefined ||
+      scoreA === null
+    ) {
+      scoreA =
+        global.team1?.score;
+    }
+
+    if (
+      scoreB === undefined ||
+      scoreB === null
+    ) {
+      scoreB =
+        global.team2?.score;
+    }
+
+    if (
+      scoreA === undefined ||
+      scoreA === null ||
+      scoreB === undefined ||
+      scoreB === null
+    ) {
+      return null;
+    }
+
+    return {
+      scoreA,
+      scoreB,
+
+      stage:
+        global.stage ||
+        null
+    };
   }
 
-  if (
-    nombre.includes("europa league")
+  // ========================================
+  // GOLES
+  // ========================================
+
+  function obtenerGoles(
+    team
   ) {
-    return "europa_league";
+
+    if (
+      !Array.isArray(
+        team?.goals
+      )
+    ) {
+      return [];
+    }
+
+    return team.goals;
   }
 
-  if (
-    nombre.includes("conference league")
+  // ========================================
+  // TV
+  // ========================================
+
+  function obtenerTV(
+    game
   ) {
-    return "conference_league";
+
+    if (
+      !Array.isArray(
+        game?.tv_networks
+      )
+    ) {
+      return [];
+    }
+
+    return game.tv_networks;
   }
 
-  // Liga Argentina / Primera División
-  return "argentina";
-};
-
-  // ====================================================
+  // ========================================
   // RENDER
-  // ====================================================
+  // ========================================
 
   return (
     <main
       style={{
-        maxWidth: "950px",
-        width: "100%",
-        margin: "0 auto",
+        minHeight: "100vh",
+        background: "#0d131a",
+        color: "#e6edf3",
         padding: "20px"
       }}
     >
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+      {/* ================================== */}
+      {/* HEADER */}
+      {/* ================================== */}
 
-      <header
+      <div
         style={{
-          display: "flex",
-          justifyContent:
-            "space-between",
-          alignItems: "center",
-          borderBottom:
-            "1px solid rgba(128,128,128,0.2)",
-          paddingBottom: "16px",
-          marginBottom: "20px"
+          maxWidth: "1400px",
+          margin: "0 auto"
         }}
       >
+
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px"
+            justifyContent: "space-between",
+            gap: "20px",
+            marginBottom: "20px",
+            flexWrap: "wrap"
           }}
         >
-          <img
-            src="/logo.svg"
-            alt="Chiquifútbol Logo"
-            style={{
-              height: "58px",
-              width: "auto",
-              display: "block"
-            }}
-          />
 
-          <h1
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: "bold",
-              textTransform:
-                "uppercase",
-              letterSpacing: "1px",
-              margin: 0
-            }}
-          >
-            Chiquifútbol
-          </h1>
-        </div>
+          <div>
 
-        <button
-          onClick={() =>
-            fetchMatches(
-              selectedDate
-            )
-          }
-          style={{
-            background: "transparent",
-            border:
-              "1px solid currentColor",
-            padding: "6px 14px",
-            borderRadius: "6px",
-            fontWeight: "600",
-            cursor: "pointer"
-          }}
-        >
-          Actualizar
-        </button>
-      </header>
-
-      {/* =================================================
-          SELECTOR DE FECHA
-      ================================================= */}
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "10px",
-          marginBottom: "16px"
-        }}
-      >
-        {[
-          {
-            id: "ayer",
-            label: "Ayer"
-          },
-          {
-            id: "today",
-            label: "Hoy"
-          },
-          {
-            id: "manana",
-            label: "Mañana"
-          }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() =>
-              handleDateChange(
-                tab.id
-              )
-            }
-            style={{
-              background:
-                selectedDate ===
-                tab.id
-                  ? "#10b981"
-                  : "rgba(128,128,128,0.08)",
-              color:
-                selectedDate ===
-                tab.id
-                  ? "#fff"
-                  : "inherit",
-              border:
-                "1px solid rgba(128,128,128,0.2)",
-              padding:
-                "8px 20px",
-              borderRadius: "8px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition:
-                "all 0.2s ease"
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* =================================================
-          BUSCADOR UNIVERSAL DE EQUIPOS
-      ================================================= */}
-
-      <div
-        ref={searchContainerRef}
-        style={{
-          position: "relative",
-          marginBottom: "16px",
-          maxWidth: "450px",
-          margin:
-            "0 auto 16px auto"
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: "8px"
-          }}
-        >
-          <input
-            type="text"
-            placeholder="🔍 ¿Cúando juega mi equipo?"
-            value={
-              teamSearchQuery
-            }
-            onFocus={() =>
-              setIsSearchFocused(
-                true
-              )
-            }
-            onChange={(e) => {
-              const value =
-                e.target.value;
-
-              setTeamSearchQuery(
-                value
-              );
-
-              setIsSearchFocused(
-                true
-              );
-
-              if (!value) {
-                handleClearTeamFilter();
-              }
-            }}
-            onKeyDown={(e) => {
-              if (
-                e.key === "Enter" &&
-                filteredSuggestions.length >
-                  0
-              ) {
-                handleSelectTeam(
-                  filteredSuggestions[0]
-                );
-              }
-            }}
-            style={{
-              width: "100%",
-              padding:
-                "10px 14px",
-              borderRadius: "8px",
-              border:
-                "1px solid rgba(128,128,128,0.3)",
-              background:
-                "rgba(128,128,128,0.04)",
-              color: "inherit",
-              fontSize: "0.9rem",
-              outline: "none"
-            }}
-          />
-
-          {selectedTeamFilter && (
-            <button
-              onClick={
-                handleClearTeamFilter
-              }
+            <h1
               style={{
-                background: "#ef4444",
-                color: "#fff",
-                border: "none",
-                padding: "0 14px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "0.8rem"
+                margin: 0,
+                fontSize: "28px",
+                fontWeight: 800
               }}
-              title="Limpiar filtro"
             >
-              ✕
-            </button>
-          )}
-        </div>
+              ChiquiFútbol
+            </h1>
 
-        {/* =================================================
-            SUGERENCIAS
-        ================================================= */}
-
-        {isSearchFocused &&
-          teamSearchQuery.trim() && (
             <div
               style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                background:
-                  "var(--background, #18181b)",
-                border:
-                  "1px solid rgba(128,128,128,0.3)",
-                borderRadius: "8px",
-                marginTop: "4px",
-                maxHeight: "220px",
-                overflowY: "auto",
-                zIndex: 50,
-                boxShadow:
-                  "0 4px 12px rgba(0,0,0,0.3)"
+                color: "#8b949e",
+                fontSize: "13px",
+                marginTop: "4px"
               }}
             >
+              Resultados y partidos en vivo
+            </div>
 
-              {filteredSuggestions.length >
-              0 ? (
-                filteredSuggestions.map(
-                  (item, idx) => (
-                    <div
-                      key={`${item.teamName}-${idx}`}
+          </div>
+
+          {/* ================================= */}
+          {/* BUSCADOR DE EQUIPOS */}
+          {/* ================================= */}
+
+          <div
+            style={{
+              position: "relative",
+              width: "320px",
+              maxWidth: "100%"
+            }}
+          >
+
+            <input
+              ref={searchInputRef}
+              value={search}
+              onChange={e => {
+                setSearch(
+                  e.target.value
+                );
+
+                if (
+                  selectedTeam
+                ) {
+                  setSelectedTeam(
+                    null
+                  );
+
+                  setTeamFixtures(
+                    []
+                  );
+                }
+              }}
+              placeholder="Buscar equipo..."
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                background: "#121821",
+                border: "1px solid #263244",
+                borderRadius: "8px",
+                padding: "10px 12px",
+                color: "#e6edf3",
+                outline: "none",
+                fontSize: "14px"
+              }}
+            />
+
+            {search.trim() &&
+              !selectedTeam &&
+              equiposFiltrados.length >
+                0 && (
+
+              <div
+                style={{
+                  position: "absolute",
+                  top: "44px",
+                  left: 0,
+                  right: 0,
+                  zIndex: 50,
+                  background: "#121821",
+                  border: "1px solid #263244",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  boxShadow:
+                    "0 10px 30px rgba(0,0,0,.35)"
+                }}
+              >
+
+                {equiposFiltrados.map(
+                  team => (
+
+                    <button
+                      key={
+                        team.id ||
+                        team.team_id ||
+                        team.name
+                      }
                       onClick={() =>
-                        handleSelectTeam(
-                          item
+                        seleccionarEquipo(
+                          team
                         )
                       }
                       style={{
-                        padding:
-                          "10px 14px",
-                        cursor:
-                          "pointer",
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "10px 12px",
+                        border: "none",
                         borderBottom:
-                          "1px solid rgba(128,128,128,0.1)",
-                        fontSize:
-                          "0.85rem",
-                        display: "flex",
-                        justifyContent:
-                          "space-between",
-                        alignItems:
-                          "center"
+                          "1px solid #263244",
+                        background:
+                          "transparent",
+                        color: "#e6edf3",
+                        cursor: "pointer",
+                        fontSize: "14px"
                       }}
                     >
-                      <span
-                        style={{
-                          fontWeight:
-                            "600"
-                        }}
-                      >
-                        {item.teamName}
-                      </span>
+                      {nombreEquipo(
+                        team
+                      )}
+                    </button>
 
-                      <span
-                        style={{
-                          opacity: 0.6,
-                          fontSize:
-                            "0.75rem"
-                        }}
-                      >
-                        Fixture del equipo
-                      </span>
-                    </div>
                   )
-                )
-              ) : (
-                <div
-                  style={{
-                    padding:
-                      "14px",
-                    fontSize:
-                      "0.85rem",
-                    opacity: 0.65,
-                    textAlign:
-                      "center"
-                  }}
-                >
-                  No se encontró
-                  ningún equipo
-                  con ese nombre.
-                </div>
-              )}
-            </div>
-          )}
-      </div>
+                )}
 
-      {/* =================================================
-          FIXTURE DEL EQUIPO
-      ================================================= */}
+              </div>
 
-      {showFullFixture && (
-        <div
-          style={{
-            border:
-              "1px solid rgba(128,128,128,0.3)",
-            borderRadius: "8px",
-            padding: "16px",
-            marginBottom: "24px",
-            background:
-              "rgba(128,128,128,0.02)"
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "space-between",
-              alignItems: "center",
-              marginBottom: "12px",
-              borderBottom:
-                "1px solid rgba(128,128,128,0.2)",
-              paddingBottom: "8px"
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: "1rem"
-              }}
-            >
-              Calendario:{" "}
-              {
-                selectedTeamFilter?.teamName
-              }
-            </h3>
+            )}
 
-            <button
-              onClick={() =>
-                setShowFullFixture(
-                  false
-                )
-              }
-              style={{
-                background: "none",
-                border: "none",
-                cursor:
-                  "pointer",
-                fontWeight:
-                  "bold",
-                color: "inherit"
-              }}
-            >
-              Cerrar [X]
-            </button>
           </div>
 
-          {teamFixtureData.length ===
-            0 &&
-          loadingFixture ? (
-            <p
-              style={{
-                textAlign:
-                  "center",
-                opacity: 0.6,
-                padding: "20px"
-              }}
-            >
-              Buscando partidos...
-            </p>
-          ) : teamFixtureData.length ===
-            0 ? (
-            <p
-              style={{
-                textAlign:
-                  "center",
-                opacity: 0.6,
-                padding: "10px"
-              }}
-            >
-              No se encontraron
-              partidos para este
-              equipo.
-            </p>
-          ) : (
+        </div>
+
+        {/* ================================== */}
+        {/* FIXTURE DEL EQUIPO */}
+        {/* ================================== */}
+
+        {selectedTeam && (
+
+          <section
+            style={{
+              marginBottom: "20px",
+              background: "#121821",
+              border:
+                "1px solid #263244",
+              borderRadius: "10px",
+              padding: "16px"
+            }}
+          >
+
             <div
               style={{
-                display:
-                  "flex",
-                flexDirection:
-                  "column",
-                gap: "8px",
-                fontSize:
-                  "0.85rem"
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems: "center",
+                marginBottom: "12px",
+                gap: "10px"
               }}
             >
-              {teamFixtureData.map(
-                (match, i) => {
-                  const fullDateTimeDisplay =
-                    formatFullDateTime(
-                      match.date,
-                      match.time
+
+              <div>
+
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#8b949e",
+                    textTransform:
+                      "uppercase"
+                  }}
+                >
+                  Próximos partidos
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: 700,
+                    marginTop: "3px"
+                  }}
+                >
+                  {nombreEquipo(
+                    selectedTeam
+                  )}
+                </div>
+
+              </div>
+
+              <button
+                onClick={() => {
+                  setSelectedTeam(
+                    null
+                  );
+
+                  setTeamFixtures(
+                    []
+                  );
+
+                  setSearch("");
+                }}
+                style={{
+                  background:
+                    "transparent",
+                  border:
+                    "1px solid #263244",
+                  color: "#9ca3af",
+                  borderRadius: "6px",
+                  padding:
+                    "6px 10px",
+                  cursor: "pointer"
+                }}
+              >
+                Cerrar
+              </button>
+
+            </div>
+
+            {teamFixturesLoading ? (
+
+              <div
+                style={{
+                  color: "#8b949e",
+                  fontSize: "14px"
+                }}
+              >
+                Cargando fixture...
+              </div>
+
+            ) : teamFixtures.length ===
+              0 ? (
+
+              <div
+                style={{
+                  color: "#8b949e",
+                  fontSize: "14px"
+                }}
+              >
+                No se encontraron próximos
+                partidos.
+              </div>
+
+            ) : (
+
+              <div
+                style={{
+                  display: "grid",
+                  gap: "8px"
+                }}
+              >
+
+                {teamFixtures.map(
+                  (fixture, index) => {
+
+                    const teamsFixture =
+                      fixture?.teams ||
+                      [];
+
+                    const local =
+                      teamsFixture[0] ||
+                      {};
+
+                    const visitante =
+                      teamsFixture[1] ||
+                      {};
+
+                    return (
+                      <div
+                        key={
+                          fixture.id ||
+                          index
+                        }
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "100px 1fr 160px",
+                          alignItems:
+                            "center",
+                          gap: "12px",
+                          padding:
+                            "10px 12px",
+                          background:
+                            "#0d131a",
+                          border:
+                            "1px solid #263244",
+                          borderRadius:
+                            "7px"
+                        }}
+                      >
+
+                        <div
+                          style={{
+                            color:
+                              "#8b949e",
+                            fontSize:
+                              "13px"
+                          }}
+                        >
+                          {fixture.date ||
+                            ""}
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize:
+                              "14px"
+                          }}
+                        >
+                          {nombreEquipo(
+                            local
+                          )}
+                          {" - "}
+                          {nombreEquipo(
+                            visitante
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            textAlign:
+                              "right",
+                            color:
+                              "#8b949e",
+                            fontSize:
+                              "13px"
+                          }}
+                        >
+                          {fixture.competition ||
+                            fixture.league ||
+                            ""}
+                        </div>
+
+                      </div>
                     );
-
-                  if (
-                    match.rawText &&
-                    match.rawText.includes(
-                      "Día L/V"
-                    )
-                  ) {
-                    return null;
                   }
+                )}
 
-                  return (
+              </div>
+
+            )}
+
+          </section>
+
+        )}
+
+        {/* ================================== */}
+        {/* FECHAS */}
+        {/* ================================== */}
+
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            marginBottom: "20px"
+          }}
+        >
+
+          {[
+            ["ayer", "Ayer"],
+            ["today", "Hoy"],
+            ["manana", "Mañana"]
+          ].map(
+            ([value, label]) => (
+
+              <button
+                key={value}
+                onClick={() =>
+                  setDate(value)
+                }
+                style={{
+                  background:
+                    date === value
+                      ? "#10b981"
+                      : "#121821",
+
+                  color:
+                    date === value
+                      ? "#06120d"
+                      : "#e6edf3",
+
+                  border:
+                    date === value
+                      ? "1px solid #10b981"
+                      : "1px solid #263244",
+
+                  borderRadius:
+                    "7px",
+
+                  padding:
+                    "8px 16px",
+
+                  fontWeight:
+                    date === value
+                      ? 700
+                      : 500,
+
+                  cursor:
+                    "pointer"
+                }}
+              >
+                {label}
+              </button>
+
+            )
+          )}
+
+        </div>
+
+        {/* ================================== */}
+        {/* ERROR */}
+        {/* ================================== */}
+
+        {error && (
+
+          <div
+            style={{
+              marginBottom: "20px",
+              padding: "12px",
+              border:
+                "1px solid #5b2525",
+              background:
+                "#211416",
+              color: "#fca5a5",
+              borderRadius: "8px"
+            }}
+          >
+            {error}
+          </div>
+
+        )}
+
+        {/* ================================== */}
+        {/* LOADING */}
+        {/* ================================== */}
+
+        {loading ? (
+
+          <div
+            style={{
+              padding: "40px 0",
+              textAlign: "center",
+              color: "#8b949e"
+            }}
+          >
+            Cargando partidos...
+          </div>
+
+        ) : (
+
+          <div
+            style={{
+              display: "grid",
+              gap: "20px"
+            }}
+          >
+
+            {/* ================================= */}
+            {/* LIGAS */}
+            {/* ================================= */}
+
+            {data.map(
+              (league, leagueIndex) => {
+
+                const games =
+                  Array.isArray(
+                    league?.games
+                  )
+                    ? league.games
+                    : [];
+
+                if (
+                  games.length === 0
+                ) {
+                  return null;
+                }
+
+                return (
+
+                  <section
+                    key={
+                      league?.key ||
+                      league?.id ||
+                      leagueIndex
+                    }
+                    style={{
+                      background:
+                        "#121821",
+                      border:
+                        "1px solid #263244",
+                      borderRadius:
+                        "10px",
+                      overflow:
+                        "hidden"
+                    }}
+                  >
+
+                    {/* ======================= */}
+                    {/* HEADER LIGA */}
+                    {/* ======================= */}
+
                     <div
-                      key={
-                        match.id ||
-                        `fixture-${i}`
-                      }
                       style={{
-                        display:
-                          "flex",
-                        flexDirection:
-                          "column",
+                        display: "flex",
+                        alignItems:
+                          "center",
+                        justifyContent:
+                          "space-between",
                         padding:
-                          "10px 14px",
-                        marginBottom:
-                          "8px",
+                          "12px 16px",
+                        borderBottom:
+                          "1px solid #263244",
                         background:
-                          "rgba(128,128,128,0.04)",
-                        border:
-                          "1px solid rgba(128,128,128,0.1)",
-                        borderRadius:
-                          "8px",
-                        gap: "6px"
+                          "#151d27"
                       }}
                     >
 
                       <div
                         style={{
-                          display:
-                            "flex",
-                          justifyContent:
-                            "space-between",
-                          alignItems:
-                            "center",
                           fontSize:
-                            "0.75rem"
+                            "16px",
+                          fontWeight:
+                            700
                         }}
                       >
-                        <span
-                          style={{
-                            color:
-                              "#3b82f6",
-                            fontWeight:
-                              "600",
-                            textTransform:
-                              "uppercase",
-                            letterSpacing:
-                              "0.5px"
-                          }}
-                        >
-                          🏆{" "}
-                          {match.league ||
-                            "Torneo"}
-                        </span>
-
-                        {fullDateTimeDisplay && (
-                          <span
-                            style={{
-                              color:
-                                "#34d399",
-                              fontWeight:
-                                "600"
-                            }}
-                          >
-                            📅{" "}
-                            {
-                              fullDateTimeDisplay
-                            }
-                          </span>
+                        {obtenerNombreLeague(
+                          league
                         )}
                       </div>
 
                       <div
                         style={{
-                          display:
-                            "flex",
-                          justifyContent:
-                            "space-between",
-                          alignItems:
-                            "center",
-                          marginTop:
-                            "4px"
+                          fontSize:
+                            "12px",
+                          color:
+                            "#64748b"
                         }}
                       >
-                        <div
-                          style={{
-                            display:
-                              "flex",
-                            alignItems:
-                              "center",
-                            gap: "8px",
-                            fontSize:
-                              "0.95rem",
-                            fontWeight:
-                              "500",
-                            color:
-                              "#fff"
-                          }}
-                        >
-                          <span>
-                            {match.homeTeam ||
-                              match.local ||
-                              "Local"}
-                          </span>
-
-                          <span
-                            style={{
-                              opacity:
-                                0.4
-                            }}
-                          >
-                            vs
-                          </span>
-
-                          <span>
-                            {match.awayTeam ||
-                              match.visiting ||
-                              "Visita"}
-                          </span>
-                        </div>
-
-                        <div
-                          style={{
-                            fontWeight:
-                              "bold",
-                            fontSize:
-                              "0.95rem"
-                          }}
-                        >
-                          {match.score ||
-                          match.time ? (
-                            <span
-                              style={{
-                                background:
-                                  match.score
-                                    ? "rgba(16,185,129,0.15)"
-                                    : "rgba(59,130,246,0.15)",
-                                color:
-                                  match.score
-                                    ? "#34d399"
-                                    : "#3b82f6",
-                                padding:
-                                  "4px 10px",
-                                borderRadius:
-                                  "6px",
-                                fontSize:
-                                  "0.85rem"
-                              }}
-                            >
-                              {match.score ||
-                                `${match.time} hs`}
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                opacity:
-                                  0.5,
-                                fontSize:
-                                  "0.85rem"
-                              }}
-                            >
-                              Programado
-                            </span>
-                          )}
-                        </div>
+                        {games.length}{" "}
+                        partidos
                       </div>
+
                     </div>
-                  );
-                }
-              )}
-            </div>
-          )}
 
-          {nextFetchDate && (
-            <div
-              style={{
-                display:
-                  "flex",
-                justifyContent:
-                  "center",
-                marginTop: "16px"
-              }}
-            >
-              <button
-                onClick={() =>
-                  loadTeamFixture(
-                    selectedTeamFilter.teamName,
-                    nextFetchDate,
-                    true
-                  )
-                }
-                disabled={
-                  loadingFixture
-                }
-                style={{
-                  background:
-                    "#10b981",
-                  color: "#fff",
-                  border: "none",
-                  padding:
-                    "8px 14px",
-                  borderRadius:
-                    "6px",
-                  fontWeight:
-                    "600",
-                  cursor:
-                    "pointer",
-                  fontSize:
-                    "0.8rem"
-                }}
-              >
-                {loadingFixture
-                  ? "Cargando..."
-                  : "➕ Cargar próxima semana"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+                    {/* ======================= */}
+                    {/* PARTIDOS */}
+                    {/* ======================= */}
 
-      {/* =================================================
-          FILTRO DE LIGAS
-      ================================================= */}
+                    <div>
 
-      {!selectedTeamFilter &&
-        leagues.length > 0 && (
-          <div
-            style={{
-              marginBottom:
-                "24px"
-            }}
-          >
-            <div
-              style={{
-                display:
-                  "flex",
-                justifyContent:
-                  "space-between",
-                alignItems:
-                  "center",
-                marginBottom:
-                  "8px"
-              }}
-            >
-              <span
-                style={{
-                  fontSize:
-                    "0.75rem",
-                  fontWeight:
-                    "bold",
-                  textTransform:
-                    "uppercase",
-                  opacity: 0.6,
-                  letterSpacing:
-                    "0.5px"
-                }}
-              >
-                Filtrar Ligas
-              </span>
+                      {games.map(
+                        (
+                          game,
+                          gameIndex
+                        ) => {
+
+                          const estado =
+                            obtenerEstado(
+                              game
+                            );
+
+                          const teamA =
+                            obtenerEquipo(
+                              game,
+                              0
+                            );
+
+                          const teamB =
+                            obtenerEquipo(
+                              game,
+                              1
+                            );
+
+                          const scoreA =
+                            obtenerScore(
+                              game,
+                              0
+                            );
+
+                          const scoreB =
+                            obtenerScore(
+                              game,
+                              1
+                            );
+
+                          const global =
+                            obtenerGlobal(
+                              game
+                            );
+
+                          const golesA =
+                            obtenerGoles(
+                              teamA
+                            );
+
+                          const golesB =
+                            obtenerGoles(
+                              teamB
+                            );
+
+                          const tv =
+                            obtenerTV(
+                              game
+                            );
+
+                          const competition =
+                            obtenerCompetition(
+                              league
+                            );
+
+                          return (
+
+                            <div
+                              key={
+                                game?.id ||
+                                gameIndex
+                              }
+                              style={{
+                                borderBottom:
+                                  gameIndex <
+                                  games.length - 1
+                                    ? "1px solid #263244"
+                                    : "none",
+                                padding:
+                                  "12px 14px"
+                              }}
+                            >
+
+                              <div
+                                style={{
+                                  display:
+                                    "grid",
+                                  gridTemplateColumns:
+                                    "95px 1fr 160px",
+                                  alignItems:
+                                    "center",
+                                  gap:
+                                    "12px"
+                                }}
+                              >
+
+                                {/* ================= */}
+                                {/* ESTADO */}
+                                {/* ================= */}
+
+                                <div
+                                  style={{
+                                    textAlign:
+                                      "center"
+                                  }}
+                                >
+
+                                  <div
+                                    style={{
+                                      fontSize:
+                                        "12px",
+                                      fontWeight:
+                                        700,
+                                      color:
+                                        estado.color
+                                    }}
+                                  >
+                                    {estado.live && (
+                                      <span
+                                        style={{
+                                          display:
+                                            "inline-block",
+                                          width:
+                                            "6px",
+                                          height:
+                                            "6px",
+                                          borderRadius:
+                                            "50%",
+                                          background:
+                                            "#10b981",
+                                          marginRight:
+                                            "5px",
+                                          verticalAlign:
+                                            "middle"
+                                        }}
+                                      />
+                                    )}
+
+                                    {estado.texto}
+                                  </div>
+
+                                </div>
+
+                                {/* ================= */}
+                                {/* PARTIDO */}
+                                {/* ================= */}
+
+                                <div>
+
+                                  <div
+                                    style={{
+                                      display:
+                                        "grid",
+                                      gridTemplateColumns:
+                                        "1fr 55px 1fr",
+                                      alignItems:
+                                        "center",
+                                      gap:
+                                        "10px"
+                                    }}
+                                  >
+
+                                    {/* LOCAL */}
+
+                                    <div
+                                      style={{
+                                        display:
+                                          "flex",
+                                        alignItems:
+                                          "center",
+                                        justifyContent:
+                                          "flex-end",
+                                        gap:
+                                          "8px",
+                                        textAlign:
+                                          "right"
+                                      }}
+                                    >
+
+                                      <span
+                                        style={{
+                                          fontSize:
+                                            "14px",
+                                          fontWeight:
+                                            600
+                                        }}
+                                      >
+                                        {nombreEquipo(
+                                          teamA
+                                        )}
+                                      </span>
+
+                                      {logoEquipo(
+                                        teamA
+                                      ) && (
+
+                                        <img
+                                          src={logoEquipo(
+                                            teamA
+                                          )}
+                                          alt=""
+                                          width="28"
+                                          height="28"
+                                          style={{
+                                            objectFit:
+                                              "contain"
+                                          }}
+                                        />
+
+                                      )}
+
+                                    </div>
+
+                                    {/* MARCADOR */}
+
+                                    <div
+                                      style={{
+                                        textAlign:
+                                          "center",
+                                        fontSize:
+                                          "20px",
+                                        fontWeight:
+                                          800,
+                                        whiteSpace:
+                                          "nowrap"
+                                      }}
+                                    >
+
+                                      <span>
+                                        {scoreA}
+                                      </span>
+
+                                      <span
+                                        style={{
+                                          margin:
+                                            "0 5px",
+                                          color:
+                                            "#64748b"
+                                        }}
+                                      >
+                                        -
+                                      </span>
+
+                                      <span>
+                                        {scoreB}
+                                      </span>
+
+                                    </div>
+
+                                    {/* VISITANTE */}
+
+                                    <div
+                                      style={{
+                                        display:
+                                          "flex",
+                                        alignItems:
+                                          "center",
+                                        gap:
+                                          "8px"
+                                      }}
+                                    >
+
+                                      {logoEquipo(
+                                        teamB
+                                      ) && (
+
+                                        <img
+                                          src={logoEquipo(
+                                            teamB
+                                          )}
+                                          alt=""
+                                          width="28"
+                                          height="28"
+                                          style={{
+                                            objectFit:
+                                              "contain"
+                                          }}
+                                        />
+
+                                      )}
+
+                                      <span
+                                        style={{
+                                          fontSize:
+                                            "14px",
+                                          fontWeight:
+                                            600
+                                        }}
+                                      >
+                                        {nombreEquipo(
+                                          teamB
+                                        )}
+                                      </span>
+
+                                    </div>
+
+                                  </div>
+
+                                  {/* ================= */}
+                                  {/* GLOBAL */}
+                                  {/* ================= */}
+
+                                  {global && (
+
+                                    <div
+                                      style={{
+                                        marginTop:
+                                          "5px",
+                                        textAlign:
+                                          "center"
+                                      }}
+                                    >
+
+                                      <span
+                                        style={{
+                                          display:
+                                            "inline-flex",
+                                          alignItems:
+                                            "center",
+                                          gap:
+                                            "6px",
+                                          padding:
+                                            "3px 9px",
+                                          borderRadius:
+                                            "5px",
+                                          background:
+                                            "#0d131a",
+                                          border:
+                                            "1px solid #263244",
+                                          color:
+                                            "#9ca3af",
+                                          fontSize:
+                                            "11px",
+                                          fontWeight:
+                                            600,
+                                          letterSpacing:
+                                            "0.3px"
+                                        }}
+                                      >
+
+                                        <span
+                                          style={{
+                                            color:
+                                              "#64748b",
+                                            textTransform:
+                                              "uppercase"
+                                          }}
+                                        >
+                                          Global
+                                        </span>
+
+                                        <span
+                                          style={{
+                                            color:
+                                              "#e6edf3",
+                                            fontWeight:
+                                              800
+                                          }}
+                                        >
+                                          {global.scoreA}
+                                          {" - "}
+                                          {global.scoreB}
+                                        </span>
+
+                                      </span>
+
+                                    </div>
+
+                                  )}
+
+                                  {/* ================= */}
+                                  {/* GOLES */}
+                                  {/* ================= */}
+
+                                  {(golesA.length >
+                                    0 ||
+                                    golesB.length >
+                                    0) && (
+
+                                    <div
+                                      style={{
+                                        marginTop:
+                                          "5px",
+                                        display:
+                                          "grid",
+                                        gridTemplateColumns:
+                                          "1fr 1fr",
+                                        gap:
+                                          "10px",
+                                        fontSize:
+                                          "11px",
+                                        color:
+                                          "#8b949e"
+                                      }}
+                                    >
+
+                                      <div
+                                        style={{
+                                          textAlign:
+                                            "right"
+                                        }}
+                                      >
+                                        {golesA.map(
+                                          (
+                                            goal,
+                                            index
+                                          ) => (
+                                            <div
+                                              key={
+                                                index
+                                              }
+                                            >
+                                              {goal.player_name ||
+                                                goal.player ||
+                                                goal.name ||
+                                                "Gol"}
+                                              {goal.minute !=
+                                                null &&
+                                                ` ${goal.minute}'`}
+                                            </div>
+                                          )
+                                        )}
+                                      </div>
+
+                                      <div>
+                                        {golesB.map(
+                                          (
+                                            goal,
+                                            index
+                                          ) => (
+                                            <div
+                                              key={
+                                                index
+                                              }
+                                            >
+                                              {goal.player_name ||
+                                                goal.player ||
+                                                goal.name ||
+                                                "Gol"}
+                                              {goal.minute !=
+                                                null &&
+                                                ` ${goal.minute}'`}
+                                            </div>
+                                          )
+                                        )}
+                                      </div>
+
+                                    </div>
+
+                                  )}
+
+                                </div>
+
+                                {/* ================= */}
+                                {/* TV */}
+                                {/* ================= */}
+
+                                <div
+                                  style={{
+                                    textAlign:
+                                      "right",
+                                    fontSize:
+                                      "11px",
+                                    color:
+                                      "#8b949e"
+                                  }}
+                                >
+
+                                  {tv.length >
+                                  0 ? (
+
+                                    tv.map(
+                                      (
+                                        network,
+                                        index
+                                      ) => (
+
+                                        <div
+                                          key={
+                                            index
+                                          }
+                                          style={{
+                                            marginBottom:
+                                              "2px"
+                                          }}
+                                        >
+                                          {network?.name ||
+                                            network?.title ||
+                                            network}
+                                        </div>
+
+                                      )
+                                    )
+
+                                  ) : null}
+
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                          );
+                        }
+                      )}
+
+                    </div>
+
+                  </section>
+
+                );
+
+              }
+            )}
+
+            {/* ================================= */}
+            {/* SIN PARTIDOS */}
+            {/* ================================= */}
+
+            {data.every(
+              league =>
+                !Array.isArray(
+                  league?.games
+                ) ||
+                league.games.length === 0
+            ) && (
 
               <div
                 style={{
-                  display:
-                    "flex",
-                  gap: "10px"
+                  textAlign:
+                    "center",
+                  padding:
+                    "50px 20px",
+                  color:
+                    "#8b949e",
+                  background:
+                    "#121821",
+                  border:
+                    "1px solid #263244",
+                  borderRadius:
+                    "10px"
                 }}
               >
-                <button
-                  onClick={
-                    hideAllLeagues
-                  }
-                  style={{
-                    background:
-                      "none",
-                    border:
-                      "none",
-                    fontSize:
-                      "0.75rem",
-                    color:
-                      "#ef4444",
-                    cursor:
-                      "pointer",
-                    fontWeight:
-                      "600"
-                  }}
-                >
-                  Ocultar todas
-                </button>
-
-                <span
-                  style={{
-                    opacity:
-                      0.3
-                  }}
-                >
-                  |
-                </span>
-
-                <button
-                  onClick={
-                    showAllLeagues
-                  }
-                  style={{
-                    background:
-                      "none",
-                    border:
-                      "none",
-                    fontSize:
-                      "0.75rem",
-                    color:
-                      "#10b981",
-                    cursor:
-                      "pointer",
-                    fontWeight:
-                      "600"
-                  }}
-                >
-                  Mostrar todas
-                </button>
+                No hay partidos para
+                esta fecha.
               </div>
-            </div>
 
-            <div
-              style={{
-                display:
-                  "flex",
-                flexWrap:
-                  "wrap",
-                gap:
-                  "8px"
-              }}
-            >
-              {leagues.map(
-                (league) => {
-                  const isHidden =
-                    hiddenLeagues.includes(
-                      league.id
-                    );
+            )}
 
-                  return (
-                    <button
-                      key={
-                        league.id
-                      }
-                      onClick={() =>
-                        toggleLeagueFilter(
-                          league.id
-                        )
-                      }
-                      style={{
-                        background:
-                          isHidden
-                            ? "rgba(128,128,128,0.08)"
-                            : "rgba(16,185,129,0.12)",
-                        color:
-                          isHidden
-                            ? "inherit"
-                            : "#10b981",
-                        border:
-                          isHidden
-                            ? "1px solid rgba(128,128,128,0.2)"
-                            : "1px solid rgba(16,185,129,0.3)",
-                        padding:
-                          "6px 12px",
-                        borderRadius:
-                          "9999px",
-                        fontSize:
-                          "0.8rem",
-                        fontWeight:
-                          "600",
-                        cursor:
-                          "pointer",
-                        opacity:
-                          isHidden
-                            ? 0.5
-                            : 1,
-                        textDecoration:
-                          isHidden
-                            ? "line-through"
-                            : "none",
-                        transition:
-                          "all 0.2s ease"
-                      }}
-                    >
-                      {league.name}
-                    </button>
-                  );
-                }
-              )}
-            </div>
           </div>
+
         )}
 
-      {/* =================================================
-          PARTIDOS
-      ================================================= */}
+        {/* ================================== */}
+        {/* FOOTER */}
+        {/* ================================== */}
 
-      {loading ? (
         <div
           style={{
-            display:
-              "flex",
-            flex: 1,
-            alignItems:
-              "center",
-            justifyContent:
-              "center",
-            minHeight:
-              "200px"
-          }}
-        >
-          <p
-            style={{
-              opacity: 0.7
-            }}
-          >
-            Cargando partidos...
-          </p>
-        </div>
-      ) : filteredLeagues.length ===
-        0 ? (
-        <p
-          style={{
+            marginTop: "30px",
+            padding:
+              "15px 0",
             textAlign:
               "center",
-            opacity: 0.6,
-            padding:
-              "40px"
+            color:
+              "#64748b",
+            fontSize:
+              "11px"
           }}
         >
-          No hay torneos
-          seleccionados o
-          partidos para
-          mostrar en esta
-          fecha.
-        </p>
-      ) : (
-        <div
-          style={{
-            display:
-              "flex",
-            flexDirection:
-              "column",
-            gap:
-              "24px"
-          }}
-        >
-          {filteredLeagues.map(
-            (league) => (
-              <section
-                key={
-                  league.id
-                }
-                style={{
-                  border:
-                    "1px solid rgba(128,128,128,0.2)",
-                  borderRadius:
-                    "8px",
-                  overflow:
-                    "hidden"
-                }}
-              >
-
-                {/* CABECERA LIGA */}
-
-                <div
-                  style={{
-                    background:
-                      "rgba(16,185,129,0.15)",
-                    borderBottom:
-                      "1px solid rgba(128,128,128,0.2)"
-                  }}
-                >
-                  <Link
-  href={`/posiciones?competition=${obtenerCompetition(
-    league
-  )}`}
-                    style={{
-                      color:
-                        "#10b981",
-                      padding:
-                        "10px 16px",
-                      fontWeight:
-                        "bold",
-                      fontSize:
-                        "0.9rem",
-                      display:
-                        "flex",
-                      justifyContent:
-                        "space-between",
-                      alignItems:
-                        "center",
-                      textDecoration:
-                        "none"
-                    }}
-                    title="Ver tabla de posiciones"
-                  >
-                    <span>
-                      🏆{" "}
-                      {
-                        league.name
-                      }{" "}
-                      (
-                      {
-                        league.country_name
-                      }
-                      )
-                    </span>
-
-                    <span
-                      style={{
-                        fontSize:
-                          "0.75rem",
-                        fontWeight:
-                          "normal",
-                        opacity:
-                          0.8
-                      }}
-                    >
-                      Ver posiciones ↗
-                    </span>
-                  </Link>
-                </div>
-
-                {/* PARTIDOS DE LA LIGA */}
-
-                <div>
-                  {league.games?.map(
-                    (game) => {
-                      const isLive =
-                        game
-                          .status
-                          ?.enum ===
-                        2;
-
-                      const isFinished =
-                        game
-                          .status
-                          ?.enum ===
-                        3;
-
-                      const isProgrammed =
-                        game
-                          .status
-                          ?.enum ===
-                        1;
-
-                      const teamA =
-                        game
-                          .teams?.[0] ||
-                        {};
-
-                      const teamB =
-                        game
-                          .teams?.[1] ||
-                        {};
-
-                      const scoreA =
-                        game.scores
-                          ? game
-                              .scores[0]
-                          : "-";
-
-                      const scoreB =
-                        game.scores
-                          ? game
-                              .scores[1]
-                          : "-";
-
-                      const goalsA =
-                        teamA.goals ||
-                        [];
-
-                      const goalsB =
-                        teamB.goals ||
-                        [];
-
-                      const formatGoals =
-                        (
-                          goalsList
-                        ) => {
-                          return goalsList
-                            .map(
-                              (
-                                g
-                              ) => {
-                                const time =
-                                  g.time_to_display ||
-                                  `${g.time}'`;
-
-                                const name =
-                                  g.player_name ||
-                                  g.player_sname;
-
-                                const pen =
-                                  g.goal_type ===
-                                  "Pen"
-                                    ? " (Pen)"
-                                    : "";
-
-                                return `${time} ${name}${pen}`;
-                              }
-                            )
-                            .join(
-                              "; "
-                            );
-                        };
-
-                      const strGoalsA =
-                        formatGoals(
-                          goalsA
-                        );
-
-                      const strGoalsB =
-                        formatGoals(
-                          goalsB
-                        );
-
-                      const hasGoals =
-                        strGoalsA !==
-                          "" ||
-                        strGoalsB !==
-                          "";
-
-                      const tvList =
-                        game.tv_networks
-                          ? game.tv_networks
-                              .map(
-                                (
-                                  tv
-                                ) =>
-                                  tv.name
-                              )
-                              .join(
-                                ", "
-                              )
-                          : "";
-
-                      return (
-                        <div
-                          key={
-                            game.id
-                          }
-                          style={{
-                            display:
-                              "flex",
-                            borderBottom:
-                              "1px solid rgba(128,128,128,0.15)",
-                            fontSize:
-                              "0.9rem"
-                          }}
-                        >
-
-                          {/* ESTADO */}
-
-                          <div
-                            style={{
-                              width:
-                                "95px",
-                              background:
-                                "rgba(128,128,128,0.06)",
-                              borderRight:
-                                "1px solid rgba(128,128,128,0.15)",
-                              display:
-                                "flex",
-                              alignItems:
-                                "center",
-                              justifyContent:
-                                "center",
-                              padding:
-                                "8px",
-                              textAlign:
-                                "center",
-                              fontWeight:
-                                "600",
-                              fontSize:
-                                "0.75rem",
-                              flexShrink:
-                                0
-                            }}
-                          >
-                            {isLive && (
-                              <span
-                                style={{
-                                  color:
-                                    "#ef4444",
-                                  fontWeight:
-                                    "bold"
-                                }}
-                              >
-                                {
-                                  game.game_time_status_to_display
-                                }
-                              </span>
-                            )}
-
-                            {isFinished && (
-                              <span
-                                style={{
-                                  opacity:
-                                    0.7
-                                }}
-                              >
-                                Finalizado
-                              </span>
-                            )}
-
-                            {isProgrammed && (
-                              <span
-                                style={{
-                                  color:
-                                    "#3b82f6"
-                                }}
-                              >
-                                {
-                                  game.start_time
-                                }
-                              </span>
-                            )}
-                          </div>
-
-                          {/* EQUIPOS */}
-
-                          <div
-                            style={{
-                              flex:
-                                1,
-                              display:
-                                "flex",
-                              flexDirection:
-                                "column"
-                            }}
-                          >
-                            <div
-                              style={{
-                                display:
-                                  "flex",
-                                alignItems:
-                                  "center",
-                                padding:
-                                  "10px 16px",
-                                justifyContent:
-                                  "space-between"
-                              }}
-                            >
-
-                              <div
-                                style={{
-                                  flex:
-                                    1,
-                                  display:
-                                    "flex",
-                                  justifyContent:
-                                    "flex-end",
-                                  alignItems:
-                                    "center",
-                                  gap:
-                                    "10px",
-                                  textAlign:
-                                    "right"
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontWeight:
-                                      500
-                                  }}
-                                >
-                                  {
-                                    teamA.name
-                                  }
-                                </span>
-                              </div>
-
-                              {/* MARCADOR */}
-
-                              <div
-                                style={{
-                                  display:
-                                    "flex",
-                                  alignItems:
-                                    "center",
-                                  justifyContent:
-                                    "center",
-                                  padding:
-                                    "0 16px",
-                                  fontWeight:
-                                    "bold",
-                                  fontSize:
-                                    "1.1rem",
-                                  gap:
-                                    "8px",
-                                  minWidth:
-                                    "120px",
-                                  textAlign:
-                                    "center"
-                                }}
-                              >
-
-                                {teamA.red_cards >
-                                  0 && (
-                                  <div
-                                    style={{
-                                      display:
-                                        "flex",
-                                      gap:
-                                        "2px"
-                                    }}
-                                  >
-                                    {Array.from(
-                                      {
-                                        length:
-                                          teamA.red_cards
-                                      }
-                                    ).map(
-                                      (
-                                        _,
-                                        i
-                                      ) => (
-                                        <span
-                                          key={`red-a-${i}`}
-                                          style={{
-                                            background:
-                                              "#ef4444",
-                                            width:
-                                              "7px",
-                                            height:
-                                              "11px",
-                                            display:
-                                              "inline-block",
-                                            borderRadius:
-                                              "1px",
-                                            flexShrink:
-                                              0
-                                          }}
-                                        />
-                                      )
-                                    )}
-                                  </div>
-                                )}
-
-                                <span
-                                  style={{
-                                    color:
-                                      isLive
-                                        ? "#ef4444"
-                                        : "inherit"
-                                  }}
-                                >
-                                  {
-                                    scoreA
-                                  }
-                                </span>
-
-                                <span
-                                  style={{
-                                    opacity:
-                                      0.4
-                                  }}
-                                >
-                                  –
-                                </span>
-
-                                <span
-                                  style={{
-                                    color:
-                                      isLive
-                                        ? "#ef4444"
-                                        : "inherit"
-                                  }}
-                                >
-                                  {
-                                    scoreB
-                                  }
-                                </span>
-
-                                {teamB.red_cards >
-                                  0 && (
-                                  <div
-                                    style={{
-                                      display:
-                                        "flex",
-                                      gap:
-                                        "2px"
-                                    }}
-                                  >
-                                    {Array.from(
-                                      {
-                                        length:
-                                          teamB.red_cards
-                                      }
-                                    ).map(
-                                      (
-                                        _,
-                                        i
-                                      ) => (
-                                        <span
-                                          key={`red-b-${i}`}
-                                          style={{
-                                            background:
-                                              "#ef4444",
-                                            width:
-                                              "7px",
-                                            height:
-                                              "11px",
-                                            display:
-                                              "inline-block",
-                                            borderRadius:
-                                              "1px",
-                                            flexShrink:
-                                              0
-                                          }}
-                                        />
-                                      )
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div
-                                style={{
-                                  flex:
-                                    1,
-                                  display:
-                                    "flex",
-                                  justifyContent:
-                                    "flex-start",
-                                  alignItems:
-                                    "center",
-                                  gap:
-                                    "10px",
-                                  textAlign:
-                                    "left"
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontWeight:
-                                      500
-                                  }}
-                                >
-                                  {
-                                    teamB.name
-                                  }
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* GOLES */}
-
-                            {hasGoals && (
-                              <div
-                                style={{
-                                  display:
-                                    "flex",
-                                  borderTop:
-                                    "1px dashed rgba(128,128,128,0.15)",
-                                  fontSize:
-                                    "0.75rem",
-                                  opacity:
-                                    0.75,
-                                  background:
-                                    "rgba(128,128,128,0.02)"
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    flex:
-                                      1,
-                                    padding:
-                                      "6px 16px",
-                                    textAlign:
-                                      "right",
-                                    borderRight:
-                                      "1px dashed rgba(128,128,128,0.15)"
-                                  }}
-                                >
-                                  {
-                                    strGoalsA
-                                  }
-                                </div>
-
-                                <div
-                                  style={{
-                                    flex:
-                                      1,
-                                    padding:
-                                      "6px 16px",
-                                    textAlign:
-                                      "left"
-                                  }}
-                                >
-                                  {
-                                    strGoalsB
-                                  }
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* TV */}
-
-                          <div
-                            style={{
-                              width:
-                                "160px",
-                              background:
-                                "rgba(128,128,128,0.04)",
-                              borderLeft:
-                                "1px solid rgba(128,128,128,0.15)",
-                              display:
-                                "flex",
-                              alignItems:
-                                "center",
-                              justifyContent:
-                                "center",
-                              padding:
-                                "8px 12px",
-                              textAlign:
-                                "center",
-                              fontSize:
-                                "0.75rem",
-                              opacity:
-                                0.7,
-                              flexShrink:
-                                0
-                            }}
-                          >
-                            {tvList ? (
-                              <span>
-                                📺{" "}
-                                {
-                                  tvList
-                                }
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  opacity:
-                                    0.4
-                                }}
-                              >
-                                -
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-              </section>
-            )
-          )}
+          ChiquiFútbol
         </div>
-      )}
+
+      </div>
+
     </main>
   );
 }
