@@ -6,135 +6,77 @@ import * as cheerio from "cheerio";
 // ==========================================
 
 const URLS_EQUIPOS = {
+"velez sarsfield": "https://www.promiedos.com.ar/team/velez-sarsfield/ihc",
+"defensa y justicia": "https://www.promiedos.com.ar/team/defensa-y-justicia/hcbh",
+"gimnasia mendoza": "https://www.promiedos.com.ar/team/gimnasia-mendoza/bbjbf",
 
-"velez sarsfield":
-    "https://www.promiedos.com.ar/team/velez-sarsfield/ihc",
 
-"defensa y justicia":
-    "https://www.promiedos.com.ar/team/defensa-y-justicia/hcbh",
+"instituto": "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
+"instituto ac cordoba": "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
 
-"gimnasia mendoza":
-    "https://www.promiedos.com.ar/team/gimnasia-mendoza/bbjbf",
+"boca juniors": "https://www.promiedos.com.ar/team/boca-juniors/igg",
+"boca": "https://www.promiedos.com.ar/team/boca-juniors/igg",
 
-"instituto":
-    "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
+"independiente": "https://www.promiedos.com.ar/team/independiente/ihe",
 
-"instituto ac cordoba":
-    "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
+"lanus": "https://www.promiedos.com.ar/team/lanus/igj",
 
-"boca juniors":
-    "https://www.promiedos.com.ar/team/boca-juniors/igg",
+"union": "https://www.promiedos.com.ar/team/union-santa-fe/hcag",
+"union santa fe": "https://www.promiedos.com.ar/team/union-santa-fe/hcag",
 
-"boca":
-    "https://www.promiedos.com.ar/team/boca-juniors/igg",
+"newells": "https://www.promiedos.com.ar/team/newell's-old-boys/ihh",
+"newell's old boys": "https://www.promiedos.com.ar/team/newell's-old-boys/ihh",
 
-"independiente":
-    "https://www.promiedos.com.ar/team/independiente/ihe",
+"san lorenzo": "https://www.promiedos.com.ar/team/san-lorenzo/igf",
 
-"lanus":
-    "https://www.promiedos.com.ar/team/lanus/igj",
+"estudiantes de la plata": "https://www.promiedos.com.ar/team/estudiantes-de-la-plata/igh",
+"estudiantes": "https://www.promiedos.com.ar/team/estudiantes-de-la-plata/igh",
 
-"union":
-    "https://www.promiedos.com.ar/team/union-santa-fe/hcag",
+"riestra": "https://www.promiedos.com.ar/team/riestra/bbjea",
+"deportivo riestra": "https://www.promiedos.com.ar/team/riestra/bbjea",
 
-"union santa fe":
-    "https://www.promiedos.com.ar/team/union-santa-fe/hcag",
+"platense": "https://www.promiedos.com.ar/team/platense/hcah",
 
-"newells":
-    "https://www.promiedos.com.ar/team/newell's-old-boys/ihh",
+"talleres": "https://www.promiedos.com.ar/team/talleres-cordoba/jche",
+"talleres cordoba": "https://www.promiedos.com.ar/team/talleres-cordoba/jche",
 
-"newell's old boys":
-    "https://www.promiedos.com.ar/team/newell's-old-boys/ihh",
+"central cordoba": "https://www.promiedos.com.ar/team/central-cordoba-sde/beafh",
+"central cordoba sde": "https://www.promiedos.com.ar/team/central-cordoba-sde/beafh",
 
-"san lorenzo":
-    "https://www.promiedos.com.ar/team/san-lorenzo/igf",
+"argentinos juniors": "https://www.promiedos.com.ar/team/argentinos-juniors/ihb",
+"argentinos": "https://www.promiedos.com.ar/team/argentinos-juniors/ihb",
 
-"estudiantes de la plata":
-    "https://www.promiedos.com.ar/team/estudiantes-de-la-plata/igh",
+"sarmiento": "https://www.promiedos.com.ar/team/sarmiento-junin/hbbh",
+"sarmiento junin": "https://www.promiedos.com.ar/team/sarmiento-junin/hbbh",
 
-"estudiantes":
-    "https://www.promiedos.com.ar/team/estudiantes-de-la-plata/igh",
+"gimnasia la plata": "https://www.promiedos.com.ar/team/gimnasia-la-plata/iia",
 
-"riestra":
-    "https://www.promiedos.com.ar/team/riestra/bbjea",
+"rosario central": "https://www.promiedos.com.ar/team/rosario-central/ihf",
 
-"deportivo riestra":
-    "https://www.promiedos.com.ar/team/riestra/bbjea",
+"independiente rivadavia": "https://www.promiedos.com.ar/team/independiente-rivadavia/hcch",
 
-"platense":
-    "https://www.promiedos.com.ar/team/platense/hcah",
+"belgrano": "https://www.promiedos.com.ar/team/belgrano/fhid",
 
-"talleres":
-    "https://www.promiedos.com.ar/team/talleres-cordoba/jche",
+"river plate": "https://www.promiedos.com.ar/team/river-plate/igi",
+"river": "https://www.promiedos.com.ar/team/river-plate/igi",
 
-"talleres cordoba":
-    "https://www.promiedos.com.ar/team/talleres-cordoba/jche",
+"atletico tucuman": "https://www.promiedos.com.ar/team/atletico-tucuman/gbfc",
 
-"central cordoba":
-    "https://www.promiedos.com.ar/team/central-cordoba-sde/beafh",
+"huracan": "https://www.promiedos.com.ar/team/huracan/iie",
 
-"central cordoba sde":
-    "https://www.promiedos.com.ar/team/central-cordoba-sde/beafh",
+"tigre": "https://www.promiedos.com.ar/team/tigre/iid",
 
-"argentinos juniors":
-    "https://www.promiedos.com.ar/team/argentinos-juniors/ihb",
+"barracas central": "https://www.promiedos.com.ar/team/barracas-central/jafb",
+"barracas": "https://www.promiedos.com.ar/team/barracas-central/jafb",
 
-"argentinos":
-    "https://www.promiedos.com.ar/team/argentinos-juniors/ihb",
+"banfield": "https://www.promiedos.com.ar/team/banfield/ihi",
 
-"sarmiento":
-    "https://www.promiedos.com.ar/team/sarmiento-junin/hbbh",
+"estudiantes rio cuarto": "https://www.promiedos.com.ar/team/estudiantes-rio-cuarto/bheaf",
 
-"sarmiento junin":
-    "https://www.promiedos.com.ar/team/sarmiento-junin/hbbh",
+"aldosivi": "https://www.promiedos.com.ar/team/aldosivi/hccd",
 
-"gimnasia la plata":
-    "https://www.promiedos.com.ar/team/gimnasia-la-plata/iia",
-
-"rosario central":
-    "https://www.promiedos.com.ar/team/rosario-central/ihf",
-
-"independiente rivadavia":
-    "https://www.promiedos.com.ar/team/independiente-rivadavia/hcch",
-
-"belgrano":
-    "https://www.promiedos.com.ar/team/belgrano/fhid",
-
-"river plate":
-    "https://www.promiedos.com.ar/team/river-plate/igi",
-
-"river":
-    "https://www.promiedos.com.ar/team/river-plate/igi",
-
-"atletico tucuman":
-    "https://www.promiedos.com.ar/team/atletico-tucuman/gbfc",
-
-"huracan":
-    "https://www.promiedos.com.ar/team/huracan/iie",
-
-"tigre":
-    "https://www.promiedos.com.ar/team/tigre/iid",
-
-"barracas central":
-    "https://www.promiedos.com.ar/team/barracas-central/jafb",
-
-"barracas":
-    "https://www.promiedos.com.ar/team/barracas-central/jafb",
-
-"banfield":
-    "https://www.promiedos.com.ar/team/banfield/ihi",
-
-"estudiantes rio cuarto":
-    "https://www.promiedos.com.ar/team/estudiantes-rio-cuarto/bheaf",
-
-"aldosivi":
-    "https://www.promiedos.com.ar/team/aldosivi/hccd",
-
-"racing club":
-    "https://www.promiedos.com.ar/team/racing-club/ihg",
-
-"racing":
-    "https://www.promiedos.com.ar/team/racing-club/ihg"
+"racing club": "https://www.promiedos.com.ar/team/racing-club/ihg",
+"racing": "https://www.promiedos.com.ar/team/racing-club/ihg"
 
 
 };
@@ -147,9 +89,7 @@ const NOMBRES_EQUIPOS = {
 
 
 "velez sarsfield": "Vélez Sarsfield",
-
 "defensa y justicia": "Defensa y Justicia",
-
 "gimnasia mendoza": "Gimnasia Mendoza",
 
 "instituto": "Instituto",
@@ -215,13 +155,11 @@ const NOMBRES_EQUIPOS = {
 
 function normalizarTexto(texto) {
 
-
 return String(texto || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
-
 
 }
 
@@ -231,25 +169,34 @@ return String(texto || "")
 
 function convertirFecha(fechaTexto) {
 
-
 if (!fechaTexto) {
     return null;
 }
 
-const partes =
-    fechaTexto
-        .trim()
-        .split("/");
+const texto =
+    String(fechaTexto)
+        .trim();
 
-if (partes.length !== 2) {
+const encontrado =
+    texto.match(
+        /^(\d{1,2})\/(\d{1,2})$/
+    );
+
+if (!encontrado) {
     return null;
 }
 
 const dia =
-    parseInt(partes[0], 10);
+    parseInt(
+        encontrado[1],
+        10
+    );
 
 const mes =
-    parseInt(partes[1], 10);
+    parseInt(
+        encontrado[2],
+        10
+    );
 
 if (
     Number.isNaN(dia) ||
@@ -262,12 +209,13 @@ if (
     return null;
 }
 
-const ahora = new Date();
+const ahora =
+    new Date();
 
 let anio =
     ahora.getFullYear();
 
-let fecha =
+const fecha =
     new Date(
         anio,
         mes - 1,
@@ -281,7 +229,8 @@ const hoy =
         ahora.getDate()
     );
 
-// Enero/febrero del próximo año
+// Si la fecha ya pasó,
+// asumimos próximo año.
 if (fecha < hoy) {
     anio++;
 }
@@ -292,18 +241,18 @@ return (
     `${String(dia).padStart(2, "0")}`
 );
 
-
 }
 
 // ==========================================
-// DETECTAR RESERVA / JUVENILES / FEMENINO
+// RESERVA / JUVENILES / FEMENINO
 // ==========================================
 
 function esReservaOJoven(texto) {
 
-
 const t =
-    normalizarTexto(texto);
+    normalizarTexto(
+        texto
+    );
 
 const palabrasExcluidas = [
 
@@ -335,19 +284,19 @@ const palabrasExcluidas = [
 return palabrasExcluidas.some(
     palabra =>
         t.includes(
-            normalizarTexto(palabra)
+            normalizarTexto(
+                palabra
+            )
         )
 );
-
 
 }
 
 // ==========================================
-// OBTENER EQUIPOS PARA EL BUSCADOR
+// LISTA DE EQUIPOS
 // ==========================================
 
 function obtenerListaEquipos() {
-
 
 const equipos = [];
 
@@ -356,10 +305,11 @@ const urlsVistas =
 
 for (
     const [nombre, url]
-    of Object.entries(URLS_EQUIPOS)
+    of Object.entries(
+        URLS_EQUIPOS
+    )
 ) {
 
-    // Evita aliases duplicados
     if (
         urlsVistas.has(url)
     ) {
@@ -370,16 +320,16 @@ for (
 
     equipos.push({
 
-        // ESTE ID ES EL QUE SE
-        // ENVÍA A LA API
-        id: nombre,
+        id:
+            nombre,
 
-        // NOMBRE VISIBLE
         name:
             NOMBRES_EQUIPOS[nombre] ||
             nombre
-                .replace(/\b\w/g, letra =>
-                    letra.toUpperCase()
+                .replace(
+                    /\b\w/g,
+                    letra =>
+                        letra.toUpperCase()
                 )
     });
 }
@@ -394,11 +344,201 @@ equipos.sort(
 
 return equipos;
 
+}
+
+// ==========================================
+// EXTRAER TEXTO DE UNA CELDA
+// ==========================================
+
+function textoCelda(
+$,
+celda
+) {
+
+return $(celda)
+    .text()
+    .replace(
+        /\s+/g,
+        " "
+    )
+    .trim();
 
 }
 
 // ==========================================
-// API GET
+// BUSCAR FECHA EN UNA FILA
+// ==========================================
+
+function buscarFechaEnFila(
+cells
+) {
+
+for (
+    const cell
+    of cells
+) {
+
+    const encontrado =
+        cell.match(
+            /^\d{1,2}\/\d{1,2}$/
+        );
+
+    if (encontrado) {
+        return cell;
+    }
+}
+
+return null;
+
+
+}
+
+// ==========================================
+// BUSCAR HORA EN UNA FILA
+// ==========================================
+
+function buscarHoraEnFila(
+cells
+) {
+
+
+for (
+    const cell
+    of cells
+) {
+
+    const encontrado =
+        cell.match(
+            /^\d{1,2}:\d{2}$/
+        );
+
+    if (encontrado) {
+        return cell;
+    }
+}
+
+return null;
+
+
+}
+
+// ==========================================
+// BUSCAR L/V EN UNA FILA
+// ==========================================
+
+function buscarCondicionEnFila(
+cells
+) {
+
+
+for (
+    const cell
+    of cells
+) {
+
+    const valor =
+        cell
+            .trim()
+            .toUpperCase();
+
+    if (
+        valor === "L" ||
+        valor === "V"
+    ) {
+
+        return valor;
+    }
+}
+
+return null;
+
+
+}
+
+// ==========================================
+// OBTENER RIVAL
+// ==========================================
+
+function buscarRival(
+cells,
+fecha,
+condicion,
+hora
+) {
+
+
+for (
+    const cell
+    of cells
+) {
+
+    const valor =
+        cell.trim();
+
+    if (!valor) {
+        continue;
+    }
+
+    if (
+        valor === fecha
+    ) {
+        continue;
+    }
+
+    if (
+        valor.toUpperCase() ===
+        condicion
+    ) {
+        continue;
+    }
+
+    if (
+        valor === hora
+    ) {
+        continue;
+    }
+
+    if (
+        /^\d{1,2}\/\d{1,2}$/.test(
+            valor
+        )
+    ) {
+        continue;
+    }
+
+    if (
+        /^\d{1,2}:\d{2}$/.test(
+            valor
+        )
+    ) {
+        continue;
+    }
+
+    const texto =
+        normalizarTexto(
+            valor
+        );
+
+    if (
+        texto === "dia" ||
+        texto === "día" ||
+        texto === "fecha" ||
+        texto === "l/v" ||
+        texto === "vs equipo"
+    ) {
+        continue;
+    }
+
+    return valor;
+}
+
+return null;
+
+
+}
+
+// ==========================================
+// API
 // ==========================================
 
 export async function GET(request) {
@@ -415,35 +555,32 @@ try {
 
 
     // ======================================
-    // LISTA DE EQUIPOS
+    // LISTA
     // ======================================
 
     const list =
-        searchParams.get("list");
-
-
-    if (list === "true") {
-
-        const equipos =
-            obtenerListaEquipos();
-
-        console.log(
-            `Equipos disponibles para búsqueda: ${equipos.length}`
+        searchParams.get(
+            "list"
         );
 
+    if (
+        list === "true"
+    ) {
+
         return NextResponse.json(
-            equipos
+            obtenerListaEquipos()
         );
     }
 
 
     // ======================================
-    // EQUIPO SOLICITADO
+    // EQUIPO
     // ======================================
 
     const teamParam =
-        searchParams.get("team");
-
+        searchParams.get(
+            "team"
+        );
 
     if (!teamParam) {
 
@@ -459,46 +596,16 @@ try {
     }
 
 
-    // ======================================
-    // NORMALIZAR EQUIPO
-    // ======================================
-
     const cleanTeam =
         normalizarTexto(
             teamParam
         );
 
 
-    let targetUrl =
+    const targetUrl =
         URLS_EQUIPOS[
             cleanTeam
         ];
-
-
-    // ======================================
-    // SI NO ENCUENTRA EL NOMBRE,
-    // BUSCAR TAMBIÉN POR URL
-    // ======================================
-
-    if (!targetUrl) {
-
-        const entrada =
-            Object.entries(
-                URLS_EQUIPOS
-            ).find(
-                ([nombre]) =>
-                    normalizarTexto(
-                        nombre
-                    ) === cleanTeam
-            );
-
-        if (entrada) {
-
-            targetUrl =
-                entrada[1];
-
-        }
-    }
 
 
     if (!targetUrl) {
@@ -516,11 +623,11 @@ try {
 
 
     console.log(
-        "------------------------------------------"
+        "=========================================="
     );
 
     console.log(
-        `Fixture de: ${teamParam}`
+        `BUSCANDO FIXTURE: ${teamParam}`
     );
 
     console.log(
@@ -528,18 +635,21 @@ try {
     );
 
     console.log(
-        "------------------------------------------"
+        "=========================================="
     );
 
 
     // ======================================
-    // CONSULTAR PROMIEDOS
+    // FETCH PROMIEDOS
     // ======================================
 
     const res =
         await fetch(
             targetUrl,
             {
+
+                method:
+                    "GET",
 
                 headers: {
 
@@ -550,7 +660,13 @@ try {
                         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
 
                     "Accept-Language":
-                        "es-AR,es;q=0.9,en;q=0.8"
+                        "es-AR,es;q=0.9,en;q=0.8",
+
+                    "Cache-Control":
+                        "no-cache",
+
+                    "Pragma":
+                        "no-cache"
                 },
 
                 cache:
@@ -571,6 +687,11 @@ try {
         await res.text();
 
 
+    console.log(
+        `HTML recibido: ${html.length} caracteres`
+    );
+
+
     const $ =
         cheerio.load(
             html
@@ -581,240 +702,219 @@ try {
 
 
     // ======================================
-    // BUSCAR TABLA DE PRÓXIMOS PARTIDOS
+    // RECORRER TODAS LAS FILAS
     // ======================================
 
-    $("table").each(
+    $("table tr").each(
         (
-            tableIndex,
-            tableElement
+            rowIndex,
+            rowElement
         ) => {
 
-            const $table =
-                $(tableElement);
+            const $row =
+                $(rowElement);
 
 
-            const tableText =
-                $table
-                    .text()
-                    .replace(
-                        /\s+/g,
-                        " "
+            const cells =
+                $row
+                    .find("td")
+                    .map(
+                        (_, cell) =>
+                            textoCelda(
+                                $,
+                                cell
+                            )
                     )
-                    .toLowerCase();
+                    .get();
 
 
             if (
-                !tableText.includes("l/v") &&
-                !tableText.includes("vs equipo")
+                cells.length === 0
             ) {
                 return;
             }
 
 
-            $table.find("tr").each(
-                (
-                    rowIndex,
-                    element
-                ) => {
+            // ==================================
+            // DEBUG
+            // ==================================
 
-                    const $row =
-                        $(element);
-
-
-                    const cells =
-                        $row
-                            .find("td")
-                            .map(
-                                (_, cell) =>
-                                    $(cell)
-                                        .text()
-                                        .replace(
-                                            /\s+/g,
-                                            " "
-                                        )
-                                        .trim()
-                            )
-                            .get();
-
-
-                    if (
-                        cells.length < 4
-                    ) {
-                        return;
-                    }
-
-
-                    const fechaOriginal =
-                        cells[0];
-
-                    const condicion =
-                        cells[1]
-                            .toUpperCase();
-
-                    const rival =
-                        cells[2];
-
-                    const hora =
-                        cells[3];
-
-
-                    if (
-                        !fechaOriginal ||
-                        !condicion ||
-                        !rival
-                    ) {
-                        return;
-                    }
-
-
-                    // ==================================
-                    // DESCARTAR ENCABEZADOS
-                    // ==================================
-
-                    const filaCompleta =
-                        cells
-                            .join(" ")
-                            .toLowerCase();
-
-
-                    if (
-                        filaCompleta.includes("día") ||
-                        filaCompleta.includes("fecha") ||
-                        filaCompleta.includes("vs equipo")
-                    ) {
-                        return;
-                    }
-
-
-                    // ==================================
-                    // SOLO L / V
-                    // ==================================
-
-                    if (
-                        condicion !== "L" &&
-                        condicion !== "V"
-                    ) {
-                        return;
-                    }
-
-
-                    // ==================================
-                    // DESCARTAR OTRAS CATEGORÍAS
-                    // ==================================
-
-                    const textoParaFiltrar =
-                        `${teamParam} ${rival} ${filaCompleta}`;
-
-
-                    if (
-                        esReservaOJoven(
-                            textoParaFiltrar
-                        )
-                    ) {
-
-                        console.log(
-                            `Partido descartado por categoría: ${textoParaFiltrar}`
-                        );
-
-                        return;
-                    }
-
-
-                    // ==================================
-                    // FECHA
-                    // ==================================
-
-                    const fecha =
-                        convertirFecha(
-                            fechaOriginal
-                        );
-
-
-                    if (!fecha) {
-                        return;
-                    }
-
-
-                    // ==================================
-                    // LOCAL / VISITANTE
-                    // ==================================
-
-                    let homeTeam = "";
-                    let awayTeam = "";
-
-
-                    if (
-                        condicion === "L"
-                    ) {
-
-                        homeTeam =
-                            NOMBRES_EQUIPOS[
-                                cleanTeam
-                            ] ||
-                            teamParam;
-
-                        awayTeam =
-                            rival;
-
-                    } else {
-
-                        homeTeam =
-                            rival;
-
-                        awayTeam =
-                            NOMBRES_EQUIPOS[
-                                cleanTeam
-                            ] ||
-                            teamParam;
-                    }
-
-
-                    // ==================================
-                    // GUARDAR
-                    // ==================================
-
-                    matches.push({
-
-                        id:
-                            `${cleanTeam}-${fecha}-${hora}-${rival}-${rowIndex}`,
-
-                        date:
-                            fecha,
-
-                        time:
-                            hora,
-
-                        league:
-                            "Liga Profesional Argentina",
-
-                        homeTeam:
-                            homeTeam,
-
-                        awayTeam:
-                            awayTeam,
-
-                        local:
-                            homeTeam,
-
-                        visiting:
-                            awayTeam,
-
-                        rival:
-                            rival,
-
-                        condicion:
-                            condicion,
-
-                        score:
-                            null,
-
-                        rawText:
-                            `${fechaOriginal} ${condicion} ${rival} ${hora}`
-                    });
-
-                }
+            console.log(
+                `Fila ${rowIndex}:`,
+                cells
             );
+
+
+            // ==================================
+            // BUSCAR COMPONENTES
+            // ==================================
+
+            const fecha =
+                buscarFechaEnFila(
+                    cells
+                );
+
+            const condicion =
+                buscarCondicionEnFila(
+                    cells
+                );
+
+            const hora =
+                buscarHoraEnFila(
+                    cells
+                );
+
+
+            // No es una fila de fixture
+            if (
+                !fecha ||
+                !condicion ||
+                !hora
+            ) {
+                return;
+            }
+
+
+            // ==================================
+            // RIVAL
+            // ==================================
+
+            const rival =
+                buscarRival(
+                    cells,
+                    fecha,
+                    condicion,
+                    hora
+                );
+
+
+            if (!rival) {
+                return;
+            }
+
+
+            // ==================================
+            // FILTRO CATEGORÍAS
+            // ==================================
+
+            const filaCompleta =
+                cells.join(" ");
+
+
+            const textoParaFiltrar =
+                `${teamParam} ${rival} ${filaCompleta}`;
+
+
+            if (
+                esReservaOJoven(
+                    textoParaFiltrar
+                )
+            ) {
+
+                console.log(
+                    `DESCARTADO POR CATEGORÍA: ${textoParaFiltrar}`
+                );
+
+                return;
+            }
+
+
+            // ==================================
+            // FECHA
+            // ==================================
+
+            const fechaISO =
+                convertirFecha(
+                    fecha
+                );
+
+
+            if (!fechaISO) {
+                return;
+            }
+
+
+            // ==================================
+            // NOMBRE DEL EQUIPO
+            // ==================================
+
+            const nombreEquipo =
+                NOMBRES_EQUIPOS[
+                    cleanTeam
+                ] ||
+                teamParam;
+
+
+            // ==================================
+            // LOCAL / VISITANTE
+            // ==================================
+
+            let homeTeam;
+            let awayTeam;
+
+
+            if (
+                condicion === "L"
+            ) {
+
+                homeTeam =
+                    nombreEquipo;
+
+                awayTeam =
+                    rival;
+
+            } else {
+
+                homeTeam =
+                    rival;
+
+                awayTeam =
+                    nombreEquipo;
+            }
+
+
+            // ==================================
+            // GUARDAR
+            // ==================================
+
+            matches.push({
+
+                id:
+                    `${cleanTeam}-${fechaISO}-${hora}-${rival}-${rowIndex}`,
+
+                date:
+                    fechaISO,
+
+                time:
+                    hora,
+
+                league:
+                    "Liga Profesional Argentina",
+
+                homeTeam:
+                    homeTeam,
+
+                awayTeam:
+                    awayTeam,
+
+                local:
+                    homeTeam,
+
+                visiting:
+                    awayTeam,
+
+                rival:
+                    rival,
+
+                condicion:
+                    condicion,
+
+                score:
+                    null,
+
+                rawText:
+                    `${fecha} ${condicion} ${rival} ${hora}`
+            });
 
         }
     );
@@ -836,8 +936,16 @@ try {
     ) {
 
         const key =
-            `${match.date}|${match.time}|${match.homeTeam}|${match.awayTeam}`
-                .toLowerCase();
+            [
+                match.date,
+                match.time,
+                normalizarTexto(
+                    match.homeTeam
+                ),
+                normalizarTexto(
+                    match.awayTeam
+                )
+            ].join("|");
 
 
         if (
@@ -879,7 +987,7 @@ try {
 
 
     // ==========================================
-    // PRIMEROS 20
+    // SOLO PRÓXIMOS 20
     // ==========================================
 
     const finalMatches =
@@ -890,7 +998,23 @@ try {
 
 
     console.log(
-        `Partidos válidos encontrados para ${teamParam}: ${finalMatches.length}`
+        "=========================================="
+    );
+
+    console.log(
+        `PARTIDOS ENCONTRADOS: ${matches.length}`
+    );
+
+    console.log(
+        `PARTIDOS ÚNICOS: ${uniqueMatches.length}`
+    );
+
+    console.log(
+        `PARTIDOS FINALES: ${finalMatches.length}`
+    );
+
+    console.log(
+        "=========================================="
     );
 
 
@@ -914,7 +1038,10 @@ try {
 } catch (error) {
 
     console.error(
-        "Error en team-fixture API:",
+        "ERROR EN TEAM-FIXTURE:"
+    );
+
+    console.error(
         error
     );
 
@@ -923,7 +1050,7 @@ try {
         {
             error:
                 error?.message ||
-                "Error interno del servidor al obtener el fixture"
+                "Error interno del servidor"
         },
         {
             status: 500
