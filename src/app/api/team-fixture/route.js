@@ -6,7 +6,7 @@ const redis = new Redis(process.env.REDIS_URL);
 const REDIS_TEAM_FIXTURES = "chiquifutbol_team_fixtures";
 
 // ==========================================
-// EQUIPOS DE PRIMERA
+// EQUIPOS DE PRIMERA ARGENTINA
 // ==========================================
 
 const EQUIPOS = {
@@ -55,6 +55,18 @@ function normalizarTexto(texto) {
 }
 
 // ==========================================
+// LISTA PARA EL BUSCADOR
+// ==========================================
+
+function obtenerListaEquipos() {
+  return Object.entries(EQUIPOS).map(([id, nombre]) => ({
+    id,
+    name: nombre,
+    nombre,
+  }));
+}
+
+// ==========================================
 // BUSCAR EQUIPO
 // ==========================================
 
@@ -65,70 +77,115 @@ function buscarEquipo(parametro) {
     return null;
   }
 
-  // Buscar primero por ID
+  // ------------------------------------------
+  // ID EXACTO
+  // ------------------------------------------
+
   for (const [id, nombre] of Object.entries(EQUIPOS)) {
     if (normalizarTexto(id) === valor) {
       return {
         id,
         name: nombre,
+        nombre,
       };
     }
   }
 
-  // Buscar por nombre exacto
+  // ------------------------------------------
+  // NOMBRE EXACTO
+  // ------------------------------------------
+
   for (const [id, nombre] of Object.entries(EQUIPOS)) {
     if (normalizarTexto(nombre) === valor) {
       return {
         id,
         name: nombre,
+        nombre,
       };
     }
   }
 
-  // Buscar coincidencia parcial
-  for (const [id, nombre] of Object.entries(EQUIPOS)) {
-    const idNormalizado = normalizarTexto(id);
-    const nombreNormalizado = normalizarTexto(nombre);
+  // ------------------------------------------
+  // ALIAS
+  // ------------------------------------------
 
-    if (
-      idNormalizado.includes(valor) ||
-      valor.includes(idNormalizado) ||
-      nombreNormalizado.includes(valor) ||
-      valor.includes(nombreNormalizado)
-    ) {
-      return {
-        id,
-        name: nombre,
-      };
-    }
-  }
-
-  // Alias frecuentes
   const alias = {
     river: "igi",
-    "riverplate": "igi",
+    riverplate: "igi",
+
     boca: "igg",
-    "bocajuniors": "igg",
+    bocajuniors: "igg",
+
     independiente: "ihe",
+
     racing: "ihg",
-    "racingclub": "ihg",
+    racingclub: "ihg",
+
     sanlorenzo: "igf",
+
     lanus: "igj",
+
     estudiantes: "igh",
+    estudiantesdelaplata: "igh",
+
     platense: "hcah",
+
     huracan: "iie",
+
     banfield: "ihi",
+
     tigre: "iid",
+
     belgrano: "fhid",
+
     argentinos: "ihb",
-    "argentinosjuniors": "ihb",
+    argentinosjuniors: "ihb",
+
     talleres: "jche",
+    tallerescordoba: "jche",
+
     union: "hcag",
+    unionsantaafe: "hcag",
+
     sarmiento: "hbbh",
+    sarmientodejunin: "hbbh",
+
     gimnasia: "iia",
+    gimnasialaplata: "iia",
+
     rosariocentral: "ihf",
+
     aldosivi: "hccd",
-    "defensayjusticia": "hcbh",
+
+    defensayjusticia: "hcbh",
+
+    velez: "ihc",
+    velezsarsfield: "ihc",
+
+    instituto: "hchc",
+    instituto: "hchc",
+
+    newells: "ihh",
+    newellsoldboys: "ihh",
+
+    riestra: "bbjea",
+    deportivoriestra: "bbjea",
+
+    centralcordoba: "beafh",
+    centralcordobasantiago: "beafh",
+
+    independientemendoza: "hcch",
+    independienterivadavia: "hcch",
+
+    atletico: "gbfc",
+    atleticotucuman: "gbfc",
+
+    gimnasiamendoza: "bbjbf",
+    gimnasiamendoza: "bbjbf",
+
+    estudiantesriocuarto: "bheaf",
+    barracas: "jafb",
+    barracascentral: "jafb",
   };
 
   if (alias[valor]) {
@@ -137,10 +194,78 @@ function buscarEquipo(parametro) {
     return {
       id,
       name: EQUIPOS[id],
+      nombre: EQUIPOS[id],
     };
   }
 
+  // ------------------------------------------
+  // COINCIDENCIA PARCIAL
+  // ------------------------------------------
+
+  for (const [id, nombre] of Object.entries(EQUIPOS)) {
+    const idNormalizado = normalizarTexto(id);
+    const nombreNormalizado = normalizarTexto(nombre);
+
+    if (
+      nombreNormalizado.includes(valor) ||
+      valor.includes(nombreNormalizado) ||
+      idNormalizado.includes(valor) ||
+      valor.includes(idNormalizado)
+    ) {
+      return {
+        id,
+        name: nombre,
+        nombre,
+      };
+    }
+  }
+
   return null;
+}
+
+// ==========================================
+// OBTENER FIXTURES DESDE REDIS
+// ==========================================
+
+function obtenerFixtures(data, equipoId) {
+  // Formato:
+  // {
+  //   "igi": [...]
+  // }
+
+  if (data && Array.isArray(data[equipoId])) {
+    return data[equipoId];
+  }
+
+  // Formato:
+  // {
+  //   "teams": {
+  //      "igi": [...]
+  //   }
+  // }
+
+  if (
+    data?.teams &&
+    Array.isArray(data.teams[equipoId])
+  ) {
+    return data.teams[equipoId];
+  }
+
+  // Formato:
+  // {
+  //   "fixtures": {
+  //      "igi": [...]
+  //   }
+  // }
+
+  if (
+    data?.fixtures &&
+    Array.isArray(data.fixtures[equipoId])
+  ) {
+    return data.fixtures[equipoId];
+  }
+
+  return [];
 }
 
 // ==========================================
@@ -152,6 +277,21 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
 
     const teamParam = searchParams.get("team");
+    const listParam = searchParams.get("list");
+
+    // ==========================================
+    // LISTA DE EQUIPOS
+    // ==========================================
+
+    if (listParam === "true") {
+      return NextResponse.json(obtenerListaEquipos(), {
+        status: 200,
+      });
+    }
+
+    // ==========================================
+    // SI NO VIENE EQUIPO
+    // ==========================================
 
     if (!teamParam) {
       return NextResponse.json(
@@ -165,7 +305,7 @@ export async function GET(request) {
     }
 
     // ==========================================
-    // RESOLVER EQUIPO
+    // BUSCAR EQUIPO
     // ==========================================
 
     const equipo = buscarEquipo(teamParam);
@@ -195,20 +335,26 @@ export async function GET(request) {
         fixtures: [],
         nextDateParam: null,
         source: "redis",
-        message: "Todavía no hay fixtures sincronizados",
       });
     }
+
+    // ==========================================
+    // PARSEAR REDIS
+    // ==========================================
 
     let data;
 
     try {
       data = JSON.parse(raw);
     } catch (error) {
-      console.error("Error parseando Redis:", error);
+      console.error(
+        "ERROR PARSEANDO chiquifutbol_team_fixtures:",
+        error
+      );
 
       return NextResponse.json(
         {
-          error: "Los datos de fixtures almacenados en Redis no son válidos",
+          error: "Los datos de fixtures de Redis no son válidos",
         },
         {
           status: 500,
@@ -217,49 +363,13 @@ export async function GET(request) {
     }
 
     // ==========================================
-    // OBTENER FIXTURES DEL EQUIPO
+    // OBTENER FIXTURES
     // ==========================================
 
-    let fixtures = [];
-
-    // Formato esperado:
-    // {
-    //   "igi": [...]
-    // }
-
-    if (Array.isArray(data?.[equipo.id])) {
-      fixtures = data[equipo.id];
-    }
-
-    // Por si el sincronizador guarda:
-    // {
-    //   "teams": {
-    //      "igi": [...]
-    //   }
-    // }
-
-    if (
-      fixtures.length === 0 &&
-      data?.teams &&
-      Array.isArray(data.teams[equipo.id])
-    ) {
-      fixtures = data.teams[equipo.id];
-    }
-
-    // Por si guarda:
-    // {
-    //   "fixtures": {
-    //      "igi": [...]
-    //   }
-    // }
-
-    if (
-      fixtures.length === 0 &&
-      data?.fixtures &&
-      Array.isArray(data.fixtures[equipo.id])
-    ) {
-      fixtures = data.fixtures[equipo.id];
-    }
+    const fixtures = obtenerFixtures(
+      data,
+      equipo.id
+    );
 
     // ==========================================
     // RESPUESTA
@@ -273,7 +383,10 @@ export async function GET(request) {
       source: "redis",
     });
   } catch (error) {
-    console.error("ERROR API TEAM FIXTURE:", error);
+    console.error(
+      "ERROR API TEAM FIXTURE:",
+      error
+    );
 
     return NextResponse.json(
       {
