@@ -967,42 +967,19 @@ export default function Home() {
   }
 
   // ==========================================
-  // GOLES
-  // ==========================================
+// GOLES
+// ==========================================
 
-  function obtenerGoles(
-    team
-  ) {
+function obtenerGoles(team) {
 
-    if (
-      !Array.isArray(
-        team?.goals
-      )
-    ) {
-      return [];
-    }
-
-    return team.goals;
+  if (!Array.isArray(team?.goals)) {
+    return [];
   }
 
-  // ==========================================
-  // TV
-  // ==========================================
+  console.log("GOLES RECIBIDOS:", team.goals);
 
-  function obtenerTV(
-    game
-  ) {
-
-    if (
-      !Array.isArray(
-        game?.tv_networks
-      )
-    ) {
-      return [];
-    }
-
-    return game.tv_networks;
-  }
+  return team.goals;
+}
 
   // ==========================================
   // FIXTURE - NOMBRE RIVAL
