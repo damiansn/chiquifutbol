@@ -526,10 +526,6 @@ export default function Home() {
     return null;
   }
 
-  // ========================================
-  // FORMATEAR HORA
-  // ========================================
-
 // ========================================
 // FORMATEAR HORA
 // ========================================
@@ -546,6 +542,104 @@ function formatearHora(
   const hora =
     formatearHoraArgentina(game);
 
+  // ========================================
+  // OBTENER start_time
+  //
+  // Ejemplo:
+  // "18-09-2026 20:30"
+  // ========================================
+
+  if (
+    game?.start_time
+  ) {
+
+    const texto =
+      String(
+        game.start_time
+      ).trim();
+
+    const encontrado =
+      texto.match(
+        /^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/
+      );
+
+    if (
+      encontrado
+    ) {
+
+      const dia =
+        encontrado[1];
+
+      const mes =
+        encontrado[2];
+
+      const anio =
+        encontrado[3];
+
+      const horaInicio =
+        encontrado[4];
+
+      const minutoInicio =
+        encontrado[5];
+
+      // ========================================
+      // FECHA ACTUAL EN ARGENTINA
+      // ========================================
+
+      const ahora =
+        new Date();
+
+      const fechaArgentina =
+        new Intl.DateTimeFormat(
+          "en-CA",
+          {
+            timeZone:
+              "America/Argentina/Buenos_Aires",
+            year:
+              "numeric",
+            month:
+              "2-digit",
+            day:
+              "2-digit"
+          }
+        ).formatToParts(
+          ahora
+        );
+
+      const partes = {};
+
+      fechaArgentina.forEach(
+        parte => {
+          partes[parte.type] =
+            parte.value;
+        }
+      );
+
+      const hoy =
+        `${partes.day}-${partes.month}-${partes.year}`;
+
+      // ========================================
+      // SI ES OTRO DÍA
+      // MOSTRAR FECHA + HORA
+      // ========================================
+
+      if (
+        `${dia}-${mes}-${anio}` !== hoy
+      ) {
+
+        return (
+          `${dia}/${mes} ` +
+          `${horaInicio}:${minutoInicio}`
+        );
+      }
+    }
+  }
+
+  // ========================================
+  // SI ES HOY
+  // MOSTRAR SOLAMENTE LA HORA
+  // ========================================
+
   if (
     hora &&
     hora !== "--:--"
@@ -555,11 +649,7 @@ function formatearHora(
   }
 
   // ========================================
-  // SEGUNDA OPCIÓN
-  // Usar directamente start_time
-  //
-  // Ejemplo:
-  // "17-09-2026 08:00"
+  // RESPALDO
   // ========================================
 
   if (
