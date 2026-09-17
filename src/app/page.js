@@ -1699,6 +1699,18 @@ export default function Home() {
                               game
                             );
 
+                            if (estado.live) {
+                            console.log(
+                              "PARTIDO EN VIVO:",
+                              game
+                            );
+
+                            console.log(
+                              "STATUS:",
+                              game?.status
+                            );
+                          }
+
                           const teamA =
                             obtenerEquipo(
                               game,
