@@ -49,11 +49,6 @@ export default function Home() {
   const [teamFixturesLoading, setTeamFixturesLoading] =
     useState(false);
 
-  // Se usa para actualizar visualmente el tiempo de los partidos
-  // sin tener que esperar siempre al fetch de 30 segundos.
-  const [ahora, setAhora] =
-    useState(Date.now());
-
   const searchInputRef =
     useRef(null);
 
@@ -134,28 +129,6 @@ export default function Home() {
       clearInterval(interval);
 
   }, [date]);
-
-  // ========================================
-  // RELOJ INTERNO
-  // ========================================
-  //
-  // Sirve para actualizar el minuto de los
-  // partidos en vivo sin esperar al fetch.
-  //
-
-  useEffect(() => {
-
-    const interval =
-      setInterval(() => {
-
-        setAhora(Date.now());
-
-      }, 15000);
-
-    return () =>
-      clearInterval(interval);
-
-  }, []);
 
   // ========================================
   // CARGAR EQUIPOS
@@ -538,8 +511,6 @@ export default function Home() {
       } catch {}
     }
 
-    // Si no hay fecha completa, usamos
-    // la hora entregada directamente.
     if (
       game?.time
     ) {
@@ -572,121 +543,39 @@ export default function Home() {
   // ========================================
   // OBTENER MINUTO EN VIVO
   // ========================================
+  //
+  // Promiedos ya entrega el minuto exacto.
+  // Ejemplo:
+  //
+  // game_time: 71
+  // game_time_status_to_display: "70'"
+  // game_time_to_display: "70'"
+  //
+  // Usamos primero game_time_to_display.
+  // NO calculamos el minuto desde start_time.
+  //
 
   function obtenerMinutoLive(
     game
   ) {
 
-    const status =
-      game?.status || {};
-
-    // --------------------------------------
-    // Primero intentamos datos explícitos
-    // entregados por Promiedos.
-    // --------------------------------------
-
-    const candidatos = [
-      status.minute,
-      status.minutes,
-      status.elapsed,
-      status.match_minute,
-      status.matchMinute,
-      status.elapsed_minutes,
-      status.elapsedMinutes,
-      game?.minute,
-      game?.minutes,
-      game?.match_minute,
-      game?.matchMinute
-    ];
-
-    for (
-      const valor of candidatos
-    ) {
-
-      if (
-        valor !== undefined &&
-        valor !== null &&
-        valor !== ""
-      ) {
-
-        if (
-          typeof valor === "number"
-        ) {
-          return Math.max(
-            0,
-            Math.floor(valor)
-          );
-        }
-
-        const numero =
-          parseInt(
-            String(valor).replace(
-              /[^0-9]/g,
-              ""
-            ),
-            10
-          );
-
-        if (
-          !Number.isNaN(numero)
-        ) {
-          return numero;
-        }
-      }
-    }
-
-    // --------------------------------------
-    // Si Promiedos no entrega el minuto,
-    // calculamos aproximadamente desde
-    // la hora de comienzo.
-    // --------------------------------------
-
-    const fecha =
-      obtenerFechaObjeto(game);
-
-    if (fecha) {
-
-      const diferencia =
-        ahora -
-        fecha.getTime();
-
-      if (
-        diferencia >= 0
-      ) {
-
-        const minutos =
-          Math.floor(
-            diferencia / 60000
-          );
-
-        // No mostramos tiempos absurdos.
-        if (
-          minutos >= 0 &&
-          minutos <= 130
-        ) {
-          return minutos;
-        }
-      }
-    }
-
-    // --------------------------------------
-    // Algunos estados pueden tener nombres
-    // como "37'", "1T 37'", etc.
-    // --------------------------------------
-
-    const nombre =
-      status?.name ||
-      status?.label ||
-      status?.text ||
-      "";
+    // ========================================
+    // PRIMERA OPCIÓN:
+    // TEXTO EXACTO PARA MOSTRAR
+    // ========================================
 
     if (
-      typeof nombre === "string"
+      game?.game_time_to_display
     ) {
 
+      const texto =
+        String(
+          game.game_time_to_display
+        );
+
       const encontrado =
-        nombre.match(
-          /(\d{1,3})\s*['′]/
+        texto.match(
+          /(\d{1,3})/
         );
 
       if (
@@ -697,6 +586,62 @@ export default function Home() {
           encontrado[1],
           10
         );
+      }
+    }
+
+    // ========================================
+    // SEGUNDA OPCIÓN
+    // ========================================
+
+    if (
+      game?.game_time_status_to_display
+    ) {
+
+      const texto =
+        String(
+          game.game_time_status_to_display
+        );
+
+      const encontrado =
+        texto.match(
+          /(\d{1,3})/
+        );
+
+      if (
+        encontrado
+      ) {
+
+        return parseInt(
+          encontrado[1],
+          10
+        );
+      }
+    }
+
+    // ========================================
+    // TERCERA OPCIÓN
+    // game_time NUMÉRICO
+    // ========================================
+
+    if (
+      game?.game_time !== undefined &&
+      game?.game_time !== null &&
+      game?.game_time !== ""
+    ) {
+
+      const numero =
+        parseInt(
+          String(
+            game.game_time
+          ),
+          10
+        );
+
+      if (
+        !Number.isNaN(numero)
+      ) {
+
+        return numero;
       }
     }
 
@@ -737,8 +682,9 @@ export default function Home() {
             ? `EN VIVO ${minuto}'`
             : "EN VIVO",
 
+        // ROJO PARA EN VIVO
         color:
-          "#10b981",
+          "#ef4444",
 
         live:
           true
@@ -1615,8 +1561,6 @@ export default function Home() {
                       }}
                     >
 
-                      {/* LINK RESTAURADO */}
-
                       <Link
                         href={
                           posicionesHref
@@ -1698,18 +1642,6 @@ export default function Home() {
                             obtenerEstado(
                               game
                             );
-
-                            if (estado.live) {
-                            console.log(
-                              "PARTIDO EN VIVO:",
-                              game
-                            );
-
-                            console.log(
-                              "STATUS:",
-                              game?.status
-                            );
-                          }
 
                           const teamA =
                             obtenerEquipo(
@@ -1822,8 +1754,9 @@ export default function Home() {
                                             "6px",
                                           borderRadius:
                                             "50%",
+                                          // ROJO
                                           background:
-                                            "#10b981",
+                                            "#ef4444",
                                           marginRight:
                                             "5px",
                                           verticalAlign:
