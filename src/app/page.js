@@ -908,6 +908,29 @@ export default function Home() {
   }
 
   // ==========================================
+  // TARJETAS ROJAS
+  // ==========================================
+
+  function obtenerTarjetasRojas(
+    team
+  ) {
+
+    const cantidad =
+      Number(
+        team?.red_cards || 0
+      );
+
+    if (
+      Number.isNaN(cantidad) ||
+      cantidad <= 0
+    ) {
+      return 0;
+    }
+
+    return cantidad;
+  }
+
+  // ==========================================
   // GLOBAL
   // ==========================================
 
@@ -1010,9 +1033,6 @@ export default function Home() {
     goal
   ) {
 
-    // Primero usamos el formato que
-    // entrega directamente Promiedos:
-    // "45'"
     if (
       goal?.time_to_display !== undefined &&
       goal?.time_to_display !== null &&
@@ -1024,7 +1044,6 @@ export default function Home() {
       );
     }
 
-    // Respaldo: campo numérico "time"
     if (
       goal?.time !== undefined &&
       goal?.time !== null &&
@@ -1034,7 +1053,6 @@ export default function Home() {
       return `${goal.time}'`;
     }
 
-    // Otros posibles formatos
     if (
       goal?.minute !== undefined &&
       goal?.minute !== null &&
@@ -2060,11 +2078,16 @@ export default function Home() {
                             obtenerGoles(
                               teamB
                             );
-                          console.log("========== EQUIPO LOCAL COMPLETO ==========");
-console.log(teamA);
 
-console.log("========== EQUIPO VISITANTE COMPLETO ==========");
-console.log(teamB);
+                          const rojasA =
+                            obtenerTarjetasRojas(
+                              teamA
+                            );
+
+                          const rojasB =
+                            obtenerTarjetasRojas(
+                              teamB
+                            );
 
                           const tv =
                             obtenerTV(
@@ -2162,7 +2185,7 @@ console.log(teamB);
                                       display:
                                         "grid",
                                       gridTemplateColumns:
-                                        "1fr 55px 1fr",
+                                        "1fr 70px 1fr",
                                       alignItems:
                                         "center",
                                       gap:
@@ -2240,18 +2263,88 @@ console.log(teamB);
                                         color:
                                           estado.live
                                             ? "#ef4444"
-                                            : "#e6edf3"
+                                            : "#e6edf3",
+                                        display:
+                                          "flex",
+                                        alignItems:
+                                          "center",
+                                        justifyContent:
+                                          "center",
+                                        gap:
+                                          "4px"
                                       }}
                                     >
+
+                                      {/* SCORE LOCAL */}
 
                                       <span>
                                         {scoreA}
                                       </span>
 
+                                      {/* ROJAS LOCAL */}
+
+                                      {rojasA > 0 && (
+
+                                        <span
+                                          style={{
+                                            display:
+                                              "inline-flex",
+                                            alignItems:
+                                              "center",
+                                            gap:
+                                              "2px",
+                                            marginLeft:
+                                              "1px"
+                                          }}
+                                          title={
+                                            `${rojasA} tarjeta${rojasA > 1 ? "s" : ""} roja${rojasA > 1 ? "s" : ""}`
+                                          }
+                                        >
+
+                                          {Array.from(
+                                            {
+                                              length:
+                                                rojasA
+                                            }
+                                          ).map(
+                                            (
+                                              _,
+                                              index
+                                            ) => (
+
+                                              <span
+                                                key={
+                                                  index
+                                                }
+                                                style={{
+                                                  display:
+                                                    "inline-block",
+                                                  width:
+                                                    "7px",
+                                                  height:
+                                                    "10px",
+                                                  background:
+                                                    "#ef4444",
+                                                  borderRadius:
+                                                    "1px",
+                                                  boxShadow:
+                                                    "0 0 0 1px rgba(0,0,0,.25)"
+                                                }}
+                                              />
+
+                                            )
+                                          )}
+
+                                        </span>
+
+                                      )}
+
+                                      {/* GUION */}
+
                                       <span
                                         style={{
                                           margin:
-                                            "0 5px",
+                                            "0 3px",
                                           color:
                                             estado.live
                                               ? "#ef4444"
@@ -2261,9 +2354,69 @@ console.log(teamB);
                                         -
                                       </span>
 
+                                      {/* SCORE VISITANTE */}
+
                                       <span>
                                         {scoreB}
                                       </span>
+
+                                      {/* ROJAS VISITANTE */}
+
+                                      {rojasB > 0 && (
+
+                                        <span
+                                          style={{
+                                            display:
+                                              "inline-flex",
+                                            alignItems:
+                                              "center",
+                                            gap:
+                                              "2px",
+                                            marginLeft:
+                                              "1px"
+                                          }}
+                                          title={
+                                            `${rojasB} tarjeta${rojasB > 1 ? "s" : ""} roja${rojasB > 1 ? "s" : ""}`
+                                          }
+                                        >
+
+                                          {Array.from(
+                                            {
+                                              length:
+                                                rojasB
+                                            }
+                                          ).map(
+                                            (
+                                              _,
+                                              index
+                                            ) => (
+
+                                              <span
+                                                key={
+                                                  index
+                                                }
+                                                style={{
+                                                  display:
+                                                    "inline-block",
+                                                  width:
+                                                    "7px",
+                                                  height:
+                                                    "10px",
+                                                  background:
+                                                    "#ef4444",
+                                                  borderRadius:
+                                                    "1px",
+                                                  boxShadow:
+                                                    "0 0 0 1px rgba(0,0,0,.25)"
+                                                }}
+                                              />
+
+                                            )
+                                          )}
+
+                                        </span>
+
+                                      )}
 
                                     </div>
 
