@@ -586,7 +586,7 @@ const obtenerCompetition = (league) => {
               margin: 0
             }}
           >
-            Chiqui
+            Chiquifútbol
           </h1>
         </div>
 

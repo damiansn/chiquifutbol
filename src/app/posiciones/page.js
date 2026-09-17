@@ -82,10 +82,7 @@ function obtenerTextoColorEquipo(fila) {
 function formatearFecha(fecha) {
   if (!fecha) return "";
 
-  // Formato habitual de Promiedos:
-  // 11-08-2026 19:30
-
-  const partes = fecha.split(" ");
+  const partes = String(fecha).split(" ");
 
   if (partes.length !== 2) return fecha;
 
@@ -96,6 +93,24 @@ function formatearFecha(fecha) {
   if (!dia || !mes || !anio) return fecha;
 
   return `${dia}/${mes}/${anio} ${hora}`;
+}
+
+// ============================================================
+// OBTENER SCORE NUMÉRICO
+// ============================================================
+
+function obtenerScore(score) {
+  if (score === null || score === undefined) {
+    return null;
+  }
+
+  const numero = Number(score);
+
+  if (Number.isFinite(numero)) {
+    return numero;
+  }
+
+  return null;
 }
 
 // ============================================================
@@ -164,7 +179,10 @@ function PosicionesContent() {
             "Error al cargar los datos."
         );
       } finally {
-        if (!cancelado && requestId === requestIdRef.current) {
+        if (
+          !cancelado &&
+          requestId === requestIdRef.current
+        ) {
           setLoading(false);
         }
       }
@@ -178,7 +196,7 @@ function PosicionesContent() {
   }, [competition]);
 
   // ==========================================================
-  // NOMBRE DE LA COMPETENCIA
+  // NOMBRE DE COMPETENCIA
   // ==========================================================
 
   const competenciaConfig =
@@ -190,15 +208,7 @@ function PosicionesContent() {
     };
 
   // ==========================================================
-  // OBTENER TODAS LAS TABLAS
-  //
-  // Estructura real:
-  //
-  // data.tables[]
-  //   └── torneo
-  //       └── tables[]
-  //           └── grupo
-  //               └── table
+  // TABLAS
   // ==========================================================
 
   function obtenerTablasPosiciones() {
@@ -236,15 +246,7 @@ function PosicionesContent() {
   }
 
   // ==========================================================
-  // OBTENER BRACKETS
-  //
-  // Estructura real:
-  //
-  // data.brackets
-  //   └── stages[]
-  //       └── groups[]
-  //           ├── participants[]
-  //           └── games[]
+  // BRACKETS
   // ==========================================================
 
   function obtenerBrackets() {
@@ -263,13 +265,15 @@ function PosicionesContent() {
   }
 
   // ==========================================================
-  // ESTADÍSTICAS DE JUGADORES
+  // ESTADÍSTICAS
   // ==========================================================
 
   function obtenerEstadisticasJugadores() {
     if (
       !data?.players_statistics ||
-      !Array.isArray(data.players_statistics.tables)
+      !Array.isArray(
+        data.players_statistics.tables
+      )
     ) {
       return [];
     }
@@ -301,19 +305,26 @@ function PosicionesContent() {
     return (
       <main style={styles.page}>
         <div style={styles.container}>
-          <Link href="/" style={styles.backLink}>
+
+          <Link
+            href="/"
+            style={styles.backLink}
+          >
             ← Volver
           </Link>
 
           <div style={styles.header}>
-            <h1 style={styles.title}>
-              {competenciaConfig.nombre}
-            </h1>
+            <div>
+              <h1 style={styles.title}>
+                {competenciaConfig.nombre}
+              </h1>
+            </div>
           </div>
 
           <div style={styles.errorBox}>
             {error}
           </div>
+
         </div>
       </main>
     );
@@ -336,7 +347,10 @@ function PosicionesContent() {
             VOLVER
         ==================================================== */}
 
-        <Link href="/" style={styles.backLink}>
+        <Link
+          href="/"
+          style={styles.backLink}
+        >
           ← Volver a partidos
         </Link>
 
@@ -345,7 +359,9 @@ function PosicionesContent() {
         ==================================================== */}
 
         <header style={styles.header}>
+
           <div>
+
             <div style={styles.eyebrow}>
               POSICIONES Y ESTADÍSTICAS
             </div>
@@ -354,11 +370,13 @@ function PosicionesContent() {
               {data?.league?.name ||
                 competenciaConfig.nombre}
             </h1>
+
           </div>
+
         </header>
 
         {/* ====================================================
-            NAVEGACIÓN DE COMPETENCIAS
+            NAVEGACIÓN
         ==================================================== */}
 
         <nav style={styles.competitionNav}>
@@ -450,14 +468,14 @@ function PosicionesContent() {
         </nav>
 
         {/* ====================================================
-            TABLAS DE POSICIONES
+            TABLAS
         ==================================================== */}
 
         {tablas.length > 0 && (
           <section style={styles.section}>
 
             <div style={styles.sectionTitle}>
-              <span>Tablas de posiciones</span>
+              Tablas de posiciones
             </div>
 
             <div style={styles.tablesGrid}>
@@ -475,14 +493,14 @@ function PosicionesContent() {
         )}
 
         {/* ====================================================
-            ELIMINATORIAS / BRACKETS
+            ELIMINATORIAS
         ==================================================== */}
 
         {brackets.length > 0 && (
           <section style={styles.section}>
 
             <div style={styles.sectionTitle}>
-              <span>Eliminatorias</span>
+              Eliminatorias
             </div>
 
             <div style={styles.bracketsContainer}>
@@ -500,14 +518,14 @@ function PosicionesContent() {
         )}
 
         {/* ====================================================
-            ESTADÍSTICAS DE JUGADORES
+            ESTADÍSTICAS
         ==================================================== */}
 
         {estadisticas.length > 0 && (
           <section style={styles.section}>
 
             <div style={styles.sectionTitle}>
-              <span>Estadísticas de jugadores</span>
+              Estadísticas de jugadores
             </div>
 
             <div style={styles.playerTables}>
@@ -533,10 +551,12 @@ function PosicionesContent() {
         {tablas.length === 0 &&
           brackets.length === 0 &&
           estadisticas.length === 0 && (
+
             <div style={styles.empty}>
               No hay información disponible para
               esta competencia.
             </div>
+
           )}
 
       </div>
@@ -562,11 +582,10 @@ function TablaPosiciones({ item }) {
   return (
     <div style={styles.tableCard}>
 
-      {/* CABECERA */}
-
       <div style={styles.tableHeader}>
 
         <div>
+
           {torneo && (
             <div style={styles.tableTournament}>
               {torneo}
@@ -576,17 +595,17 @@ function TablaPosiciones({ item }) {
           <div style={styles.tableName}>
             {grupo || "Tabla de posiciones"}
           </div>
+
         </div>
 
       </div>
-
-      {/* TABLA */}
 
       <div style={styles.tableScroll}>
 
         <table style={styles.table}>
 
           <thead>
+
             <tr>
 
               <th style={styles.posHeader}>
@@ -618,6 +637,7 @@ function TablaPosiciones({ item }) {
               ))}
 
             </tr>
+
           </thead>
 
           <tbody>
@@ -662,33 +682,31 @@ function TablaPosiciones({ item }) {
 
                   </td>
 
-                  {columns.map(
-                    (column) => {
+                  {columns.map((column) => {
 
-                      const valor =
-                        obtenerValor(
-                          fila,
-                          column.key
-                        );
-
-                      return (
-                        <td
-                          key={column.key}
-                          style={{
-                            ...styles.statCell,
-                            fontWeight:
-                              column.is_bold
-                                ? 800
-                                : 500,
-                          }}
-                        >
-                          {Array.isArray(valor)
-                            ? valor.join(" ")
-                            : valor}
-                        </td>
+                    const valor =
+                      obtenerValor(
+                        fila,
+                        column.key
                       );
-                    }
-                  )}
+
+                    return (
+                      <td
+                        key={column.key}
+                        style={{
+                          ...styles.statCell,
+                          fontWeight:
+                            column.is_bold
+                              ? 800
+                              : 500,
+                        }}
+                      >
+                        {Array.isArray(valor)
+                          ? valor.join(" ")
+                          : valor}
+                      </td>
+                    );
+                  })}
 
                 </tr>
               );
@@ -752,17 +770,19 @@ function BracketGroup({ group }) {
     ? group.games
     : [];
 
-  // ----------------------------------------------------------
-  // Buscar quién clasifica
-  // ----------------------------------------------------------
+  // ==========================================================
+  // CLASIFICADO
+  // ==========================================================
 
   let qualifiedId = null;
 
   for (const game of games) {
+
     if (
       game?.to_qualify &&
       Array.isArray(game.teams)
     ) {
+
       const indice =
         Number(game.to_qualify) - 1;
 
@@ -770,24 +790,27 @@ function BracketGroup({ group }) {
         indice >= 0 &&
         game.teams[indice]
       ) {
+
         qualifiedId =
           game.teams[indice].id;
+
       }
     }
   }
 
-  // ----------------------------------------------------------
-  // Si no encontramos por to_qualify,
-  // buscamos por winner en un partido único.
-  // ----------------------------------------------------------
+  // ==========================================================
+  // PARTIDO ÚNICO
+  // ==========================================================
 
   if (!qualifiedId && games.length === 1) {
+
     const game = games[0];
 
     if (
       game?.winner &&
       Array.isArray(game.teams)
     ) {
+
       const indice =
         Number(game.winner) - 1;
 
@@ -795,16 +818,105 @@ function BracketGroup({ group }) {
         indice >= 0 &&
         game.teams[indice]
       ) {
+
         qualifiedId =
           game.teams[indice].id;
+
       }
     }
   }
 
-  return (
-    <div style={styles.bracketCard}>
+  // ==========================================================
+  // DETERMINAR SI ES SERIE
+  //
+  // Dos o más partidos entre los mismos equipos.
+  // ==========================================================
 
-      {/* EQUIPOS DE LA LLAVE */}
+  const esSerie =
+    games.length > 1;
+
+  // ==========================================================
+  // CALCULAR GLOBALES
+  //
+  // MUY IMPORTANTE:
+  // Se suma por team.id y NO por posición.
+  // ==========================================================
+
+  const globales = {};
+
+  participants.forEach((participant) => {
+
+    if (participant?.id) {
+      globales[participant.id] = 0;
+    }
+
+  });
+
+  games.forEach((game) => {
+
+    const teams = Array.isArray(game?.teams)
+      ? game.teams
+      : [];
+
+    const scores = Array.isArray(game?.scores)
+      ? game.scores
+      : [];
+
+    teams.forEach((team, index) => {
+
+      if (!team?.id) return;
+
+      const score =
+        obtenerScore(scores[index]);
+
+      if (score === null) return;
+
+      if (
+        globales[team.id] === undefined
+      ) {
+        globales[team.id] = 0;
+      }
+
+      globales[team.id] += score;
+
+    });
+
+  });
+
+  // ==========================================================
+  // SABER SI YA HAY GOLES VÁLIDOS PARA EL GLOBAL
+  // ==========================================================
+
+  const hayGlobal =
+    esSerie &&
+    games.some((game) =>
+      Array.isArray(game?.scores) &&
+      game.scores.some(
+        (score) =>
+          obtenerScore(score) !== null
+      )
+    );
+
+  // ==========================================================
+  // ORDEN DE PARTIDOS
+  //
+  // Generalmente Promiedos los entrega en orden.
+  // Los etiquetamos como IDA / VUELTA.
+  // ==========================================================
+
+  return (
+    <div
+      style={{
+        ...styles.bracketCard,
+        ...(qualifiedId
+          ? styles.bracketCardWithWinner
+          : {}),
+      }}
+    >
+
+      {/* ======================================================
+          CABECERA DEL CRUCE
+      ====================================================== */}
 
       <div style={styles.bracketTeams}>
 
@@ -814,6 +926,9 @@ function BracketGroup({ group }) {
             const clasificado =
               qualifiedId ===
               participant.id;
+
+            const global =
+              globales[participant.id];
 
             return (
               <div
@@ -846,6 +961,21 @@ function BracketGroup({ group }) {
                     participant.name}
                 </div>
 
+                {/* GLOBAL */}
+
+                {esSerie && hayGlobal && (
+                  <div
+                    style={{
+                      ...styles.participantGlobal,
+                      ...(clasificado
+                        ? styles.participantGlobalQualified
+                        : {}),
+                    }}
+                  >
+                    {global}
+                  </div>
+                )}
+
                 {clasificado && (
                   <div
                     style={
@@ -863,20 +993,93 @@ function BracketGroup({ group }) {
 
       </div>
 
-      {/* PARTIDOS */}
+      {/* ======================================================
+          PARTIDOS DE LA SERIE
+      ====================================================== */}
 
       {games.length > 0 && (
         <div style={styles.games}>
 
           {games.map((game, index) => (
+
             <BracketGame
               key={
                 game?.id ||
                 `partido-${index}`
               }
               game={game}
+              numeroPartido={index}
+              esSerie={esSerie}
             />
+
           ))}
+
+        </div>
+      )}
+
+      {/* ======================================================
+          GLOBAL
+      ====================================================== */}
+
+      {esSerie && hayGlobal && (
+        <div style={styles.globalBox}>
+
+          <div style={styles.globalLabel}>
+            GLOBAL
+          </div>
+
+          <div style={styles.globalScores}>
+
+            {participants.map(
+              (participant, index) => {
+
+                const global =
+                  globales[
+                    participant.id
+                  ];
+
+                const clasificado =
+                  qualifiedId ===
+                  participant.id;
+
+                return (
+                  <div
+                    key={
+                      participant.id ||
+                      index
+                    }
+                    style={{
+                      ...styles.globalTeam,
+                      ...(clasificado
+                        ? styles.globalTeamQualified
+                        : {}),
+                    }}
+                  >
+
+                    <span
+                      style={
+                        styles.globalTeamName
+                      }
+                    >
+                      {participant.short_name ||
+                        participant.name}
+                    </span>
+
+                    <span
+                      style={
+                        styles.globalTeamScore
+                      }
+                    >
+                      {global ?? 0}
+                    </span>
+
+                  </div>
+                );
+
+              }
+            )}
+
+          </div>
 
         </div>
       )}
@@ -889,7 +1092,12 @@ function BracketGroup({ group }) {
 // PARTIDO DE ELIMINATORIA
 // ============================================================
 
-function BracketGame({ game }) {
+function BracketGame({
+  game,
+  numeroPartido,
+  esSerie,
+}) {
+
   const teams = Array.isArray(game?.teams)
     ? game.teams
     : [];
@@ -898,20 +1106,48 @@ function BracketGame({ game }) {
     ? game.scores
     : [];
 
+  let etiqueta = "";
+
+  if (esSerie) {
+
+    if (numeroPartido === 0) {
+      etiqueta = "IDA";
+    } else if (numeroPartido === 1) {
+      etiqueta = "VUELTA";
+    } else {
+      etiqueta = `PARTIDO ${numeroPartido + 1}`;
+    }
+
+  }
+
   return (
     <div style={styles.game}>
 
-      {/* FECHA */}
+      {/* ====================================================
+          ENCABEZADO DEL PARTIDO
+      ==================================================== */}
 
-      {game?.start_time && (
-        <div style={styles.gameDate}>
-          {formatearFecha(
-            game.start_time
-          )}
-        </div>
-      )}
+      <div style={styles.gameHeader}>
 
-      {/* EQUIPOS */}
+        {etiqueta && (
+          <span style={styles.gameRound}>
+            {etiqueta}
+          </span>
+        )}
+
+        {game?.start_time && (
+          <span style={styles.gameDate}>
+            {formatearFecha(
+              game.start_time
+            )}
+          </span>
+        )}
+
+      </div>
+
+      {/* ====================================================
+          EQUIPOS
+      ==================================================== */}
 
       <div style={styles.gameTeams}>
 
@@ -976,7 +1212,7 @@ function BracketGame({ game }) {
                     styles.gameQualified
                   }
                 >
-                  →
+                  ✓
                 </div>
               )}
 
@@ -986,7 +1222,9 @@ function BracketGame({ game }) {
 
       </div>
 
-      {/* ESTADO */}
+      {/* ====================================================
+          ESTADO
+      ==================================================== */}
 
       {game?.status?.name && (
         <div style={styles.gameStatus}>
@@ -1005,6 +1243,7 @@ function BracketGame({ game }) {
 function EstadisticasJugadores({
   tabla,
 }) {
+
   const rows = Array.isArray(tabla?.rows)
     ? tabla.rows
     : [];
@@ -1013,30 +1252,32 @@ function EstadisticasJugadores({
     return null;
   }
 
-  // Detectamos automáticamente las columnas
-  // disponibles en los jugadores.
-
   const keys = [];
 
   rows.forEach((row) => {
+
     if (!Array.isArray(row?.values)) {
       return;
     }
 
     row.values.forEach((value) => {
+
       if (
         value?.key &&
         !keys.includes(value.key)
       ) {
         keys.push(value.key);
       }
+
     });
+
   });
 
   function obtenerValorJugador(
     row,
     key
   ) {
+
     const valor = row?.values?.find(
       (v) => v.key === key
     );
@@ -1049,13 +1290,9 @@ function EstadisticasJugadores({
 
       <div style={styles.tableHeader}>
 
-        <div>
-
-          <div style={styles.tableName}>
-            {tabla.name ||
-              "Estadísticas"}
-          </div>
-
+        <div style={styles.tableName}>
+          {tabla.name ||
+            "Estadísticas"}
         </div>
 
       </div>
@@ -1115,16 +1352,6 @@ function EstadisticasJugadores({
                   jugador?.name ||
                   "Jugador";
 
-                /*
-                 * Por ahora dejamos "-"
-                 * para equipo, tal como viene
-                 * actualmente en la API.
-                 *
-                 * El team_id existe en entity.object,
-                 * pero todavía no tenemos un mapa
-                 * global team_id -> nombre.
-                 */
-
                 const equipo = "-";
 
                 return (
@@ -1153,8 +1380,7 @@ function EstadisticasJugadores({
                     <td
                       style={{
                         ...styles.teamCell,
-                        color:
-                          "#8b949e",
+                        color: "#8b949e",
                       }}
                     >
                       {equipo}
@@ -1248,11 +1474,7 @@ const styles = {
   },
 
   header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "20px",
-    marginBottom: "22px",
+    marginBottom: "20px",
   },
 
   eyebrow: {
@@ -1274,25 +1496,23 @@ const styles = {
   competitionNav: {
     display: "flex",
     flexWrap: "wrap",
-    gap: "8px",
-    marginBottom: "30px",
+    gap: "7px",
+    marginBottom: "28px",
   },
 
   competitionButton: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: "36px",
-    padding: "0 13px",
-    borderRadius: "7px",
+    minHeight: "34px",
+    padding: "0 12px",
+    borderRadius: "6px",
     border: "1px solid #263244",
     backgroundColor: "#121821",
     color: "#9ca3af",
     textDecoration: "none",
-    fontSize: "13px",
+    fontSize: "12px",
     fontWeight: 700,
-    transition:
-      "background-color .15s ease, color .15s ease",
   },
 
   competitionButtonActive: {
@@ -1302,59 +1522,56 @@ const styles = {
   },
 
   section: {
-    marginTop: "30px",
+    marginTop: "28px",
   },
 
   sectionTitle: {
-    display: "flex",
-    alignItems: "center",
-    fontSize: "18px",
+    fontSize: "17px",
     fontWeight: 800,
     color: "#e6edf3",
-    marginBottom: "14px",
+    marginBottom: "12px",
   },
 
   tablesGrid: {
     display: "grid",
     gridTemplateColumns:
       "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: "14px",
+    gap: "12px",
   },
 
   tableCard: {
     backgroundColor: "#121821",
     border: "1px solid #263244",
-    borderRadius: "10px",
+    borderRadius: "8px",
     overflow: "hidden",
   },
 
   playerCard: {
     backgroundColor: "#121821",
     border: "1px solid #263244",
-    borderRadius: "10px",
+    borderRadius: "8px",
     overflow: "hidden",
-    marginBottom: "14px",
+    marginBottom: "12px",
   },
 
   tableHeader: {
-    padding: "14px 16px",
-    borderBottom:
-      "1px solid #263244",
+    padding: "12px 14px",
+    borderBottom: "1px solid #263244",
     backgroundColor: "#151d28",
   },
 
   tableTournament: {
     color: "#64748b",
-    fontSize: "11px",
+    fontSize: "10px",
     fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: ".6px",
-    marginBottom: "4px",
+    marginBottom: "3px",
   },
 
   tableName: {
     color: "#e6edf3",
-    fontSize: "15px",
+    fontSize: "14px",
     fontWeight: 800,
   },
 
@@ -1371,44 +1588,40 @@ const styles = {
 
   posHeader: {
     width: "38px",
-    padding: "9px 6px",
+    padding: "8px 5px",
     color: "#64748b",
     fontSize: "10px",
     fontWeight: 800,
     textAlign: "center",
-    borderBottom:
-      "1px solid #263244",
+    borderBottom: "1px solid #263244",
   },
 
   teamHeader: {
-    padding: "9px 8px",
+    padding: "8px",
     color: "#64748b",
     fontSize: "10px",
     fontWeight: 800,
     textTransform: "uppercase",
-    borderBottom:
-      "1px solid #263244",
+    borderBottom: "1px solid #263244",
     whiteSpace: "nowrap",
   },
 
   statHeader: {
-    padding: "9px 7px",
+    padding: "8px 7px",
     color: "#64748b",
     fontSize: "10px",
     fontWeight: 700,
     textAlign: "center",
-    borderBottom:
-      "1px solid #263244",
+    borderBottom: "1px solid #263244",
     whiteSpace: "nowrap",
   },
 
   tableRow: {
-    borderBottom:
-      "1px solid #1e2937",
+    borderBottom: "1px solid #1e2937",
   },
 
   position: {
-    padding: "10px 6px",
+    padding: "9px 5px",
     color: "#64748b",
     fontSize: "12px",
     textAlign: "center",
@@ -1416,7 +1629,7 @@ const styles = {
   },
 
   teamCell: {
-    padding: "10px 8px",
+    padding: "9px 8px",
     color: "#e6edf3",
     fontSize: "13px",
     textAlign: "left",
@@ -1426,17 +1639,16 @@ const styles = {
 
   teamBadge: {
     display: "inline-block",
-    width: "9px",
-    height: "9px",
+    width: "8px",
+    height: "8px",
     borderRadius: "50%",
-    marginRight: "8px",
+    marginRight: "7px",
     verticalAlign: "middle",
-    border:
-      "1px solid rgba(255,255,255,.12)",
+    border: "1px solid rgba(255,255,255,.12)",
   },
 
   statCell: {
-    padding: "10px 7px",
+    padding: "9px 7px",
     color: "#d7dee7",
     fontSize: "12px",
     textAlign: "center",
@@ -1451,68 +1663,66 @@ const styles = {
   bracketsContainer: {
     display: "flex",
     flexDirection: "column",
-    gap: "24px",
+    gap: "18px",
   },
 
   stage: {
     backgroundColor: "#121821",
-    border:
-      "1px solid #263244",
-    borderRadius: "10px",
+    border: "1px solid #263244",
+    borderRadius: "8px",
     overflow: "hidden",
   },
 
   stageTitle: {
-    padding: "14px 16px",
+    padding: "11px 14px",
     backgroundColor: "#151d28",
-    borderBottom:
-      "1px solid #263244",
+    borderBottom: "1px solid #263244",
     color: "#e6edf3",
-    fontSize: "15px",
+    fontSize: "14px",
     fontWeight: 800,
   },
 
   bracketGrid: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "12px",
-    padding: "14px",
+      "repeat(auto-fit, minmax(290px, 1fr))",
+    gap: "10px",
+    padding: "10px",
   },
 
   bracketCard: {
     backgroundColor: "#0d131a",
-    border:
-      "1px solid #263244",
-    borderRadius: "8px",
+    border: "1px solid #263244",
+    borderRadius: "7px",
     overflow: "hidden",
   },
 
+  bracketCardWithWinner: {
+    borderColor: "#334155",
+  },
+
   bracketTeams: {
-    padding: "8px",
-    borderBottom:
-      "1px solid #263244",
+    padding: "6px",
   },
 
   participant: {
     display: "flex",
     alignItems: "center",
-    minHeight: "32px",
-    padding: "5px 7px",
-    borderRadius: "5px",
+    minHeight: "31px",
+    padding: "4px 6px",
+    borderRadius: "4px",
     color: "#cbd5e1",
     fontSize: "13px",
-    gap: "8px",
+    gap: "7px",
   },
 
   participantQualified: {
-    backgroundColor:
-      "rgba(16,185,129,.10)",
-    color: "#e6edf3",
+    backgroundColor: "rgba(16,185,129,.09)",
+    color: "#f1f5f9",
   },
 
   participantPosition: {
-    width: "18px",
+    width: "16px",
     color: "#64748b",
     fontSize: "10px",
     textAlign: "center",
@@ -1522,36 +1732,63 @@ const styles = {
   participantName: {
     flex: 1,
     fontWeight: 600,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+
+  participantGlobal: {
+    minWidth: "20px",
+    textAlign: "center",
+    color: "#9ca3af",
+    fontSize: "14px",
+    fontWeight: 800,
+  },
+
+  participantGlobalQualified: {
+    color: "#10b981",
   },
 
   qualifiedLabel: {
     color: "#10b981",
     fontSize: "9px",
     fontWeight: 900,
-    letterSpacing: ".5px",
+    letterSpacing: ".4px",
   },
 
   games: {
-    padding: "8px",
+    padding: "0 6px 6px",
     display: "flex",
     flexDirection: "column",
-    gap: "7px",
+    gap: "5px",
   },
 
   game: {
-    border:
-      "1px solid #263244",
-    borderRadius: "6px",
+    border: "1px solid #263244",
+    borderRadius: "5px",
     overflow: "hidden",
     backgroundColor: "#121821",
   },
 
+  gameHeader: {
+    minHeight: "22px",
+    padding: "3px 7px",
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    borderBottom: "1px solid #1e2937",
+  },
+
+  gameRound: {
+    color: "#cbd5e1",
+    fontSize: "9px",
+    fontWeight: 900,
+    letterSpacing: ".5px",
+  },
+
   gameDate: {
-    padding: "5px 8px",
     color: "#64748b",
-    fontSize: "10px",
-    borderBottom:
-      "1px solid #1e2937",
+    fontSize: "9px",
   },
 
   gameTeams: {
@@ -1562,21 +1799,20 @@ const styles = {
   gameTeam: {
     display: "flex",
     alignItems: "center",
-    minHeight: "30px",
-    padding: "4px 8px",
-    gap: "7px",
+    minHeight: "28px",
+    padding: "3px 7px",
+    gap: "6px",
   },
 
   gameWinner: {
-    backgroundColor:
-      "rgba(16,185,129,.06)",
+    backgroundColor: "rgba(16,185,129,.05)",
   },
 
   gameTeamName: {
     flex: 1,
     display: "flex",
     alignItems: "center",
-    gap: "7px",
+    gap: "6px",
     minWidth: 0,
     color: "#d7dee7",
     fontSize: "12px",
@@ -1584,12 +1820,11 @@ const styles = {
   },
 
   teamDot: {
-    width: "8px",
-    height: "8px",
+    width: "7px",
+    height: "7px",
     borderRadius: "50%",
     flexShrink: 0,
-    border:
-      "1px solid rgba(255,255,255,.1)",
+    border: "1px solid rgba(255,255,255,.1)",
   },
 
   gameScore: {
@@ -1601,33 +1836,80 @@ const styles = {
   },
 
   gameScoreWinner: {
-    color: "#e6edf3",
+    color: "#f1f5f9",
     fontWeight: 900,
   },
 
   gameQualified: {
     color: "#10b981",
-    fontSize: "15px",
+    fontSize: "13px",
     fontWeight: 900,
-    width: "15px",
+    width: "14px",
     textAlign: "center",
   },
 
   gameStatus: {
-    padding: "5px 8px",
-    borderTop:
-      "1px solid #1e2937",
+    padding: "3px 7px",
+    borderTop: "1px solid #1e2937",
     color: "#64748b",
-    fontSize: "10px",
+    fontSize: "9px",
+  },
+
+  // ==========================================================
+  // GLOBAL
+  // ==========================================================
+
+  globalBox: {
+    margin: "0 6px 6px",
+    padding: "7px 9px",
+    borderTop: "1px solid #263244",
+    backgroundColor: "#151d28",
+  },
+
+  globalLabel: {
+    color: "#64748b",
+    fontSize: "9px",
+    fontWeight: 900,
+    letterSpacing: ".7px",
+    marginBottom: "4px",
+  },
+
+  globalScores: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+  },
+
+  globalTeam: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    minHeight: "22px",
+    color: "#cbd5e1",
+  },
+
+  globalTeamQualified: {
+    color: "#f1f5f9",
+    fontWeight: 800,
+  },
+
+  globalTeamName: {
+    fontSize: "11px",
+  },
+
+  globalTeamScore: {
+    minWidth: "22px",
+    textAlign: "right",
+    fontSize: "14px",
+    fontWeight: 900,
   },
 
   empty: {
     padding: "40px 20px",
     textAlign: "center",
     backgroundColor: "#121821",
-    border:
-      "1px solid #263244",
-    borderRadius: "10px",
+    border: "1px solid #263244",
+    borderRadius: "8px",
     color: "#8b949e",
     fontSize: "14px",
   },
@@ -1635,10 +1917,16 @@ const styles = {
   errorBox: {
     padding: "18px",
     backgroundColor: "#121821",
-    border:
-      "1px solid #7f1d1d",
+    border: "1px solid #7f1d1d",
     borderRadius: "8px",
     color: "#fca5a5",
     fontSize: "14px",
   },
+
+  playerTables: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
 };
+
