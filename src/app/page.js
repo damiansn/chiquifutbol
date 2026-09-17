@@ -1870,7 +1870,11 @@ export default function Home() {
                                           margin:
                                             "0 5px",
                                           color:
-                                            "#64748b"
+                                            "#64748b",
+                                            color:
+                                          estado.live
+                                            ? "#ef4444"
+                                            : "#e6edf3"
                                         }}
                                       >
                                         -
@@ -1919,7 +1923,11 @@ export default function Home() {
                                           fontSize:
                                             "14px",
                                           fontWeight:
-                                            600
+                                            600,
+                                            color:
+                                          estado.live
+                                            ? "#ef4444"
+                                            : "#e6edf3"
                                         }}
                                       >
                                         {nombreEquipo(
