@@ -1846,7 +1846,7 @@ export default function Home() {
 
                                     </div>
 
-                                    {/* MARCADOR */}
+                                   {/* MARCADOR */}
 
                                     <div
                                       style={{
@@ -1857,7 +1857,11 @@ export default function Home() {
                                         fontWeight:
                                           800,
                                         whiteSpace:
-                                          "nowrap"
+                                          "nowrap",
+                                        color:
+                                          estado.live
+                                            ? "#ef4444"
+                                            : "#e6edf3"
                                       }}
                                     >
 
@@ -1870,11 +1874,9 @@ export default function Home() {
                                           margin:
                                             "0 5px",
                                           color:
-                                            "#64748b",
-                                            color:
-                                          estado.live
-                                            ? "#ef4444"
-                                            : "#e6edf3"
+                                            estado.live
+                                              ? "#ef4444"
+                                              : "#64748b"
                                         }}
                                       >
                                         -
