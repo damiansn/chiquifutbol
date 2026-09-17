@@ -10,46 +10,103 @@ import {
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-
 // ============================================================
-// COLORES
+// CONFIGURACIÓN DE COMPETENCIAS
 // ============================================================
 
-const colores = {
-  fondo: "#0d131a",
-  superficie: "#121821",
-  borde: "#263244",
-  texto: "#e6edf3",
-  muted: "#8b949e",
-  muted2: "#9ca3af",
-  verde: "#10b981",
+const COMPETENCIAS = {
+  argentina: {
+    nombre: "Liga Profesional Argentina",
+    corto: "Liga Argentina",
+  },
+
+  copa_argentina: {
+    nombre: "Copa Argentina",
+    corto: "Copa Argentina",
+  },
+
+  libertadores: {
+    nombre: "CONMEBOL Copa Libertadores",
+    corto: "Copa Libertadores",
+  },
+
+  sudamericana: {
+    nombre: "CONMEBOL Copa Sudamericana",
+    corto: "Copa Sudamericana",
+  },
+
+  champions: {
+    nombre: "Champions League",
+    corto: "Champions League",
+  },
+
+  europa_league: {
+    nombre: "UEFA Europa League",
+    corto: "Europa League",
+  },
+
+  conference_league: {
+    nombre: "UEFA Conference League",
+    corto: "Conference League",
+  },
 };
 
+// ============================================================
+// UTILIDADES
+// ============================================================
+
+function obtenerValor(fila, key) {
+  if (!fila || !Array.isArray(fila.values)) return "";
+
+  const valor = fila.values.find((v) => v.key === key);
+
+  return valor?.value ?? "";
+}
+
+function obtenerNombreEquipo(fila) {
+  return (
+    fila?.entity?.object?.name ||
+    fila?.entity?.object?.short_name ||
+    "Equipo"
+  );
+}
+
+function obtenerColorEquipo(fila) {
+  return fila?.entity?.object?.colors?.color || "#334155";
+}
+
+function obtenerTextoColorEquipo(fila) {
+  return fila?.entity?.object?.colors?.text_color || "#ffffff";
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return "";
+
+  // Formato habitual de Promiedos:
+  // 11-08-2026 19:30
+
+  const partes = fecha.split(" ");
+
+  if (partes.length !== 2) return fecha;
+
+  const [fechaParte, hora] = partes;
+
+  const [dia, mes, anio] = fechaParte.split("-");
+
+  if (!dia || !mes || !anio) return fecha;
+
+  return `${dia}/${mes}/${anio} ${hora}`;
+}
 
 // ============================================================
-// CONTENIDO DE POSICIONES
+// COMPONENTE PRINCIPAL
 // ============================================================
 
 function PosicionesContent() {
   const searchParams = useSearchParams();
 
-  // ==========================================================
-  // COMPETENCIA
-  // ==========================================================
-
   const competition =
     searchParams.get("competition") || "argentina";
-
-
-  console.log(
-    "POSICIONES - competition:",
-    competition
-  );
-
-
-  // ==========================================================
-  // ESTADOS
-  // ==========================================================
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,1740 +114,411 @@ function PosicionesContent() {
 
   const requestIdRef = useRef(0);
 
-
   // ==========================================================
   // CARGAR DATOS
   // ==========================================================
 
-  async function cargarDatos() {
-    if (!competition) return;
-
-    const requestId =
-      ++requestIdRef.current;
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const url =
-        `/api/standings?competition=${encodeURIComponent(
-          competition
-        )}`;
-
-      console.log("================================");
-      console.log(
-        "POSICIONES - competition:",
-        competition
-      );
-      console.log(
-        "POSICIONES - URL:",
-        url
-      );
-      console.log("================================");
-
-
-      const response = await fetch(
-        url,
-        {
-          cache: "no-store",
-        }
-      );
-
-
-      if (!response.ok) {
-        throw new Error(
-          "No se pudieron obtener los datos."
-        );
-      }
-
-
-      const json =
-        await response.json();
-
-
-      // ======================================================
-      // DESCARTAR RESPUESTAS VIEJAS
-      // ======================================================
-
-      if (
-        requestId !==
-        requestIdRef.current
-      ) {
-        return;
-      }
-
-
-      console.log("================================");
-      console.log(
-        "POSICIONES - API competition:",
-        json?.competition
-      );
-      console.log(
-        "POSICIONES - API league:",
-        json?.league?.name
-      );
-      console.log(
-        "POSICIONES - TABLES:",
-        json?.tables
-      );
-      console.log("================================");
-
-
-      setData(json);
-
-    } catch (err) {
-
-      if (
-        requestId !==
-        requestIdRef.current
-      ) {
-        return;
-      }
-
-      console.error(
-        "Error cargando posiciones:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Error al cargar los datos."
-      );
-
-    } finally {
-
-      if (
-        requestId ===
-        requestIdRef.current
-      ) {
-        setLoading(false);
-      }
-    }
-  }
-
-
-  // ==========================================================
-  // CARGAR CUANDO CAMBIA LA COMPETENCIA
-  // ==========================================================
-
   useEffect(() => {
-    cargarDatos();
+    let cancelado = false;
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competition]);
+    async function cargarDatos() {
+      const requestId = ++requestIdRef.current;
 
+      try {
+        setLoading(true);
+        setError("");
 
-  // ==========================================================
-  // NOMBRE DE COMPETENCIA
-  // ==========================================================
+        const url =
+          `/api/standings?competition=${encodeURIComponent(
+            competition
+          )}`;
 
-  function nombreCompetencia() {
+        const response = await fetch(url, {
+          cache: "no-store",
+        });
 
-    switch (competition) {
+        if (!response.ok) {
+          throw new Error(
+            "No se pudieron obtener los datos."
+          );
+        }
 
-      case "libertadores":
-        return "Copa Libertadores";
+        const json = await response.json();
 
-      case "sudamericana":
-        return "Copa Sudamericana";
+        if (cancelado) return;
 
-      case "copa_argentina":
-        return "Copa Argentina";
-
-      case "champions":
-        return "Champions League";
-
-      case "europa_league":
-        return "Europa League";
-
-      case "conference_league":
-        return "Conference League";
-
-      case "argentina":
-      default:
-        return "Liga Argentina";
-    }
-  }
-
-
-  // ==========================================================
-  // OBTENER TORNEOS
-  //
-  // ESTRUCTURA REAL:
-  //
-  // data.tables[]
-  //   ├── name
-  //   └── tables[]
-  //        ├── name
-  //        └── table
-  //             ├── columns[]
-  //             └── rows[]
-  //
-  // ==========================================================
-
-  function obtenerTablasPosiciones() {
-
-    if (
-      !data ||
-      !Array.isArray(data.tables)
-    ) {
-      return [];
-    }
-
-
-    const resultado = [];
-
-
-    data.tables.forEach(
-      (torneo) => {
-
-        if (
-          !Array.isArray(
-            torneo.tables
-          )
-        ) {
+        if (requestId !== requestIdRef.current) {
           return;
         }
 
+        setData(json);
+      } catch (err) {
+        if (cancelado) return;
 
-        torneo.tables.forEach(
-          (grupo) => {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
 
-            if (
-              !grupo.table
-            ) {
-              return;
-            }
-
-
-            const tabla =
-              grupo.table;
-
-
-            if (
-              !Array.isArray(
-                tabla.rows
-              )
-            ) {
-              return;
-            }
-
-
-            resultado.push({
-              torneo:
-                torneo.name ||
-                "",
-
-              grupo:
-                grupo.name ||
-                "",
-
-              table:
-                tabla,
-            });
-          }
+        setError(
+          err?.message ||
+            "Error al cargar los datos."
         );
+      } finally {
+        if (!cancelado && requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
-    );
+    }
 
+    cargarDatos();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [competition]);
+
+  // ==========================================================
+  // NOMBRE DE LA COMPETENCIA
+  // ==========================================================
+
+  const competenciaConfig =
+    COMPETENCIAS[competition] || {
+      nombre:
+        data?.league?.name || "Competencia",
+      corto:
+        data?.league?.name || "Competencia",
+    };
+
+  // ==========================================================
+  // OBTENER TODAS LAS TABLAS
+  //
+  // Estructura real:
+  //
+  // data.tables[]
+  //   └── torneo
+  //       └── tables[]
+  //           └── grupo
+  //               └── table
+  // ==========================================================
+
+  function obtenerTablasPosiciones() {
+    if (!data || !Array.isArray(data.tables)) {
+      return [];
+    }
+
+    const resultado = [];
+
+    data.tables.forEach((torneo) => {
+      if (!Array.isArray(torneo.tables)) {
+        return;
+      }
+
+      torneo.tables.forEach((grupo) => {
+        if (!grupo?.table) {
+          return;
+        }
+
+        const tabla = grupo.table;
+
+        if (!Array.isArray(tabla.rows)) {
+          return;
+        }
+
+        resultado.push({
+          torneo: torneo.name || "",
+          grupo: grupo.name || "",
+          table: tabla,
+        });
+      });
+    });
 
     return resultado;
   }
 
-
   // ==========================================================
-  // OBTENER VALOR DE UNA FILA
+  // OBTENER BRACKETS
+  //
+  // Estructura real:
+  //
+  // data.brackets
+  //   └── stages[]
+  //       └── groups[]
+  //           ├── participants[]
+  //           └── games[]
   // ==========================================================
 
-  function obtenerValorFila(
-    fila,
-    clave
-  ) {
-
+  function obtenerBrackets() {
     if (
-      !fila ||
-      !Array.isArray(
-        fila.values
-      )
+      !data?.brackets ||
+      !Array.isArray(data.brackets.stages)
     ) {
-      return "-";
+      return [];
     }
 
-
-    const encontrado =
-      fila.values.find(
-        (item) =>
-          item?.key === clave
-      );
-
-
-    if (
-      encontrado &&
-      encontrado.value !==
-        undefined &&
-      encontrado.value !== null
-    ) {
-      return encontrado.value;
-    }
-
-
-    return "-";
+    return data.brackets.stages.filter(
+      (stage) =>
+        Array.isArray(stage?.groups) &&
+        stage.groups.length > 0
+    );
   }
 
-
   // ==========================================================
-  // OBTENER ESTADÍSTICAS DE JUGADORES
+  // ESTADÍSTICAS DE JUGADORES
   // ==========================================================
 
   function obtenerEstadisticasJugadores() {
-
     if (
-      !data?.players_statistics
+      !data?.players_statistics ||
+      !Array.isArray(data.players_statistics.tables)
     ) {
       return [];
     }
 
-
-    if (
-      Array.isArray(
-        data.players_statistics.tables
-      )
-    ) {
-      return data.players_statistics.tables;
-    }
-
-
-    return [];
+    return data.players_statistics.tables;
   }
 
-
   // ==========================================================
-  // OBTENER FILAS DE ESTADÍSTICAS
-  // ==========================================================
-
-  function obtenerFilasEstadisticas(
-    tabla
-  ) {
-
-    if (
-      Array.isArray(
-        tabla?.rows
-      )
-    ) {
-      return tabla.rows;
-    }
-
-
-    if (
-      Array.isArray(
-        tabla?.data
-      )
-    ) {
-      return tabla.data;
-    }
-
-
-    return [];
-  }
-
-
-  // ==========================================================
-  // NOMBRE DEL JUGADOR
-  // ==========================================================
-
-  function obtenerNombreJugador(
-    fila
-  ) {
-
-    return (
-      fila?.entity?.object?.name ||
-      fila?.entity?.name ||
-      fila?.name ||
-      "-"
-    );
-  }
-
-
-  // ==========================================================
-  // EQUIPO DEL JUGADOR
-  // ==========================================================
-
-  function obtenerEquipoJugador(
-    fila
-  ) {
-
-    return (
-      fila?.entity?.object?.team_name ||
-      fila?.entity?.object?.team?.name ||
-      fila?.team_name ||
-      fila?.team?.name ||
-      "-"
-    );
-  }
-
-
-  // ==========================================================
-  // VALORES DE ESTADÍSTICAS
-  // ==========================================================
-
-  function obtenerValoresEstadistica(
-    fila
-  ) {
-
-    if (!fila) {
-      return [];
-    }
-
-
-    if (
-      Array.isArray(
-        fila.values
-      )
-    ) {
-      return fila.values;
-    }
-
-
-    if (
-      fila.values &&
-      typeof fila.values ===
-        "object"
-    ) {
-
-      return Object.entries(
-        fila.values
-      ).map(
-        ([key, value]) => ({
-          key,
-          value,
-        })
-      );
-    }
-
-
-    return [];
-  }
-
-
-  // ==========================================================
-  // COLUMNAS DE ESTADÍSTICAS
-  // ==========================================================
-
-  function obtenerColumnasEstadistica(
-    tabla
-  ) {
-
-    if (!tabla) {
-      return [];
-    }
-
-
-    if (
-      Array.isArray(
-        tabla.columns
-      )
-    ) {
-
-      return tabla.columns
-        .map((columna) => {
-
-          if (
-            typeof columna ===
-            "string"
-          ) {
-            return {
-              key: columna,
-              title: columna,
-            };
-          }
-
-          return columna;
-        });
-    }
-
-
-    const filas =
-      obtenerFilasEstadisticas(
-        tabla
-      );
-
-
-    const columnas = [];
-
-
-    filas.forEach(
-      (fila) => {
-
-        obtenerValoresEstadistica(
-          fila
-        ).forEach(
-          (valor) => {
-
-            if (
-              valor?.key &&
-              !columnas.some(
-                (c) =>
-                  c.key ===
-                  valor.key
-              )
-            ) {
-
-              columnas.push({
-                key:
-                  valor.key,
-
-                title:
-                  tituloColumna(
-                    valor.key
-                  ),
-              });
-            }
-          }
-        );
-      }
-    );
-
-
-    return columnas;
-  }
-
-
-  // ==========================================================
-  // VALOR DE ESTADÍSTICA
-  // ==========================================================
-
-  function obtenerValorEstadistica(
-    fila,
-    columna
-  ) {
-
-    const valores =
-      obtenerValoresEstadistica(
-        fila
-      );
-
-
-    const encontrado =
-      valores.find(
-        (item) =>
-          item?.key ===
-          columna
-      );
-
-
-    if (
-      encontrado &&
-      encontrado.value !==
-        undefined
-    ) {
-      return encontrado.value;
-    }
-
-
-    return "-";
-  }
-
-
-  // ==========================================================
-  // TÍTULOS DE COLUMNAS
-  // ==========================================================
-
-  function tituloColumna(
-    columna
-  ) {
-
-    const titulos = {
-
-      Points: "PTS",
-
-      GamePlayed: "J",
-
-      Goals: "Gol",
-
-      Ratio: "+/-",
-
-      GamesWon: "G",
-
-      GamesEven: "E",
-
-      GamesLost: "P",
-
-      "{trend}":
-        "Últimas",
-
-      GoalsScored:
-        "Goles",
-
-      Assists:
-        "Asistencias",
-
-      YellowCards:
-        "Amarillas",
-
-      RedCards:
-        "Rojas",
-
-      Minutes:
-        "Minutos",
-
-      Appearances:
-        "PJ",
-    };
-
-
-    return (
-      titulos[columna] ||
-      columna
-    );
-  }
-
-
-  // ==========================================================
-  // FORMA
-  // ==========================================================
-
-  function UltimosPartidos({
-    valor,
-  }) {
-
-    if (
-      !Array.isArray(valor)
-    ) {
-      return (
-        <span
-          style={{
-            color:
-              colores.muted,
-          }}
-        >
-          -
-        </span>
-      );
-    }
-
-
-    return (
-      <div
-        style={{
-          display:
-            "flex",
-          justifyContent:
-            "center",
-          gap: 4,
-        }}
-      >
-
-        {valor.map(
-          (
-            resultado,
-            index
-          ) => {
-
-            let color =
-              colores.muted;
-
-
-            // Promiedos utiliza:
-            // 0 = derrota
-            // 1 = empate
-            // 2 = victoria
-
-            if (
-              resultado === 2
-            ) {
-              color =
-                "#10b981";
-            }
-
-            else if (
-              resultado === 1
-            ) {
-              color =
-                "#f59e0b";
-            }
-
-            else if (
-              resultado === 0
-            ) {
-              color =
-                "#ef4444";
-            }
-
-
-            return (
-              <span
-                key={index}
-                style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius:
-                    "50%",
-                  backgroundColor:
-                    color,
-                  display:
-                    "inline-block",
-                }}
-              />
-            );
-          }
-        )}
-
-      </div>
-    );
-  }
-
-
-  // ==========================================================
-  // CARGANDO
+  // LOADING
   // ==========================================================
 
   if (loading) {
-
     return (
-      <main
-        style={{
-          minHeight:
-            "100vh",
-          background:
-            colores.fondo,
-          color:
-            colores.texto,
-          padding: 24,
-        }}
-      >
-
-        <div
-          style={{
-            maxWidth: 1200,
-            margin:
-              "0 auto",
-          }}
-        >
-
-          <div
-            style={{
-              background:
-                colores.superficie,
-              border:
-                `1px solid ${colores.borde}`,
-              borderRadius: 10,
-              padding: 30,
-              textAlign:
-                "center",
-              color:
-                colores.muted,
-            }}
-          >
+      <main style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.loading}>
             Cargando posiciones...
           </div>
-
         </div>
-
       </main>
     );
   }
-
 
   // ==========================================================
   // ERROR
   // ==========================================================
 
   if (error) {
-
     return (
-      <main
-        style={{
-          minHeight:
-            "100vh",
-          background:
-            colores.fondo,
-          color:
-            colores.texto,
-          padding: 24,
-        }}
-      >
+      <main style={styles.page}>
+        <div style={styles.container}>
+          <Link href="/" style={styles.backLink}>
+            ← Volver
+          </Link>
 
-        <div
-          style={{
-            maxWidth: 1200,
-            margin:
-              "0 auto",
-          }}
-        >
-
-          <div
-            style={{
-              background:
-                colores.superficie,
-              border:
-                `1px solid ${colores.borde}`,
-              borderRadius: 10,
-              padding: 30,
-              textAlign:
-                "center",
-            }}
-          >
-
-            <div
-              style={{
-                color:
-                  "#ef4444",
-                marginBottom:
-                  15,
-              }}
-            >
-              {error}
-            </div>
-
-
-            <button
-              onClick={
-                cargarDatos
-              }
-              style={{
-                background:
-                  colores.verde,
-                color:
-                  "#fff",
-                border:
-                  "none",
-                borderRadius:
-                  7,
-                padding:
-                  "10px 18px",
-                cursor:
-                  "pointer",
-                fontWeight:
-                  600,
-              }}
-            >
-              Reintentar
-            </button>
-
+          <div style={styles.header}>
+            <h1 style={styles.title}>
+              {competenciaConfig.nombre}
+            </h1>
           </div>
 
+          <div style={styles.errorBox}>
+            {error}
+          </div>
         </div>
-
       </main>
     );
   }
-
 
   // ==========================================================
   // DATOS
   // ==========================================================
 
-  const tablas =
-    obtenerTablasPosiciones();
-
-
+  const tablas = obtenerTablasPosiciones();
+  const brackets = obtenerBrackets();
   const estadisticas =
     obtenerEstadisticasJugadores();
 
-
-  // ==========================================================
-  // RENDER
-  // ==========================================================
-
   return (
-    <main
-      style={{
-        minHeight:
-          "100vh",
-        background:
-          colores.fondo,
-        color:
-          colores.texto,
-        padding:
-          "24px 16px 50px",
-      }}
-    >
+    <main style={styles.page}>
+      <div style={styles.container}>
 
-      <div
-        style={{
-          maxWidth: 1200,
-          margin:
-            "0 auto",
-        }}
-      >
+        {/* ====================================================
+            VOLVER
+        ==================================================== */}
 
-        {/* ==================================================
-            ENCABEZADO
-        ================================================== */}
+        <Link href="/" style={styles.backLink}>
+          ← Volver a partidos
+        </Link>
 
-        <div
-          style={{
-            display:
-              "flex",
-            justifyContent:
-              "space-between",
-            alignItems:
-              "center",
-            gap: 15,
-            marginBottom:
-              25,
-            flexWrap:
-              "wrap",
-          }}
-        >
+        {/* ====================================================
+            CABECERA
+        ==================================================== */}
 
+        <header style={styles.header}>
           <div>
+            <div style={styles.eyebrow}>
+              POSICIONES Y ESTADÍSTICAS
+            </div>
 
-            <Link
-              href="/"
-              style={{
-                color:
-                  colores.muted,
-                textDecoration:
-                  "none",
-                fontSize: 13,
-              }}
-            >
-              ← Volver
-            </Link>
-
-
-            <h1
-              style={{
-                margin:
-                  "8px 0 0",
-                fontSize:
-                  "clamp(24px, 4vw, 32px)",
-                lineHeight:
-                  1.2,
-              }}
-            >
-              {nombreCompetencia()}
+            <h1 style={styles.title}>
+              {data?.league?.name ||
+                competenciaConfig.nombre}
             </h1>
-
           </div>
+        </header>
 
+        {/* ====================================================
+            NAVEGACIÓN DE COMPETENCIAS
+        ==================================================== */}
 
-          <button
-            onClick={
-              cargarDatos
-            }
+        <nav style={styles.competitionNav}>
+
+          <Link
+            href="/posiciones?competition=argentina"
             style={{
-              background:
-                colores.superficie,
-              color:
-                colores.texto,
-              border:
-                `1px solid ${colores.borde}`,
-              borderRadius:
-                7,
-              padding:
-                "9px 14px",
-              cursor:
-                "pointer",
-              fontWeight:
-                600,
+              ...styles.competitionButton,
+              ...(competition === "argentina"
+                ? styles.competitionButtonActive
+                : {}),
             }}
           >
-            Actualizar
-          </button>
+            Liga Argentina
+          </Link>
 
-        </div>
-
-
-        {/* ==================================================
-            NOMBRE DE LA LIGA
-        ================================================== */}
-
-        {data?.league?.name && (
-
-          <div
+          <Link
+            href="/posiciones?competition=copa_argentina"
             style={{
-              marginBottom:
-                20,
-              color:
-                colores.muted,
-              fontSize:
-                14,
+              ...styles.competitionButton,
+              ...(competition === "copa_argentina"
+                ? styles.competitionButtonActive
+                : {}),
             }}
           >
-            {data.league.name}
-          </div>
+            Copa Argentina
+          </Link>
 
-        )}
+          <Link
+            href="/posiciones?competition=libertadores"
+            style={{
+              ...styles.competitionButton,
+              ...(competition === "libertadores"
+                ? styles.competitionButtonActive
+                : {}),
+            }}
+          >
+            Libertadores
+          </Link>
 
+          <Link
+            href="/posiciones?competition=sudamericana"
+            style={{
+              ...styles.competitionButton,
+              ...(competition === "sudamericana"
+                ? styles.competitionButtonActive
+                : {}),
+            }}
+          >
+            Sudamericana
+          </Link>
 
-        {/* ==================================================
+          <Link
+            href="/posiciones?competition=champions"
+            style={{
+              ...styles.competitionButton,
+              ...(competition === "champions"
+                ? styles.competitionButtonActive
+                : {}),
+            }}
+          >
+            Champions
+          </Link>
+
+          <Link
+            href="/posiciones?competition=europa_league"
+            style={{
+              ...styles.competitionButton,
+              ...(competition === "europa_league"
+                ? styles.competitionButtonActive
+                : {}),
+            }}
+          >
+            Europa League
+          </Link>
+
+          <Link
+            href="/posiciones?competition=conference_league"
+            style={{
+              ...styles.competitionButton,
+              ...(competition === "conference_league"
+                ? styles.competitionButtonActive
+                : {}),
+            }}
+          >
+            Conference League
+          </Link>
+
+        </nav>
+
+        {/* ====================================================
             TABLAS DE POSICIONES
-        ================================================== */}
+        ==================================================== */}
 
         {tablas.length > 0 && (
+          <section style={styles.section}>
 
-          <div
-            style={{
-              display:
-                "flex",
-              flexDirection:
-                "column",
-              gap: 22,
-            }}
-          >
+            <div style={styles.sectionTitle}>
+              <span>Tablas de posiciones</span>
+            </div>
 
-            {tablas.map(
-              (
-                item,
-                tablaIndex
-              ) => {
+            <div style={styles.tablesGrid}>
 
-                const tabla =
-                  item.table;
+              {tablas.map((item, index) => (
+                <TablaPosiciones
+                  key={`${item.torneo}-${item.grupo}-${index}`}
+                  item={item}
+                />
+              ))}
 
+            </div>
 
-                const columnas =
-                  Array.isArray(
-                    tabla.columns
-                  )
-                    ? tabla.columns
-                    : [];
-
-
-                const filas =
-                  Array.isArray(
-                    tabla.rows
-                  )
-                    ? tabla.rows
-                    : [];
-
-
-                return (
-                  <section
-                    key={
-                      `${item.torneo}-${item.grupo}-${tablaIndex}`
-                    }
-                    style={{
-                      background:
-                        colores.superficie,
-                      border:
-                        `1px solid ${colores.borde}`,
-                      borderRadius:
-                        10,
-                      overflow:
-                        "hidden",
-                    }}
-                  >
-
-                    {/* ======================================
-                        CABECERA
-                    ====================================== */}
-
-                    <div
-                      style={{
-                        padding:
-                          "15px 16px",
-                        borderBottom:
-                          `1px solid ${colores.borde}`,
-                      }}
-                    >
-
-                      <div
-                        style={{
-                          fontSize:
-                            18,
-                          fontWeight:
-                            700,
-                        }}
-                      >
-                        {item.torneo}
-                      </div>
-
-
-                      {item.grupo && (
-
-                        <div
-                          style={{
-                            marginTop:
-                              4,
-                            fontSize:
-                              13,
-                            color:
-                              colores.muted,
-                          }}
-                        >
-                          {item.grupo}
-                        </div>
-
-                      )}
-
-                    </div>
-
-
-                    {/* ======================================
-                        TABLA
-                    ====================================== */}
-
-                    <div
-                      style={{
-                        overflowX:
-                          "auto",
-                      }}
-                    >
-
-                      <table
-                        style={{
-                          width:
-                            "100%",
-                          borderCollapse:
-                            "collapse",
-                          minWidth:
-                            650,
-                        }}
-                      >
-
-                        <thead>
-
-                          <tr
-                            style={{
-                              borderBottom:
-                                `1px solid ${colores.borde}`,
-                              color:
-                                colores.muted,
-                              fontSize:
-                                12,
-                            }}
-                          >
-
-                            {/* POSICIÓN */}
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "center",
-                                width:
-                                  45,
-                              }}
-                            >
-                              #
-                            </th>
-
-
-                            {/* EQUIPO */}
-
-                            <th
-                              style={{
-                                padding:
-                                  "11px 10px",
-                                textAlign:
-                                  "left",
-                                minWidth:
-                                  190,
-                              }}
-                            >
-                              Equipo
-                            </th>
-
-
-                            {/* COLUMNAS REALES
-                                DE PROMIEDOS */}
-
-                            {columnas.map(
-                              (
-                                columna,
-                                index
-                              ) => {
-
-                                const key =
-                                  columna?.key ||
-                                  "";
-
-                                return (
-                                  <th
-                                    key={
-                                      `${key}-${index}`
-                                    }
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                      whiteSpace:
-                                        "nowrap",
-                                      fontWeight:
-                                        columna?.is_bold
-                                          ? 700
-                                          : 500,
-                                    }}
-                                  >
-                                    {columna.title ||
-                                      tituloColumna(
-                                        key
-                                      )}
-                                  </th>
-                                );
-                              }
-                            )}
-
-                          </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                          {filas.map(
-                            (
-                              fila,
-                              index
-                            ) => {
-
-                              const posicion =
-                                fila.num ||
-                                index + 1;
-
-
-                              const equipo =
-                                fila?.entity
-                                  ?.object
-                                  ?.name ||
-                                "-";
-
-
-                              const valores =
-                                Array.isArray(
-                                  fila.values
-                                )
-                                  ? fila.values
-                                  : [];
-
-
-                              return (
-                                <tr
-                                  key={
-                                    fila?.entity
-                                      ?.object
-                                      ?.id ||
-                                    `${equipo}-${index}`
-                                  }
-                                  style={{
-                                    borderBottom:
-                                      `1px solid ${colores.borde}`,
-                                  }}
-                                >
-
-                                  {/* POSICIÓN */}
-
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "center",
-                                      fontWeight:
-                                        700,
-                                      color:
-                                        posicion <= 4
-                                          ? colores.verde
-                                          : colores.muted,
-                                    }}
-                                  >
-                                    {posicion}
-                                  </td>
-
-
-                                  {/* EQUIPO */}
-
-                                  <td
-                                    style={{
-                                      padding:
-                                        "11px 10px",
-                                      textAlign:
-                                        "left",
-                                      fontWeight:
-                                        600,
-                                      whiteSpace:
-                                        "nowrap",
-                                    }}
-                                  >
-
-                                    {equipo}
-
-                                  </td>
-
-
-                                  {/* VALORES */}
-
-                                  {columnas.map(
-                                    (
-                                      columna,
-                                      columnaIndex
-                                    ) => {
-
-                                      const key =
-                                        columna?.key ||
-                                        "";
-
-
-                                      const valor =
-                                        obtenerValorFila(
-                                          fila,
-                                          key
-                                        );
-
-
-                                      // =================================
-                                      // ÚLTIMOS PARTIDOS
-                                      // =================================
-
-                                      if (
-                                        key ===
-                                        "{trend}"
-                                      ) {
-
-                                        return (
-                                          <td
-                                            key={
-                                              `${key}-${columnaIndex}`
-                                            }
-                                            style={{
-                                              padding:
-                                                "11px 10px",
-                                              textAlign:
-                                                "center",
-                                            }}
-                                          >
-                                            <UltimosPartidos
-                                              valor={
-                                                valor
-                                              }
-                                            />
-                                          </td>
-                                        );
-                                      }
-
-
-                                      // =================================
-                                      // VALOR NORMAL
-                                      // =================================
-
-                                      return (
-                                        <td
-                                          key={
-                                            `${key}-${columnaIndex}`
-                                          }
-                                          style={{
-                                            padding:
-                                              "11px 10px",
-                                            textAlign:
-                                              "center",
-                                            fontWeight:
-                                              key ===
-                                              "Points"
-                                                ? 800
-                                                : 500,
-                                            color:
-                                              key ===
-                                              "Points"
-                                                ? colores.verde
-                                                : colores.texto,
-                                            whiteSpace:
-                                              "nowrap",
-                                          }}
-                                        >
-                                          {valor}
-                                        </td>
-                                      );
-                                    }
-                                  )}
-
-                                </tr>
-                              );
-                            }
-                          )}
-
-                        </tbody>
-
-                      </table>
-
-                    </div>
-
-                  </section>
-                );
-              }
-            )}
-
-          </div>
-
+          </section>
         )}
 
+        {/* ====================================================
+            ELIMINATORIAS / BRACKETS
+        ==================================================== */}
 
-        {/* ==================================================
-            SIN TABLAS
-        ================================================== */}
+        {brackets.length > 0 && (
+          <section style={styles.section}>
 
-        {tablas.length === 0 && (
+            <div style={styles.sectionTitle}>
+              <span>Eliminatorias</span>
+            </div>
 
-          <div
-            style={{
-              background:
-                colores.superficie,
-              border:
-                `1px solid ${colores.borde}`,
-              borderRadius:
-                10,
-              padding:
-                25,
-              textAlign:
-                "center",
-              color:
-                colores.muted,
-            }}
-          >
-            No se encontraron tablas
-            de posiciones para esta
-            competencia.
-          </div>
+            <div style={styles.bracketsContainer}>
 
+              {brackets.map((stage, index) => (
+                <StageBracket
+                  key={`${stage.name}-${index}`}
+                  stage={stage}
+                />
+              ))}
+
+            </div>
+
+          </section>
         )}
 
-
-        {/* ==================================================
+        {/* ====================================================
             ESTADÍSTICAS DE JUGADORES
-        ================================================== */}
+        ==================================================== */}
 
         {estadisticas.length > 0 && (
+          <section style={styles.section}>
 
-          <section
-            style={{
-              marginTop:
-                35,
-            }}
-          >
+            <div style={styles.sectionTitle}>
+              <span>Estadísticas de jugadores</span>
+            </div>
 
-            <h2
-              style={{
-                margin:
-                  "0 0 18px",
-                fontSize:
-                  21,
-              }}
-            >
-              Estadísticas de jugadores
-            </h2>
-
-
-            <div
-              style={{
-                display:
-                  "flex",
-                flexDirection:
-                  "column",
-                gap: 20,
-              }}
-            >
+            <div style={styles.playerTables}>
 
               {estadisticas.map(
-                (
-                  tabla,
-                  tablaIndex
-                ) => {
-
-                  const filas =
-                    obtenerFilasEstadisticas(
-                      tabla
-                    );
-
-
-                  const columnas =
-                    obtenerColumnasEstadistica(
-                      tabla
-                    );
-
-
-                  if (
-                    filas.length === 0
-                  ) {
-                    return null;
-                  }
-
-
-                  return (
-                    <div
-                      key={
-                        tabla.id ||
-                        tabla.name ||
-                        tablaIndex
-                      }
-                      style={{
-                        background:
-                          colores.superficie,
-                        border:
-                          `1px solid ${colores.borde}`,
-                        borderRadius:
-                          10,
-                        overflow:
-                          "hidden",
-                      }}
-                    >
-
-                      <div
-                        style={{
-                          padding:
-                            "15px 16px",
-                          borderBottom:
-                            `1px solid ${colores.borde}`,
-                        }}
-                      >
-
-                        <h3
-                          style={{
-                            margin: 0,
-                            fontSize:
-                              17,
-                          }}
-                        >
-                          {tabla.name ||
-                            tabla.title ||
-                            `Estadística ${tablaIndex + 1}`}
-                        </h3>
-
-                      </div>
-
-
-                      <div
-                        style={{
-                          overflowX:
-                            "auto",
-                        }}
-                      >
-
-                        <table
-                          style={{
-                            width:
-                              "100%",
-                            borderCollapse:
-                              "collapse",
-                            minWidth:
-                              550,
-                          }}
-                        >
-
-                          <thead>
-
-                            <tr
-                              style={{
-                                borderBottom:
-                                  `1px solid ${colores.borde}`,
-                                color:
-                                  colores.muted,
-                                fontSize:
-                                  12,
-                              }}
-                            >
-
-                              <th
-                                style={{
-                                  padding:
-                                    "11px 10px",
-                                  textAlign:
-                                    "center",
-                                }}
-                              >
-                                #
-                              </th>
-
-
-                              <th
-                                style={{
-                                  padding:
-                                    "11px 10px",
-                                  textAlign:
-                                    "left",
-                                }}
-                              >
-                                Jugador
-                              </th>
-
-
-                              <th
-                                style={{
-                                  padding:
-                                    "11px 10px",
-                                  textAlign:
-                                    "left",
-                                }}
-                              >
-                                Equipo
-                              </th>
-
-
-                              {columnas.map(
-                                (
-                                  columna,
-                                  index
-                                ) => {
-
-                                  const key =
-                                    typeof columna ===
-                                    "string"
-                                      ? columna
-                                      : columna.key;
-
-
-                                  return (
-                                    <th
-                                      key={
-                                        `${key}-${index}`
-                                      }
-                                      style={{
-                                        padding:
-                                          "11px 10px",
-                                        textAlign:
-                                          "center",
-                                        whiteSpace:
-                                          "nowrap",
-                                      }}
-                                    >
-                                      {typeof columna ===
-                                      "object"
-                                        ? columna.title ||
-                                          tituloColumna(
-                                            key
-                                          )
-                                        : tituloColumna(
-                                            key
-                                          )}
-                                    </th>
-                                  );
-                                }
-                              )}
-
-                            </tr>
-
-                          </thead>
-
-
-                          <tbody>
-
-                            {filas.map(
-                              (
-                                fila,
-                                index
-                              ) => {
-
-                                const jugador =
-                                  obtenerNombreJugador(
-                                    fila
-                                  );
-
-
-                                const equipo =
-                                  obtenerEquipoJugador(
-                                    fila
-                                  );
-
-
-                                return (
-                                  <tr
-                                    key={
-                                      fila.num ||
-                                      fila.id ||
-                                      index
-                                    }
-                                    style={{
-                                      borderBottom:
-                                        `1px solid ${colores.borde}`,
-                                    }}
-                                  >
-
-                                    <td
-                                      style={{
-                                        padding:
-                                          "11px 10px",
-                                        textAlign:
-                                          "center",
-                                        color:
-                                          colores.muted,
-                                      }}
-                                    >
-                                      {fila.num ||
-                                        index + 1}
-                                    </td>
-
-
-                                    <td
-                                      style={{
-                                        padding:
-                                          "11px 10px",
-                                        fontWeight:
-                                          600,
-                                        whiteSpace:
-                                          "nowrap",
-                                      }}
-                                    >
-                                      {jugador}
-                                    </td>
-
-
-                                    <td
-                                      style={{
-                                        padding:
-                                          "11px 10px",
-                                        color:
-                                          colores.muted2,
-                                        whiteSpace:
-                                          "nowrap",
-                                      }}
-                                    >
-                                      {equipo}
-                                    </td>
-
-
-                                    {columnas.map(
-                                      (
-                                        columna,
-                                        columnaIndex
-                                      ) => {
-
-                                        const key =
-                                          typeof columna ===
-                                          "string"
-                                            ? columna
-                                            : columna.key;
-
-
-                                        return (
-                                          <td
-                                            key={
-                                              `${key}-${columnaIndex}`
-                                            }
-                                            style={{
-                                              padding:
-                                                "11px 10px",
-                                              textAlign:
-                                                "center",
-                                              fontWeight:
-                                                700,
-                                            }}
-                                          >
-                                            {obtenerValorEstadistica(
-                                              fila,
-                                              key
-                                            )}
-                                          </td>
-                                        );
-                                      }
-                                    )}
-
-                                  </tr>
-                                );
-                              }
-                            )}
-
-                          </tbody>
-
-                        </table>
-
-                      </div>
-
-                    </div>
-                  );
-                }
+                (tabla, index) => (
+                  <EstadisticasJugadores
+                    key={`${tabla.name || "tabla"}-${index}`}
+                    tabla={tabla}
+                  />
+                )
               )}
 
             </div>
@@ -1798,95 +526,1119 @@ function PosicionesContent() {
           </section>
         )}
 
+        {/* ====================================================
+            SIN DATOS
+        ==================================================== */}
 
-        {/* ==================================================
-            PIE
-        ================================================== */}
-
-        <div
-          style={{
-            marginTop:
-              35,
-            paddingTop:
-              15,
-            borderTop:
-              `1px solid ${colores.borde}`,
-            textAlign:
-              "center",
-            color:
-              colores.muted,
-            fontSize:
-              12,
-          }}
-        >
-          Datos actualizados desde Promiedos.
-        </div>
+        {tablas.length === 0 &&
+          brackets.length === 0 &&
+          estadisticas.length === 0 && (
+            <div style={styles.empty}>
+              No hay información disponible para
+              esta competencia.
+            </div>
+          )}
 
       </div>
-
     </main>
   );
 }
 
+// ============================================================
+// TABLA DE POSICIONES
+// ============================================================
+
+function TablaPosiciones({ item }) {
+  const { torneo, grupo, table } = item;
+
+  const columns = Array.isArray(table.columns)
+    ? table.columns
+    : [];
+
+  const rows = Array.isArray(table.rows)
+    ? table.rows
+    : [];
+
+  return (
+    <div style={styles.tableCard}>
+
+      {/* CABECERA */}
+
+      <div style={styles.tableHeader}>
+
+        <div>
+          {torneo && (
+            <div style={styles.tableTournament}>
+              {torneo}
+            </div>
+          )}
+
+          <div style={styles.tableName}>
+            {grupo || "Tabla de posiciones"}
+          </div>
+        </div>
+
+      </div>
+
+      {/* TABLA */}
+
+      <div style={styles.tableScroll}>
+
+        <table style={styles.table}>
+
+          <thead>
+            <tr>
+
+              <th style={styles.posHeader}>
+                #
+              </th>
+
+              <th
+                style={{
+                  ...styles.teamHeader,
+                  textAlign: "left",
+                }}
+              >
+                Equipo
+              </th>
+
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  style={{
+                    ...styles.statHeader,
+                    fontWeight:
+                      column.is_bold
+                        ? 800
+                        : 600,
+                  }}
+                >
+                  {column.title}
+                </th>
+              ))}
+
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {rows.map((fila, index) => {
+
+              const nombre =
+                obtenerNombreEquipo(fila);
+
+              const color =
+                obtenerColorEquipo(fila);
+
+              const textColor =
+                obtenerTextoColorEquipo(fila);
+
+              const posicion =
+                fila.num ?? index + 1;
+
+              return (
+                <tr
+                  key={`${nombre}-${index}`}
+                  style={styles.tableRow}
+                >
+
+                  <td style={styles.position}>
+                    {posicion}
+                  </td>
+
+                  <td style={styles.teamCell}>
+
+                    <div
+                      style={{
+                        ...styles.teamBadge,
+                        backgroundColor: color,
+                        color: textColor,
+                      }}
+                    />
+
+                    <span>
+                      {nombre}
+                    </span>
+
+                  </td>
+
+                  {columns.map(
+                    (column) => {
+
+                      const valor =
+                        obtenerValor(
+                          fila,
+                          column.key
+                        );
+
+                      return (
+                        <td
+                          key={column.key}
+                          style={{
+                            ...styles.statCell,
+                            fontWeight:
+                              column.is_bold
+                                ? 800
+                                : 500,
+                          }}
+                        >
+                          {Array.isArray(valor)
+                            ? valor.join(" ")
+                            : valor}
+                        </td>
+                      );
+                    }
+                  )}
+
+                </tr>
+              );
+            })}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+  );
+}
 
 // ============================================================
-// SUSPENSE
+// ETAPA DE ELIMINATORIAS
+// ============================================================
+
+function StageBracket({ stage }) {
+  const groups = Array.isArray(stage?.groups)
+    ? stage.groups
+    : [];
+
+  return (
+    <div style={styles.stage}>
+
+      <div style={styles.stageTitle}>
+        {stage.name}
+      </div>
+
+      <div style={styles.bracketGrid}>
+
+        {groups.map((group, index) => (
+          <BracketGroup
+            key={`${group?.participants
+              ?.map((p) => p.id)
+              .join("-") || "llave"}-${index}`}
+            group={group}
+          />
+        ))}
+
+      </div>
+
+    </div>
+  );
+}
+
+// ============================================================
+// LLAVE / SERIE
+// ============================================================
+
+function BracketGroup({ group }) {
+  const participants = Array.isArray(
+    group?.participants
+  )
+    ? group.participants
+    : [];
+
+  const games = Array.isArray(group?.games)
+    ? group.games
+    : [];
+
+  // ----------------------------------------------------------
+  // Buscar quién clasifica
+  // ----------------------------------------------------------
+
+  let qualifiedId = null;
+
+  for (const game of games) {
+    if (
+      game?.to_qualify &&
+      Array.isArray(game.teams)
+    ) {
+      const indice =
+        Number(game.to_qualify) - 1;
+
+      if (
+        indice >= 0 &&
+        game.teams[indice]
+      ) {
+        qualifiedId =
+          game.teams[indice].id;
+      }
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Si no encontramos por to_qualify,
+  // buscamos por winner en un partido único.
+  // ----------------------------------------------------------
+
+  if (!qualifiedId && games.length === 1) {
+    const game = games[0];
+
+    if (
+      game?.winner &&
+      Array.isArray(game.teams)
+    ) {
+      const indice =
+        Number(game.winner) - 1;
+
+      if (
+        indice >= 0 &&
+        game.teams[indice]
+      ) {
+        qualifiedId =
+          game.teams[indice].id;
+      }
+    }
+  }
+
+  return (
+    <div style={styles.bracketCard}>
+
+      {/* EQUIPOS DE LA LLAVE */}
+
+      <div style={styles.bracketTeams}>
+
+        {participants.map(
+          (participant, index) => {
+
+            const clasificado =
+              qualifiedId ===
+              participant.id;
+
+            return (
+              <div
+                key={
+                  participant.id ||
+                  `${participant.name}-${index}`
+                }
+                style={{
+                  ...styles.participant,
+                  ...(clasificado
+                    ? styles.participantQualified
+                    : {}),
+                }}
+              >
+
+                <div
+                  style={
+                    styles.participantPosition
+                  }
+                >
+                  {index + 1}
+                </div>
+
+                <div
+                  style={
+                    styles.participantName
+                  }
+                >
+                  {participant.short_name ||
+                    participant.name}
+                </div>
+
+                {clasificado && (
+                  <div
+                    style={
+                      styles.qualifiedLabel
+                    }
+                  >
+                    CLASIF.
+                  </div>
+                )}
+
+              </div>
+            );
+          }
+        )}
+
+      </div>
+
+      {/* PARTIDOS */}
+
+      {games.length > 0 && (
+        <div style={styles.games}>
+
+          {games.map((game, index) => (
+            <BracketGame
+              key={
+                game?.id ||
+                `partido-${index}`
+              }
+              game={game}
+            />
+          ))}
+
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ============================================================
+// PARTIDO DE ELIMINATORIA
+// ============================================================
+
+function BracketGame({ game }) {
+  const teams = Array.isArray(game?.teams)
+    ? game.teams
+    : [];
+
+  const scores = Array.isArray(game?.scores)
+    ? game.scores
+    : [];
+
+  return (
+    <div style={styles.game}>
+
+      {/* FECHA */}
+
+      {game?.start_time && (
+        <div style={styles.gameDate}>
+          {formatearFecha(
+            game.start_time
+          )}
+        </div>
+      )}
+
+      {/* EQUIPOS */}
+
+      <div style={styles.gameTeams}>
+
+        {teams.map((team, index) => {
+
+          const score =
+            scores[index] ?? "-";
+
+          const esGanador =
+            game?.winner === index + 1;
+
+          const clasifica =
+            game?.to_qualify === index + 1;
+
+          return (
+            <div
+              key={
+                team?.id ||
+                `${team?.name}-${index}`
+              }
+              style={{
+                ...styles.gameTeam,
+                ...(esGanador
+                  ? styles.gameWinner
+                  : {}),
+              }}
+            >
+
+              <div style={styles.gameTeamName}>
+
+                <div
+                  style={{
+                    ...styles.teamDot,
+                    backgroundColor:
+                      team?.colors?.color ||
+                      "#334155",
+                  }}
+                />
+
+                <span>
+                  {team?.short_name ||
+                    team?.name ||
+                    "Equipo"}
+                </span>
+
+              </div>
+
+              <div
+                style={{
+                  ...styles.gameScore,
+                  ...(esGanador
+                    ? styles.gameScoreWinner
+                    : {}),
+                }}
+              >
+                {score}
+              </div>
+
+              {clasifica && (
+                <div
+                  style={
+                    styles.gameQualified
+                  }
+                >
+                  →
+                </div>
+              )}
+
+            </div>
+          );
+        })}
+
+      </div>
+
+      {/* ESTADO */}
+
+      {game?.status?.name && (
+        <div style={styles.gameStatus}>
+          {game.status.name}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ============================================================
+// ESTADÍSTICAS DE JUGADORES
+// ============================================================
+
+function EstadisticasJugadores({
+  tabla,
+}) {
+  const rows = Array.isArray(tabla?.rows)
+    ? tabla.rows
+    : [];
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  // Detectamos automáticamente las columnas
+  // disponibles en los jugadores.
+
+  const keys = [];
+
+  rows.forEach((row) => {
+    if (!Array.isArray(row?.values)) {
+      return;
+    }
+
+    row.values.forEach((value) => {
+      if (
+        value?.key &&
+        !keys.includes(value.key)
+      ) {
+        keys.push(value.key);
+      }
+    });
+  });
+
+  function obtenerValorJugador(
+    row,
+    key
+  ) {
+    const valor = row?.values?.find(
+      (v) => v.key === key
+    );
+
+    return valor?.value ?? "-";
+  }
+
+  return (
+    <div style={styles.playerCard}>
+
+      <div style={styles.tableHeader}>
+
+        <div>
+
+          <div style={styles.tableName}>
+            {tabla.name ||
+              "Estadísticas"}
+          </div>
+
+        </div>
+
+      </div>
+
+      <div style={styles.tableScroll}>
+
+        <table style={styles.table}>
+
+          <thead>
+
+            <tr>
+
+              <th style={styles.posHeader}>
+                #
+              </th>
+
+              <th
+                style={{
+                  ...styles.teamHeader,
+                  textAlign: "left",
+                }}
+              >
+                Jugador
+              </th>
+
+              <th
+                style={{
+                  ...styles.teamHeader,
+                  textAlign: "left",
+                }}
+              >
+                Equipo
+              </th>
+
+              {keys.map((key) => (
+                <th
+                  key={key}
+                  style={styles.statHeader}
+                >
+                  {key}
+                </th>
+              ))}
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {rows.map(
+              (row, index) => {
+
+                const jugador =
+                  row?.entity?.object;
+
+                const nombre =
+                  jugador?.name ||
+                  "Jugador";
+
+                /*
+                 * Por ahora dejamos "-"
+                 * para equipo, tal como viene
+                 * actualmente en la API.
+                 *
+                 * El team_id existe en entity.object,
+                 * pero todavía no tenemos un mapa
+                 * global team_id -> nombre.
+                 */
+
+                const equipo = "-";
+
+                return (
+                  <tr
+                    key={
+                      jugador?.name ||
+                      `jugador-${index}`
+                    }
+                    style={styles.tableRow}
+                  >
+
+                    <td style={styles.position}>
+                      {row?.num ??
+                        index + 1}
+                    </td>
+
+                    <td
+                      style={{
+                        ...styles.teamCell,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {nombre}
+                    </td>
+
+                    <td
+                      style={{
+                        ...styles.teamCell,
+                        color:
+                          "#8b949e",
+                      }}
+                    >
+                      {equipo}
+                    </td>
+
+                    {keys.map((key) => (
+                      <td
+                        key={key}
+                        style={
+                          styles.statCell
+                        }
+                      >
+                        {obtenerValorJugador(
+                          row,
+                          key
+                        )}
+                      </td>
+                    ))}
+
+                  </tr>
+                );
+              }
+            )}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+  );
+}
+
+// ============================================================
+// PÁGINA
 // ============================================================
 
 export default function PosicionesPage() {
-
   return (
     <Suspense
       fallback={
-        <main
-          style={{
-            minHeight:
-              "100vh",
-            background:
-              colores.fondo,
-            color:
-              colores.texto,
-            padding:
-              24,
-          }}
-        >
-
-          <div
-            style={{
-              maxWidth:
-                1200,
-              margin:
-                "0 auto",
-            }}
-          >
-
-            <div
-              style={{
-                background:
-                  colores.superficie,
-                border:
-                  `1px solid ${colores.borde}`,
-                borderRadius:
-                  10,
-                padding:
-                  30,
-                textAlign:
-                  "center",
-                color:
-                  colores.muted,
-              }}
-            >
-              Cargando posiciones...
+        <main style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.loading}>
+              Cargando...
             </div>
-
           </div>
-
         </main>
       }
     >
-
       <PosicionesContent />
-
     </Suspense>
   );
 }
+
+// ============================================================
+// ESTILOS
+// ============================================================
+
+const styles = {
+
+  page: {
+    minHeight: "100vh",
+    backgroundColor: "#0d131a",
+    color: "#e6edf3",
+    padding: "24px 16px 60px",
+  },
+
+  container: {
+    width: "100%",
+    maxWidth: "1200px",
+    margin: "0 auto",
+  },
+
+  loading: {
+    minHeight: "60vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#9ca3af",
+    fontSize: "15px",
+  },
+
+  backLink: {
+    display: "inline-block",
+    color: "#9ca3af",
+    textDecoration: "none",
+    fontSize: "14px",
+    marginBottom: "20px",
+  },
+
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "20px",
+    marginBottom: "22px",
+  },
+
+  eyebrow: {
+    color: "#10b981",
+    fontSize: "11px",
+    fontWeight: 800,
+    letterSpacing: "1.2px",
+    marginBottom: "7px",
+  },
+
+  title: {
+    margin: 0,
+    fontSize: "28px",
+    lineHeight: 1.2,
+    fontWeight: 800,
+    color: "#e6edf3",
+  },
+
+  competitionNav: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "30px",
+  },
+
+  competitionButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "36px",
+    padding: "0 13px",
+    borderRadius: "7px",
+    border: "1px solid #263244",
+    backgroundColor: "#121821",
+    color: "#9ca3af",
+    textDecoration: "none",
+    fontSize: "13px",
+    fontWeight: 700,
+    transition:
+      "background-color .15s ease, color .15s ease",
+  },
+
+  competitionButtonActive: {
+    backgroundColor: "#10b981",
+    borderColor: "#10b981",
+    color: "#07130f",
+  },
+
+  section: {
+    marginTop: "30px",
+  },
+
+  sectionTitle: {
+    display: "flex",
+    alignItems: "center",
+    fontSize: "18px",
+    fontWeight: 800,
+    color: "#e6edf3",
+    marginBottom: "14px",
+  },
+
+  tablesGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(320px, 1fr))",
+    gap: "14px",
+  },
+
+  tableCard: {
+    backgroundColor: "#121821",
+    border: "1px solid #263244",
+    borderRadius: "10px",
+    overflow: "hidden",
+  },
+
+  playerCard: {
+    backgroundColor: "#121821",
+    border: "1px solid #263244",
+    borderRadius: "10px",
+    overflow: "hidden",
+    marginBottom: "14px",
+  },
+
+  tableHeader: {
+    padding: "14px 16px",
+    borderBottom:
+      "1px solid #263244",
+    backgroundColor: "#151d28",
+  },
+
+  tableTournament: {
+    color: "#64748b",
+    fontSize: "11px",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: ".6px",
+    marginBottom: "4px",
+  },
+
+  tableName: {
+    color: "#e6edf3",
+    fontSize: "15px",
+    fontWeight: 800,
+  },
+
+  tableScroll: {
+    width: "100%",
+    overflowX: "auto",
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: "620px",
+  },
+
+  posHeader: {
+    width: "38px",
+    padding: "9px 6px",
+    color: "#64748b",
+    fontSize: "10px",
+    fontWeight: 800,
+    textAlign: "center",
+    borderBottom:
+      "1px solid #263244",
+  },
+
+  teamHeader: {
+    padding: "9px 8px",
+    color: "#64748b",
+    fontSize: "10px",
+    fontWeight: 800,
+    textTransform: "uppercase",
+    borderBottom:
+      "1px solid #263244",
+    whiteSpace: "nowrap",
+  },
+
+  statHeader: {
+    padding: "9px 7px",
+    color: "#64748b",
+    fontSize: "10px",
+    fontWeight: 700,
+    textAlign: "center",
+    borderBottom:
+      "1px solid #263244",
+    whiteSpace: "nowrap",
+  },
+
+  tableRow: {
+    borderBottom:
+      "1px solid #1e2937",
+  },
+
+  position: {
+    padding: "10px 6px",
+    color: "#64748b",
+    fontSize: "12px",
+    textAlign: "center",
+    verticalAlign: "middle",
+  },
+
+  teamCell: {
+    padding: "10px 8px",
+    color: "#e6edf3",
+    fontSize: "13px",
+    textAlign: "left",
+    whiteSpace: "nowrap",
+    verticalAlign: "middle",
+  },
+
+  teamBadge: {
+    display: "inline-block",
+    width: "9px",
+    height: "9px",
+    borderRadius: "50%",
+    marginRight: "8px",
+    verticalAlign: "middle",
+    border:
+      "1px solid rgba(255,255,255,.12)",
+  },
+
+  statCell: {
+    padding: "10px 7px",
+    color: "#d7dee7",
+    fontSize: "12px",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    verticalAlign: "middle",
+  },
+
+  // ==========================================================
+  // BRACKETS
+  // ==========================================================
+
+  bracketsContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "24px",
+  },
+
+  stage: {
+    backgroundColor: "#121821",
+    border:
+      "1px solid #263244",
+    borderRadius: "10px",
+    overflow: "hidden",
+  },
+
+  stageTitle: {
+    padding: "14px 16px",
+    backgroundColor: "#151d28",
+    borderBottom:
+      "1px solid #263244",
+    color: "#e6edf3",
+    fontSize: "15px",
+    fontWeight: 800,
+  },
+
+  bracketGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "12px",
+    padding: "14px",
+  },
+
+  bracketCard: {
+    backgroundColor: "#0d131a",
+    border:
+      "1px solid #263244",
+    borderRadius: "8px",
+    overflow: "hidden",
+  },
+
+  bracketTeams: {
+    padding: "8px",
+    borderBottom:
+      "1px solid #263244",
+  },
+
+  participant: {
+    display: "flex",
+    alignItems: "center",
+    minHeight: "32px",
+    padding: "5px 7px",
+    borderRadius: "5px",
+    color: "#cbd5e1",
+    fontSize: "13px",
+    gap: "8px",
+  },
+
+  participantQualified: {
+    backgroundColor:
+      "rgba(16,185,129,.10)",
+    color: "#e6edf3",
+  },
+
+  participantPosition: {
+    width: "18px",
+    color: "#64748b",
+    fontSize: "10px",
+    textAlign: "center",
+    flexShrink: 0,
+  },
+
+  participantName: {
+    flex: 1,
+    fontWeight: 600,
+  },
+
+  qualifiedLabel: {
+    color: "#10b981",
+    fontSize: "9px",
+    fontWeight: 900,
+    letterSpacing: ".5px",
+  },
+
+  games: {
+    padding: "8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "7px",
+  },
+
+  game: {
+    border:
+      "1px solid #263244",
+    borderRadius: "6px",
+    overflow: "hidden",
+    backgroundColor: "#121821",
+  },
+
+  gameDate: {
+    padding: "5px 8px",
+    color: "#64748b",
+    fontSize: "10px",
+    borderBottom:
+      "1px solid #1e2937",
+  },
+
+  gameTeams: {
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  gameTeam: {
+    display: "flex",
+    alignItems: "center",
+    minHeight: "30px",
+    padding: "4px 8px",
+    gap: "7px",
+  },
+
+  gameWinner: {
+    backgroundColor:
+      "rgba(16,185,129,.06)",
+  },
+
+  gameTeamName: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    minWidth: 0,
+    color: "#d7dee7",
+    fontSize: "12px",
+    fontWeight: 600,
+  },
+
+  teamDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    flexShrink: 0,
+    border:
+      "1px solid rgba(255,255,255,.1)",
+  },
+
+  gameScore: {
+    minWidth: "20px",
+    textAlign: "center",
+    color: "#9ca3af",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+
+  gameScoreWinner: {
+    color: "#e6edf3",
+    fontWeight: 900,
+  },
+
+  gameQualified: {
+    color: "#10b981",
+    fontSize: "15px",
+    fontWeight: 900,
+    width: "15px",
+    textAlign: "center",
+  },
+
+  gameStatus: {
+    padding: "5px 8px",
+    borderTop:
+      "1px solid #1e2937",
+    color: "#64748b",
+    fontSize: "10px",
+  },
+
+  empty: {
+    padding: "40px 20px",
+    textAlign: "center",
+    backgroundColor: "#121821",
+    border:
+      "1px solid #263244",
+    borderRadius: "10px",
+    color: "#8b949e",
+    fontSize: "14px",
+  },
+
+  errorBox: {
+    padding: "18px",
+    backgroundColor: "#121821",
+    border:
+      "1px solid #7f1d1d",
+    borderRadius: "8px",
+    color: "#fca5a5",
+    fontSize: "14px",
+  },
+};
