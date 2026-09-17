@@ -1,108 +1,46 @@
 import { NextResponse } from "next/server";
-import * as cheerio from "cheerio";
+import puppeteer from "puppeteer";
 
 // ==========================================
-// EQUIPOS DE PRIMERA
+// URLS DE LOS EQUIPOS DE PRIMERA
 // ==========================================
 
 const URLS_EQUIPOS = {
-    "argentinos juniors":
-        "https://www.promiedos.com.ar/team/argentinos-juniors/ihf",
-
-    "atletico tucuman":
-        "https://www.promiedos.com.ar/team/atletico-tucuman/iea",
-
-    "banfield":
-        "https://www.promiedos.com.ar/team/banfield/igb",
-
-    "barracas central":
-        "https://www.promiedos.com.ar/team/barracas-central/bbjf",
-
-    "belgrano":
-        "https://www.promiedos.com.ar/team/belgrano/ihb",
-
-    "boca juniors":
-        "https://www.promiedos.com.ar/team/boca-juniors/igg",
-
-    "central cordoba":
-        "https://www.promiedos.com.ar/team/central-cordoba-sde/bhbf",
-
-    "defensa y justicia":
-        "https://www.promiedos.com.ar/team/defensa-y-justicia/hcbh",
-
-    "deportivo riestra":
-        "https://www.promiedos.com.ar/team/deportivo-riestra/bbjea",
-
-    "estudiantes":
-        "https://www.promiedos.com.ar/team/estudiantes/ihb",
-
-    "estudiantes rio cuarto":
-        "https://www.promiedos.com.ar/team/estudiantes-rio-cuarto/cefb",
-
-    "gimnasia la plata":
-        "https://www.promiedos.com.ar/team/gimnasia-la-plata/iia",
-
-    "gimnasia mendoza":
-        "https://www.promiedos.com.ar/team/gimnasia-mendoza/bbjbf",
-
-    "godoy cruz":
-        "https://www.promiedos.com.ar/team/godoy-cruz/ihf",
-
-    "huracan":
-        "https://www.promiedos.com.ar/team/huracan/iie",
-
-    "independiente":
-        "https://www.promiedos.com.ar/team/independiente/igh",
-
-    "independiente rivadavia":
-        "https://www.promiedos.com.ar/team/independiente-rivadavia/ccbe",
-
-    "instituto":
-        "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
-
-    "lanus":
-        "https://www.promiedos.com.ar/team/lanus/igc",
-
-    "newells":
-        "https://www.promiedos.com.ar/team/newells-old-boys/ihc",
-
-    "platense":
-        "https://www.promiedos.com.ar/team/platense/igb",
-
-    "racing":
-        "https://www.promiedos.com.ar/team/racing-club/ihc",
-
-    "river plate":
-        "https://www.promiedos.com.ar/team/river-plate/igi",
-
-    "rosario central":
-        "https://www.promiedos.com.ar/team/rosario-central/ihc",
-
-    "san lorenzo":
-        "https://www.promiedos.com.ar/team/san-lorenzo/ihc",
-
-    "san martin san juan":
-        "https://www.promiedos.com.ar/team/san-martin-san-juan/cefh",
-
-    "sarmiento":
-        "https://www.promiedos.com.ar/team/sarmiento-junin/ihc",
-
-    "talleres":
-        "https://www.promiedos.com.ar/team/talleres-cordoba/ihc",
-
-    "tigre":
-        "https://www.promiedos.com.ar/team/tigre/ihc",
-
-    "union":
-        "https://www.promiedos.com.ar/team/union-santa-fe/ihc",
-
-    "velez sarsfield":
-        "https://www.promiedos.com.ar/team/velez-sarsfield/ihc",
+    "argentinos juniors": "https://www.promiedos.com.ar/team/argentinos-juniors/ihf",
+    "atletico tucuman": "https://www.promiedos.com.ar/team/atletico-tucuman/iea",
+    "banfield": "https://www.promiedos.com.ar/team/banfield/igb",
+    "barracas central": "https://www.promiedos.com.ar/team/barracas-central/bbjf",
+    "belgrano": "https://www.promiedos.com.ar/team/belgrano/ihb",
+    "boca juniors": "https://www.promiedos.com.ar/team/boca-juniors/igg",
+    "central cordoba": "https://www.promiedos.com.ar/team/central-cordoba-sde/bhbf",
+    "defensa y justicia": "https://www.promiedos.com.ar/team/defensa-y-justicia/hcbh",
+    "deportivo riestra": "https://www.promiedos.com.ar/team/deportivo-riestra/bbjea",
+    "estudiantes": "https://www.promiedos.com.ar/team/estudiantes/ihb",
+    "estudiantes rio cuarto": "https://www.promiedos.com.ar/team/estudiantes-rio-cuarto/cefb",
+    "gimnasia la plata": "https://www.promiedos.com.ar/team/gimnasia-la-plata/iia",
+    "gimnasia mendoza": "https://www.promiedos.com.ar/team/gimnasia-mendoza/bbjbf",
+    "godoy cruz": "https://www.promiedos.com.ar/team/godoy-cruz/ihf",
+    "huracan": "https://www.promiedos.com.ar/team/huracan/iie",
+    "independiente": "https://www.promiedos.com.ar/team/independiente/igh",
+    "independiente rivadavia": "https://www.promiedos.com.ar/team/independiente-rivadavia/ccbe",
+    "instituto": "https://www.promiedos.com.ar/team/instituto-ac-cordoba/hchc",
+    "lanus": "https://www.promiedos.com.ar/team/lanus/igc",
+    "newells": "https://www.promiedos.com.ar/team/newells-old-boys/ihc",
+    "platense": "https://www.promiedos.com.ar/team/platense/igb",
+    "racing": "https://www.promiedos.com.ar/team/racing-club/ihc",
+    "river plate": "https://www.promiedos.com.ar/team/river-plate/igi",
+    "rosario central": "https://www.promiedos.com.ar/team/rosario-central/ihc",
+    "san lorenzo": "https://www.promiedos.com.ar/team/san-lorenzo/ihc",
+    "san martin san juan": "https://www.promiedos.com.ar/team/san-martin-san-juan/cefh",
+    "sarmiento": "https://www.promiedos.com.ar/team/sarmiento-junin/ihc",
+    "talleres": "https://www.promiedos.com.ar/team/talleres-cordoba/ihc",
+    "tigre": "https://www.promiedos.com.ar/team/tigre/ihc",
+    "union": "https://www.promiedos.com.ar/team/union-santa-fe/ihc",
+    "velez sarsfield": "https://www.promiedos.com.ar/team/velez-sarsfield/ihc"
 };
 
-
 // ==========================================
-// NOMBRES PARA MOSTRAR
+// NOMBRES
 // ==========================================
 
 const NOMBRES_EQUIPOS = {
@@ -136,15 +74,14 @@ const NOMBRES_EQUIPOS = {
     "talleres": "Talleres",
     "tigre": "Tigre",
     "union": "Unión",
-    "velez sarsfield": "Vélez Sarsfield",
+    "velez sarsfield": "Vélez Sarsfield"
 };
 
-
 // ==========================================
-// NORMALIZAR TEXTO
+// NORMALIZAR
 // ==========================================
 
-function normalizarTexto(texto = "") {
+function normalizar(texto = "") {
     return texto
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -153,243 +90,134 @@ function normalizarTexto(texto = "") {
         .trim();
 }
 
-
 // ==========================================
-// DETECTAR RESERVA / JUVENIL / FEMENINO
+// FILTRAR RESERVA / JUVENIL / FEMENINO
 // ==========================================
 
-function esReservaOJoven(texto = "") {
-    const t = normalizarTexto(texto);
+function esCompetenciaNoDeseada(texto = "") {
+    const t = normalizar(texto);
 
     return (
         t.includes("reserva") ||
-        t.includes("reserve") ||
-        t.includes("(r)") ||
         t.includes("sub 20") ||
         t.includes("sub-20") ||
         t.includes("sub 19") ||
         t.includes("sub-19") ||
         t.includes("sub 17") ||
         t.includes("sub-17") ||
-        t.includes("(w)") ||
         t.includes("femenino") ||
         t.includes("femenina")
     );
 }
 
-
 // ==========================================
-// CONVERTIR FECHA
-// ==========================================
-
-function convertirFecha(fecha) {
-    const match = fecha.match(/^(\d{1,2})\/(\d{1,2})$/);
-
-    if (!match) return null;
-
-    const dia = Number(match[1]);
-    const mes = Number(match[2]);
-
-    const ahora = new Date();
-
-    let anio = ahora.getFullYear();
-
-    // Si el mes está muy atrás, probablemente pertenece al año siguiente.
-    if (mes < ahora.getMonth() + 1 - 6) {
-        anio++;
-    }
-
-    return new Date(
-        anio,
-        mes - 1,
-        dia
-    );
-}
-
-
-// ==========================================
-// OBTENER LISTA
+// LISTA
 // ==========================================
 
-function obtenerListaEquipos() {
-
-    return Object.entries(URLS_EQUIPOS)
-        .map(([id, url]) => ({
+function obtenerEquipos() {
+    return Object.keys(URLS_EQUIPOS)
+        .map(id => ({
             id,
-            name: NOMBRES_EQUIPOS[id] || id,
-            url
+            name: NOMBRES_EQUIPOS[id],
+            url: URLS_EQUIPOS[id]
         }))
         .sort((a, b) =>
             a.name.localeCompare(b.name, "es")
         );
 }
 
-
 // ==========================================
-// EXTRAER PARTIDOS DESDE TEXTO
-// ==========================================
-//
-// Buscamos directamente patrones como:
-//
-// 19/09 L Huracán 18:00
-// 07/10 V Sarmiento 18:30
-//
-// Esto evita depender de la estructura exacta
-// de las tablas HTML.
+// EXTRAER PARTIDOS DESDE EL DOM
 // ==========================================
 
-function extraerPartidosDesdeTexto(texto, equipo) {
+async function obtenerFixtureDesdePagina(page, nombreEquipo) {
 
-    const partidos = [];
+    return await page.evaluate((nombreEquipo) => {
 
-    if (!texto) return partidos;
+        const resultados = [];
 
-    // Normalizamos espacios
-    texto = texto
-        .replace(/\u00a0/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+        const normalizar = texto =>
+            (texto || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .replace(/\s+/g, " ")
+                .trim();
 
-    console.log("==========================================");
-    console.log("TEXTO PARA BUSCAR PARTIDOS");
-    console.log("==========================================");
-    console.log(texto.substring(0, 5000));
-
-    // ------------------------------------------------
-    // MÉTODO 1
-    // Buscar directamente:
-    //
-    // DD/MM L Rival HH:MM
-    // DD/MM V Rival HH:MM
-    // ------------------------------------------------
-
-    const regex =
-        /(\d{1,2}\/\d{1,2})\s+([LV])\s+(.+?)\s+(\d{1,2}:\d{2})/gi;
-
-    let match;
-
-    while ((match = regex.exec(texto)) !== null) {
-
-        const fecha = match[1];
-        const condicion = match[2].toUpperCase();
-        let rival = match[3].trim();
-        const hora = match[4];
-
-        // Limpiar basura típica
-        rival = rival
-            .replace(/^Image:\s*/i, "")
-            .replace(/\s+/g, " ")
-            .trim();
-
-        // Si capturamos demasiado texto, cortar
-        const cortes = [
-            "Resultados",
-            "PLANTEL",
-            "Jugadores",
-            "ESTADISTICAS",
-            "ESTADÍSTICAS",
-            "PRÓXIMOS",
-            "PROXIMOS"
+        const elementos = [
+            ...document.querySelectorAll("tr"),
+            ...document.querySelectorAll("div"),
+            ...document.querySelectorAll("li")
         ];
 
-        for (const corte of cortes) {
-            const pos = rival.indexOf(corte);
+        for (const elemento of elementos) {
 
-            if (pos !== -1) {
-                rival = rival.substring(0, pos).trim();
+            const texto =
+                (elemento.innerText || "")
+                    .replace(/\u00a0/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+            if (!texto) continue;
+
+            /*
+             * Buscamos exactamente el patrón:
+             *
+             * 19/09 L Huracán 18:00
+             *
+             * o
+             *
+             * 07/10 V Sarmiento 18:30
+             */
+
+            const match = texto.match(
+                /^(\d{1,2}\/\d{1,2})\s+([LV])\s+(.+?)\s+(\d{1,2}:\d{2})$/
+            );
+
+            if (!match) continue;
+
+            const fecha = match[1];
+            const condicion = match[2];
+            const rival = match[3].trim();
+            const hora = match[4];
+
+            if (!rival) continue;
+
+            const rivalNormalizado = normalizar(rival);
+
+            if (
+                rivalNormalizado.includes("reserva") ||
+                rivalNormalizado.includes("femenino") ||
+                rivalNormalizado.includes("femenina") ||
+                rivalNormalizado.includes("sub 20") ||
+                rivalNormalizado.includes("sub-20") ||
+                rivalNormalizado.includes("sub 19") ||
+                rivalNormalizado.includes("sub-19")
+            ) {
+                continue;
             }
+
+            resultados.push({
+                fecha,
+                condicion,
+                rival,
+                hora,
+                texto
+            });
         }
 
-        if (!rival) continue;
+        return resultados;
 
-        if (esReservaOJoven(rival)) continue;
-
-        // Evitar que tome títulos o basura
-        if (
-            normalizarTexto(rival).includes("dia") ||
-            normalizarTexto(rival).includes("hora") ||
-            normalizarTexto(rival).includes("equipo")
-        ) {
-            continue;
-        }
-
-        const fechaObj = convertirFecha(fecha);
-
-        if (!fechaObj) continue;
-
-        // --------------------------------------------
-        // Local / visitante
-        // --------------------------------------------
-
-        const equipoNombre =
-            NOMBRES_EQUIPOS[normalizarTexto(equipo)] ||
-            equipo;
-
-        let homeTeam;
-        let awayTeam;
-
-        if (condicion === "L") {
-
-            homeTeam = equipoNombre;
-            awayTeam = rival;
-
-        } else {
-
-            homeTeam = rival;
-            awayTeam = equipoNombre;
-        }
-
-        partidos.push({
-
-            id:
-                `${normalizarTexto(equipoNombre)}-${fecha}-${hora}-${normalizarTexto(rival)}`,
-
-            date: fecha,
-
-            time: hora,
-
-            league: "Liga Profesional Argentina",
-
-            competition: "Liga Profesional Argentina",
-
-            homeTeam,
-
-            awayTeam,
-
-            local: homeTeam,
-
-            visiting: awayTeam,
-
-            rival,
-
-            condicion,
-
-            score: null,
-
-            // IMPORTANTE:
-            // tu page.js busca fixture.teams
-            teams: [
-                {
-                    name: homeTeam
-                },
-                {
-                    name: awayTeam
-                }
-            ],
-
-            rawText: match[0]
-        });
-    }
-
-    return partidos;
+    }, nombreEquipo);
 }
-
 
 // ==========================================
 // GET
 // ==========================================
 
 export async function GET(request) {
+
+    let browser = null;
 
     try {
 
@@ -402,27 +230,22 @@ export async function GET(request) {
         const team =
             searchParams.get("team");
 
-        // ==========================================
+
+        // ======================================
         // LISTA DE EQUIPOS
-        // ==========================================
+        // ======================================
 
         if (list === "true") {
 
-            const equipos =
-                obtenerListaEquipos();
-
-            console.log(
-                "LISTA EQUIPOS:",
-                equipos.length
+            return NextResponse.json(
+                obtenerEquipos()
             );
-
-            return NextResponse.json(equipos);
         }
 
 
-        // ==========================================
-        // VALIDAR EQUIPO
-        // ==========================================
+        // ======================================
+        // VALIDAR
+        // ======================================
 
         if (!team) {
 
@@ -437,22 +260,13 @@ export async function GET(request) {
         }
 
 
-        // ==========================================
-        // BUSCAR POR ID
-        // ==========================================
-
         const teamId =
-            normalizarTexto(team);
+            normalizar(team);
 
         const url =
             URLS_EQUIPOS[teamId];
 
         if (!url) {
-
-            console.log(
-                "EQUIPO NO ENCONTRADO:",
-                team
-            );
 
             return NextResponse.json(
                 {
@@ -467,233 +281,295 @@ export async function GET(request) {
 
 
         const nombreEquipo =
-            NOMBRES_EQUIPOS[teamId] ||
-            team;
+            NOMBRES_EQUIPOS[teamId] || team;
 
 
         console.log("");
-        console.log("==========================================");
-        console.log("BUSCANDO FIXTURE");
-        console.log("EQUIPO:", nombreEquipo);
-        console.log("ID:", teamId);
+        console.log("======================================");
+        console.log("TEAM FIXTURE");
+        console.log("Equipo:", nombreEquipo);
         console.log("URL:", url);
-        console.log("==========================================");
+        console.log("======================================");
 
 
-        // ==========================================
-        // FETCH PROMIEDOS
-        // ==========================================
+        // ======================================
+        // PUPPETEER
+        // ======================================
 
-        const response = await fetch(url, {
-            headers: {
-                "User-Agent":
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+        browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-zygote",
+                "--single-process"
+            ]
+        });
 
-                "Accept":
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
 
-                "Accept-Language":
-                    "es-AR,es;q=0.9,en;q=0.8",
+        const page =
+            await browser.newPage();
 
-                "Cache-Control":
-                    "no-cache"
-            },
 
-            cache: "no-store"
+        await page.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36"
+        );
+
+
+        await page.setViewport({
+            width: 1366,
+            height: 768
+        });
+
+
+        console.log("Cargando Promiedos...");
+
+
+        await page.goto(url, {
+            waitUntil: "networkidle2",
+            timeout: 30000
         });
 
 
         console.log(
-            "STATUS PROMIEDOS:",
-            response.status
+            "Página cargada:",
+            await page.title()
         );
 
 
-        if (!response.ok) {
+        // ======================================
+        // ESPERAR CONTENIDO
+        // ======================================
 
-            throw new Error(
-                `Promiedos respondió ${response.status}`
-            );
-        }
-
-
-        const html =
-            await response.text();
-
-
-        console.log(
-            "HTML RECIBIDO:",
-            html.length,
-            "caracteres"
+        await new Promise(resolve =>
+            setTimeout(resolve, 1500)
         );
 
 
-        // ==========================================
-        // CHEERIO
-        // ==========================================
-
-        const $ =
-            cheerio.load(html);
-
-
-        // ==========================================
-        // PRIMERO INTENTAMOS ENCONTRAR
-        // LA SECCIÓN PRÓXIMOS PARTIDOS
-        // ==========================================
-
-        let textoFixture = "";
-
-
-        $("body *").each(function () {
-
-            const texto =
-                $(this)
-                    .text()
-                    .replace(/\s+/g, " ")
-                    .trim();
-
-            if (!texto) return;
-
-
-            const normal =
-                normalizarTexto(texto);
-
-
-            if (
-                normal.includes("proximos partidos") &&
-                texto.length < 3000
-            ) {
-
-                // Nos quedamos con el bloque
-                // más pequeño que contenga la sección.
-
-                if (
-                    !textoFixture ||
-                    texto.length < textoFixture.length
-                ) {
-
-                    textoFixture = texto;
-                }
-            }
-        });
-
-
-        console.log("");
-        console.log("==========================================");
-        console.log("BLOQUE FIXTURE ENCONTRADO");
-        console.log("==========================================");
-        console.log(
-            textoFixture || "NO ENCONTRADO"
-        );
-
-
-        // ==========================================
-        // SI NO ENCONTRAMOS EL BLOQUE,
-        // USAMOS TODO EL BODY
-        // ==========================================
-
-        if (!textoFixture) {
-
-            textoFixture =
-                $("body")
-                    .text()
-                    .replace(/\s+/g, " ")
-                    .trim();
-        }
-
-
-        // ==========================================
+        // ======================================
         // EXTRAER
-        // ==========================================
+        // ======================================
 
-        let matches =
-            extraerPartidosDesdeTexto(
-                textoFixture,
+        let encontrados =
+            await obtenerFixtureDesdePagina(
+                page,
                 nombreEquipo
             );
 
 
-        // ==========================================
-        // SEGUNDO INTENTO:
-        // TODO EL HTML/TEXTO
-        // ==========================================
+        console.log(
+            "PARTIDOS ENCONTRADOS:",
+            encontrados.length
+        );
 
-        if (matches.length === 0) {
+
+        // ======================================
+        // FALLBACK: BUSCAR TEXTO DENTRO DE TODO
+        // ======================================
+
+        if (encontrados.length === 0) {
 
             console.log(
-                "PRIMER MÉTODO SIN RESULTADOS."
+                "No se encontraron filas exactas. Buscando bloques..."
             );
 
-            const bodyText =
-                $("body")
-                    .text()
-                    .replace(/\s+/g, " ")
-                    .trim();
 
-            matches =
-                extraerPartidosDesdeTexto(
-                    bodyText,
-                    nombreEquipo
-                );
+            const textos =
+                await page.evaluate(() => {
+
+                    const todos = [];
+
+                    document
+                        .querySelectorAll("body *")
+                        .forEach(elemento => {
+
+                            const texto =
+                                (elemento.innerText || "")
+                                    .replace(/\u00a0/g, " ")
+                                    .replace(/\s+/g, " ")
+                                    .trim();
+
+                            if (
+                                texto &&
+                                texto.length < 1000 &&
+                                /\d{1,2}\/\d{1,2}/.test(texto) &&
+                                /\d{1,2}:\d{2}/.test(texto)
+                            ) {
+                                todos.push(texto);
+                            }
+                        });
+
+                    return todos;
+                });
+
+
+            for (const texto of textos) {
+
+                const match =
+                    texto.match(
+                        /(\d{1,2}\/\d{1,2})\s+([LV])\s+(.+?)\s+(\d{1,2}:\d{2})/
+                    );
+
+                if (!match) continue;
+
+                const fecha = match[1];
+                const condicion = match[2];
+                const rival = match[3].trim();
+                const hora = match[4];
+
+                if (!rival) continue;
+
+                if (esCompetenciaNoDeseada(rival)) {
+                    continue;
+                }
+
+                encontrados.push({
+                    fecha,
+                    condicion,
+                    rival,
+                    hora,
+                    texto
+                });
+            }
         }
 
 
-        // ==========================================
-        // ELIMINAR DUPLICADOS
-        // ==========================================
+        // ======================================
+        // CERRAR BROWSER
+        // ======================================
 
-        const unicos = [];
+        await browser.close();
+        browser = null;
+
+
+        // ======================================
+        // CONVERTIR AL FORMATO DE TU FRONTEND
+        // ======================================
+
+        const partidos = [];
 
         const ids = new Set();
 
-        for (const partido of matches) {
 
-            if (ids.has(partido.id)) {
+        for (const item of encontrados) {
+
+            const fecha =
+                item.fecha;
+
+            const condicion =
+                item.condicion;
+
+            const rival =
+                item.rival;
+
+            const hora =
+                item.hora;
+
+
+            const id =
+                `${teamId}-${fecha}-${condicion}-${normalizar(rival)}-${hora}`;
+
+
+            if (ids.has(id)) {
                 continue;
             }
 
-            ids.add(partido.id);
+            ids.add(id);
 
-            unicos.push(partido);
+
+            let homeTeam;
+            let awayTeam;
+
+
+            if (condicion === "L") {
+
+                homeTeam =
+                    nombreEquipo;
+
+                awayTeam =
+                    rival;
+
+            } else {
+
+                homeTeam =
+                    rival;
+
+                awayTeam =
+                    nombreEquipo;
+            }
+
+
+            partidos.push({
+
+                id,
+
+                date: fecha,
+
+                time: hora,
+
+                league:
+                    "Liga Profesional Argentina",
+
+                competition:
+                    "Liga Profesional Argentina",
+
+                homeTeam,
+
+                awayTeam,
+
+                local:
+                    homeTeam,
+
+                visiting:
+                    awayTeam,
+
+                rival,
+
+                condicion,
+
+                score: null,
+
+                teams: [
+                    {
+                        name: homeTeam
+                    },
+                    {
+                        name: awayTeam
+                    }
+                ],
+
+                rawText:
+                    item.texto
+            });
         }
-
-
-        // ==========================================
-        // ORDENAR POR FECHA
-        // ==========================================
-
-        unicos.sort((a, b) => {
-
-            const da =
-                convertirFecha(a.date);
-
-            const db =
-                convertirFecha(b.date);
-
-            if (!da || !db) return 0;
-
-            return da - db;
-        });
 
 
         console.log("");
-        console.log("==========================================");
-        console.log("RESULTADO FINAL");
-        console.log("EQUIPO:", nombreEquipo);
-        console.log("PARTIDOS:", unicos.length);
-        console.log("==========================================");
+        console.log(
+            "======================================"
+        );
+        console.log(
+            "RESULTADO:",
+            partidos.length,
+            "PARTIDOS"
+        );
+        console.log(
+            "======================================"
+        );
 
-        for (const partido of unicos) {
+
+        for (const partido of partidos) {
 
             console.log(
-                `${partido.date} ${partido.condicion} ${partido.rival} ${partido.time}`
+                partido.date,
+                partido.condicion,
+                partido.rival,
+                partido.time
             );
         }
 
-
-        // ==========================================
-        // RESPUESTA
-        // ==========================================
 
         return NextResponse.json({
 
@@ -702,12 +578,12 @@ export async function GET(request) {
                 name: nombreEquipo
             },
 
-            matches: unicos,
+            matches: partidos,
 
-            // Compatibilidad
-            fixtures: unicos,
+            fixtures: partidos,
 
             nextDateParam: null
+
         });
 
     } catch (error) {
@@ -716,6 +592,15 @@ export async function GET(request) {
             "ERROR TEAM FIXTURE:",
             error
         );
+
+
+        if (browser) {
+
+            try {
+                await browser.close();
+            } catch {}
+        }
+
 
         return NextResponse.json(
             {
