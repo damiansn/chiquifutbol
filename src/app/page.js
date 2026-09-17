@@ -530,15 +530,66 @@ export default function Home() {
   // FORMATEAR HORA
   // ========================================
 
-  function formatearHora(
-    game
+// ========================================
+// FORMATEAR HORA
+// ========================================
+
+function formatearHora(
+  game
+) {
+
+  // ========================================
+  // PRIMERA OPCIÓN
+  // Usar la función actual
+  // ========================================
+
+  const hora =
+    formatearHoraArgentina(game);
+
+  if (
+    hora &&
+    hora !== "--:--"
   ) {
 
-    const hora =
-      formatearHoraArgentina(game);
-
-    return hora || "--:--";
+    return hora;
   }
+
+  // ========================================
+  // SEGUNDA OPCIÓN
+  // Usar directamente start_time
+  //
+  // Ejemplo:
+  // "17-09-2026 08:00"
+  // ========================================
+
+  if (
+    game?.start_time
+  ) {
+
+    const texto =
+      String(
+        game.start_time
+      ).trim();
+
+    const encontrado =
+      texto.match(
+        /(\d{2}):(\d{2})/
+      );
+
+    if (
+      encontrado
+    ) {
+
+      return (
+        encontrado[1] +
+        ":" +
+        encontrado[2]
+      );
+    }
+  }
+
+  return "--:--";
+}
 
   // ========================================
   // OBTENER MINUTO EN VIVO
