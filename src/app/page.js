@@ -2060,8 +2060,11 @@ export default function Home() {
                             obtenerGoles(
                               teamB
                             );
-                            console.log("TARJETAS LOCAL:", teamA?.cards);
-console.log("TARJETAS VISITANTE:", teamB?.cards);
+                          console.log("========== EQUIPO LOCAL COMPLETO ==========");
+console.log(teamA);
+
+console.log("========== EQUIPO VISITANTE COMPLETO ==========");
+console.log(teamB);
 
                           const tv =
                             obtenerTV(
