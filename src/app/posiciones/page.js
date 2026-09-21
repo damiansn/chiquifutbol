@@ -25,12 +25,12 @@ const NAV_ITEMS = [
 ];
 
 const S = {
-  page: { background: "#ffffff", color: "#111111", minHeight: "100vh", fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: "11px" },
+  page: { background: "#F3F4F6", color: "#111111", minHeight: "100vh", fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: "11px" },
   navbar: { background: "#1E3A8A", padding: "0", borderBottom: "2px solid #162d6e" },
-  navInner: { maxWidth: "1400px", margin: "0 auto", display: "flex", alignItems: "center" },
+  navInner: { maxWidth: "1000px", margin: "0 auto", display: "flex", alignItems: "center" },
   navLogo: { color: "#ffffff", fontWeight: "bold", fontSize: "14px", padding: "6px 10px", textDecoration: "none", borderRight: "1px solid #2d4fa0", whiteSpace: "nowrap" },
   navLink: { color: "#d0d9f0", fontSize: "11px", padding: "6px 8px", textDecoration: "none", borderRight: "1px solid #2d4fa0", display: "inline-block" },
-  wrap: { maxWidth: "1400px", margin: "0 auto", padding: "4px" },
+  wrap: { maxWidth: "1000px", margin: "0 auto", padding: "4px", background: "#ffffff" },
   breadcrumb: { fontSize: "10px", color: "#6b7280", marginBottom: "4px" },
   breadLink: { color: "#1E3A8A", textDecoration: "underline" },
   compNav: { display: "flex", flexWrap: "wrap", gap: "2px", marginBottom: "6px", borderBottom: "2px solid #1E3A8A", paddingBottom: "4px" },

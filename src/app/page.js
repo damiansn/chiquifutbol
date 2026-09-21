@@ -4,19 +4,19 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
 const S = {
-  page: { background: "#ffffff", color: "#111111", minHeight: "100vh", fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: "11px" },
+  page: { background: "#F3F4F6", color: "#111111", minHeight: "100vh", fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: "11px" },
   navbar: { background: "#1E3A8A", padding: "0", borderBottom: "2px solid #162d6e" },
-  navInner: { maxWidth: "1400px", margin: "0 auto", display: "flex", alignItems: "center", gap: "0" },
+  navInner: { maxWidth: "1000px", margin: "0 auto", display: "flex", alignItems: "center", gap: "0" },
   navLogo: { color: "#ffffff", fontWeight: "bold", fontSize: "14px", padding: "6px 10px", textDecoration: "none", borderRight: "1px solid #2d4fa0", whiteSpace: "nowrap" },
   navLink: { color: "#d0d9f0", fontSize: "11px", padding: "6px 8px", textDecoration: "none", borderRight: "1px solid #2d4fa0", display: "inline-block" },
   navLinkActive: { color: "#ffffff", background: "#162d6e", fontWeight: "bold" },
-  wrap: { maxWidth: "1400px", margin: "0 auto", padding: "4px" },
+  wrap: { maxWidth: "1000px", margin: "0 auto", padding: "4px", background: "#ffffff" },
   topBar: { background: "#1E3A8A", color: "#ffffff", fontSize: "10px", padding: "2px 4px", marginBottom: "4px", display: "flex", alignItems: "center", justifyContent: "space-between" },
-  dateBar: { display: "flex", gap: "2px", marginBottom: "4px", alignItems: "center" },
+  dateBar: { display: "flex", gap: "2px", marginBottom: "0", alignItems: "center", padding: "3px 4px", borderBottom: "1px solid #D1D5DB", borderTop: "none" },
   dateBtn: { background: "#e8eaf0", border: "1px solid #9ca3af", color: "#1E3A8A", padding: "2px 8px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
   dateBtnActive: { background: "#1E3A8A", border: "1px solid #162d6e", color: "#ffffff", padding: "2px 8px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", alignItems: "start" },
-  leagueBox: { border: "1px solid #D1D5DB", background: "#ffffff", marginBottom: "4px" },
+  grid: { display: "flex", flexDirection: "column", gap: "0px" },
+  leagueBox: { border: "1px solid #D1D5DB", borderTop: "none", background: "#ffffff", marginBottom: "0" },
   leagueHead: { background: "#1E3A8A", color: "#ffffff", padding: "2px 5px", fontSize: "11px", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" },
   leagueHeadLink: { color: "#ffffff", textDecoration: "none", fontWeight: "bold", fontSize: "11px" },
   matchRow: { display: "grid", gridTemplateColumns: "72px 1fr 52px", borderBottom: "1px solid #e5e7eb", fontSize: "11px" },
@@ -40,7 +40,7 @@ const S = {
   searchInput: { border: "1px solid #9ca3af", padding: "2px 5px", fontSize: "11px", width: "180px", outline: "none" },
   dropdown: { position: "absolute", top: "100%", left: 0, zIndex: 100, background: "#ffffff", border: "1px solid #9ca3af", width: "220px", boxShadow: "2px 2px 4px rgba(0,0,0,0.2)" },
   dropdownItem: { padding: "3px 6px", cursor: "pointer", borderBottom: "1px solid #e5e7eb", fontSize: "11px", color: "#1E3A8A", background: "none", border: "none", width: "100%", textAlign: "left", display: "block" },
-  fixtureBox: { border: "1px solid #D1D5DB", marginBottom: "4px", background: "#ffffff" },
+  fixtureBox: { border: "1px solid #D1D5DB", borderTop: "none", marginBottom: "0", background: "#ffffff" },
   fixtureHead: { background: "#F59E0B", color: "#111111", padding: "2px 5px", fontSize: "11px", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" },
   fixtureRow: { display: "grid", gridTemplateColumns: "50px 20px 1fr 50px 1fr", borderBottom: "1px solid #e5e7eb", fontSize: "11px", padding: "2px 4px", alignItems: "center", gap: "4px" },
   fixtureRowAlt: { display: "grid", gridTemplateColumns: "50px 20px 1fr 50px 1fr", borderBottom: "1px solid #e5e7eb", fontSize: "11px", padding: "2px 4px", alignItems: "center", gap: "4px", background: "#F9FAFB" },
@@ -48,7 +48,7 @@ const S = {
   errorBox: { background: "#fef2f2", border: "1px solid #EF4444", color: "#EF4444", padding: "4px 6px", fontSize: "11px", marginBottom: "4px" },
   loading: { padding: "10px", textAlign: "center", color: "#6b7280", fontSize: "11px" },
   noMatches: { padding: "8px", textAlign: "center", color: "#6b7280", border: "1px solid #D1D5DB", fontSize: "11px" },
-  footer: { borderTop: "2px solid #1E3A8A", background: "#f3f4f6", padding: "4px 6px", textAlign: "center", color: "#6b7280", fontSize: "10px", marginTop: "6px" },
+  footer: { borderTop: "2px solid #1E3A8A", background: "#f3f4f6", padding: "4px 6px", textAlign: "center", color: "#6b7280", fontSize: "10px", marginTop: "0" },
 };
 
 function normalizarNombre(league) {
@@ -279,7 +279,7 @@ export default function Home() {
       <div style={S.wrap}>
 
         {/* BARRA SUPERIOR */}
-        <div style={S.topBar}>
+        <div style={{ ...S.topBar, borderTop: "1px solid #D1D5DB" }}>
           <span style={{ fontWeight: "bold" }}>RESULTADOS Y PARTIDOS EN VIVO</span>
           <div style={S.searchWrap}>
             <input
@@ -363,6 +363,7 @@ export default function Home() {
           <div style={S.noMatches}>No hay partidos para esta fecha.</div>
         ) : (
           <div style={S.grid}>
+            <div style={{ borderTop: "1px solid #D1D5DB" }} />
             {data.map((league, li) => {
               const games = Array.isArray(league?.games) ? league.games : [];
               if (games.length === 0) return null;
@@ -396,14 +397,14 @@ export default function Home() {
                         return (
                           <tr key={game?.id || gi} style={{ background: rowBg, borderBottom: "1px solid #e5e7eb" }}>
                             {/* ESTADO */}
-                            <td style={{ width: "62px", padding: "2px 3px", textAlign: "center", borderRight: "1px solid #e5e7eb", verticalAlign: "middle" }}>
+                            <td style={{ width: "72px", minWidth: "72px", maxWidth: "72px", padding: "4px 3px", textAlign: "center", borderRight: "1px solid #e5e7eb", verticalAlign: "middle" }}>
                               {isLive && <span style={{ display: "inline-block", width: "5px", height: "5px", borderRadius: "50%", background: "#10B981", marginRight: "2px", verticalAlign: "middle" }} />}
                               <span style={isLive ? S.statusLive : isFinal ? S.statusFinal : S.statusPending}>
                                 {isLive ? `⚽ ${estado.texto}` : estado.texto}
                               </span>
                             </td>
                             {/* PARTIDO */}
-                            <td style={{ padding: "2px 4px", verticalAlign: "middle" }}>
+                            <td style={{ padding: "4px 6px", verticalAlign: "middle" }}>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 40px 1fr", alignItems: "center", gap: "2px" }}>
                                 {/* LOCAL */}
                                 <div style={{ textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "2px" }}>
@@ -449,7 +450,7 @@ export default function Home() {
                               )}
                             </td>
                             {/* TV */}
-                            <td style={{ width: "70px", padding: "2px 3px", textAlign: "right", verticalAlign: "middle", borderLeft: "1px solid #e5e7eb", color: "#6b7280", fontSize: "10px" }}>
+                            <td style={{ width: "90px", minWidth: "90px", maxWidth: "90px", padding: "4px 5px", textAlign: "right", verticalAlign: "middle", borderLeft: "1px solid #e5e7eb", color: "#6b7280", fontSize: "10px", lineHeight: "1.4" }}>
                               {tv.map((n, k) => <div key={k}>{n?.name || n?.title || n}</div>)}
                             </td>
                           </tr>
