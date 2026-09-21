@@ -150,23 +150,37 @@ function formatearHoraArgentina(game) {
 }
 
 function formatearHora(game) {
-  const hora = formatearHoraArgentina(game);
+  // start_time viene como "DD-MM-YYYY HH:MM" con 2hs menos que Argentina
   if (game?.start_time) {
     const txt = String(game.start_time).trim();
     const m = txt.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
     if (m) {
-      const ahora = new Date();
-      const partes = {};
-      new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(ahora).forEach(p => { partes[p.type] = p.value; });
-      const hoy = `${partes.day}-${partes.month}-${partes.year}`;
-      if (`${m[1]}-${m[2]}-${m[3]}` !== hoy) return `${m[1]}/${m[2]} ${m[4]}:${m[5]}`;
+      const dia = m[1], mes = m[2], anio = m[3], min = m[5];
+      let hora = parseInt(m[4], 10) + 2;
+      let diaFinal = dia, mesFinal = mes, anioFinal = anio;
+      if (hora >= 24) {
+        hora -= 24;
+        // avanzar un día
+        const d = new Date(`${anio}-${mes}-${dia}`);
+        d.setDate(d.getDate() + 1);
+        diaFinal = String(d.getDate()).padStart(2, "0");
+        mesFinal = String(d.getMonth() + 1).padStart(2, "0");
+        anioFinal = String(d.getFullYear());
+      }
+      const horaStr = String(hora).padStart(2, "0");
+      // comparar con hoy en Argentina
+      const hoy = {};
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Argentina/Buenos_Aires",
+        year: "numeric", month: "2-digit", day: "2-digit"
+      }).formatToParts(new Date()).forEach(p => { hoy[p.type] = p.value; });
+      const esHoy = diaFinal === hoy.day && mesFinal === hoy.month && anioFinal === hoy.year;
+      if (!esHoy) return `${diaFinal}/${mesFinal} ${horaStr}:${min}`;
+      return `${horaStr}:${min}`;
     }
   }
+  const hora = formatearHoraArgentina(game);
   if (hora && hora !== "--:--") return hora;
-  if (game?.start_time) {
-    const m = String(game.start_time).trim().match(/(\d{2}):(\d{2})/);
-    if (m) return `${m[1]}:${m[2]}`;
-  }
   return "--:--";
 }
 
