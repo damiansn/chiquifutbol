@@ -178,12 +178,16 @@ function obtenerEstado(game) {
     return { texto: min !== null ? `${min}'` : "EN VIVO", tipo: "live" };
   }
   if (en === 3) return { texto: "FINAL", tipo: "final" };
+  const hora = formatearHora(game);
+  if (hora && hora !== "--:--") return { texto: hora, tipo: "pending" };
   const d = obtenerFechaObjeto(game);
-  let hora = null;
   if (d) {
-    try { hora = d.toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }); } catch {}
+    try {
+      const txt = d.toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+      if (txt) return { texto: txt, tipo: "pending" };
+    } catch {}
   }
-  return { texto: hora || e?.name || formatearHora(game), tipo: "pending" };
+  return { texto: "Prog.", tipo: "pending" };
 }
 
 function obtenerRivalFixture(f) {
