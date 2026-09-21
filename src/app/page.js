@@ -259,7 +259,15 @@ function obtenerEstado(game) {
   const en = Number(e?.enum);
   if (en === 2) {
     const min = obtenerMinutoLive(game);
-    const textoMin = min === "ET" ? "ET" : min !== null ? `${min}'` : "EN VIVO";
+    let textoMin;
+    if (min === "ET") {
+      textoMin = "ET";
+    } else if (min === 45) {
+      // Promiedos congela el minuto en 45 durante el entretiempo
+      textoMin = "ET";
+    } else {
+      textoMin = min !== null ? `${min}'` : "EN VIVO";
+    }
     return { texto: textoMin, tipo: "live" };
   }
   if (en === 3) return { texto: "FINAL", tipo: "final" };
