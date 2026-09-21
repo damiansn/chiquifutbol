@@ -78,19 +78,19 @@ function formatearFechaHora(raw) {
 
 function Navbar() {
   return (
-    <nav style={{ background: C.blueNav, borderBottom: `2px solid #1e3a8a` }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
-        <a href="/" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "7px 12px", textDecoration: "none", borderRight: `1px solid #2563eb`, whiteSpace: "nowrap" }}>
-          <img src="/logo.svg" alt="ChiquiFútbol" width="48" height="48" style={{ objectFit: "contain" }} onError={e => { e.currentTarget.style.display = "none"; }} />
-            Secanuca
-        </a>
-        {[["/" , "Inicio"], ["/posiciones?competition=argentina","Posiciones"], ["/posiciones?competition=libertadores","Libertadores"], ["/posiciones?competition=champions","Champions"]].map(([href, label]) => (
-          <a key={href} href={href} style={{ color: "#bfdbfe", fontSize: 11, padding: "7px 10px", textDecoration: "none", borderRight: `1px solid #2563eb` }}>
-            {label}
-          </a>
-        ))}
-      </div>
-    </nav>
+    <nav style={{ background: C.blueNav, borderBottom: "2px solid #1e3a8a" }}>
+  <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
+    <a href="/" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "7px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "8px" }}>
+      <img src="/logo.svg" alt="ChiquiFútbol" width="36" height="36" style={{ objectFit: "contain" }} onError={e => { e.currentTarget.style.display = "none"; }} />
+      <span style={{ lineHeight: 1 }}>Secanuca</span>
+    </a>
+    {[["/" , "Inicio"], ["/posiciones?competition=argentina","Posiciones"], ["/posiciones?competition=libertadores","Libertadores"], ["/posiciones?competition=champions","Champions"]].map(([href, label]) => (
+      <a key={href} href={href} style={{ color: "#bfdbfe", fontSize: 11, padding: "7px 10px", textDecoration: "none", borderRight: "1px solid #2563eb" }}>
+        {label}
+      </a>
+    ))}
+  </div>
+</nav>
   );
 }
 
