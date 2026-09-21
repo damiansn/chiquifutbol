@@ -81,9 +81,47 @@ function logoEquipo(team) {
   return team?.logo || team?.image || team?.icon || team?.symbol || null;
 }
 
+// Mapa explícito ID Promiedos → archivo de escudo
+const ESCUDOS_POR_ID = {
+  ihc:   "velez-sarsfield",
+  hcbh:  "defensa-y-justicia",
+  bbjbf: "gimnasia-mendoza",
+  hchc:  "instituto",
+  igg:   "boca-juniors",
+  ihe:   "independiente",
+  igj:   "lanus",
+  hcag:  "union",
+  ihh:   "newells-old-boys",
+  igf:   "san-lorenzo",
+  igh:   "estudiantes-de-la-plata",
+  bbjea: "deportivo-riestra",
+  hcah:  "platense",
+  jche:  "talleres",
+  beafh: "central-cordoba-sde",
+  ihb:   "argentinos-juniors",
+  hbbh:  "sarmiento",
+  iia:   "gimnasia-la-plata",
+  ihf:   "rosario-central",
+  hcch:  "independiente-rivadavia",
+  fhid:  "belgrano",
+  igi:   "river-plate",
+  gbfc:  "atletico-tucuman",
+  iie:   "huracan",
+  iid:   "tigre",
+  jafb:  "barracas-central",
+  ihi:   "banfield",
+  bheaf: "estudiantes-rio-cuarto",
+  hccd:  "aldosivi",
+  ihg:   "racing-club",
+};
+
 function escudoLocal(team) {
   const remoto = logoEquipo(team);
   if (remoto) return remoto;
+  // Primero intentar por ID (evita colisiones de nombre)
+  const id = team?.id || team?.team_id || team?.teamId;
+  if (id && ESCUDOS_POR_ID[id]) return `/escudos/${ESCUDOS_POR_ID[id]}.png`;
+  // Fallback por nombre slugificado
   const nombre = nombreEquipo(team);
   if (!nombre || nombre === "Equipo") return null;
   const slug = nombre
