@@ -288,15 +288,15 @@ function obtenerRivalFixture(f) {
 }
 
 function obtenerCondicionFixture(f) {
-  const c = String(f?.homeAway || f?.home_away || f?.condition || f?.local_visitante || f?.localVisitante || "").trim().toUpperCase();
+  const c = String(f?.condicion || f?.homeAway || f?.home_away || f?.condition || f?.local_visitante || f?.localVisitante || "").trim().toUpperCase();
   if (c === "L" || c.includes("LOCAL")) return "L";
   if (c === "V" || c.includes("VISIT")) return "V";
   return "";
 }
 
 function obtenerFechaFixture(f) { return f?.date || f?.fecha || f?.day || "--/--"; }
-function obtenerHoraFixture(f) { return f?.time || f?.hour || f?.hora || f?.start_time || "--:--"; }
-function obtenerCompetenciaFixture(f) { return f?.competition || f?.league || f?.tournament || f?.competencia || ""; }
+function obtenerHoraFixture(f) { return f?.hora || f?.time || f?.hour || f?.start_time || "--:--"; }
+function obtenerCompetenciaFixture(f) { return f?.competencia || f?.competition || f?.league || f?.tournament || ""; }
 
 function EscudoImg({ team }) {
   const src = escudoLocal(team);

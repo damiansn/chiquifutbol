@@ -431,11 +431,28 @@ async function sincronizarFixturesEquipos(page) {
             // GUARDAR
             // ==================================
 
+            // Intentar capturar competencia desde el contexto de la fila
+            let competencia = "";
+            // Buscar en celdas restantes algún texto que parezca nombre de torneo
+            for (const celda of celdas) {
+              const texto = (celda.innerText || "")
+                .replace(/\u00a0/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+              if (!texto || texto === fecha || texto === condicion || texto === hora || texto === rival) continue;
+              // Si tiene más de 3 chars y no es un número ni score, probablemente es torneo
+              if (texto.length > 3 && !/^\d+$/.test(texto) && !/^\d+-\d+$/.test(texto)) {
+                competencia = texto;
+                break;
+              }
+            }
+
             resultado.push({
               fecha,
               condicion,
               rival,
-              hora
+              hora,
+              competencia
             });
           }
 
