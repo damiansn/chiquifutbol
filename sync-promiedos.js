@@ -13,7 +13,7 @@ const redis = new Redis(process.env.REDIS_URL);
 const URLS = {
   today: "https://www.promiedos.com.ar/",
   ayer: "https://www.promiedos.com.ar/ayer",
-  manana: "https://www.promiedos.com.ar/manana"
+  manana: "https://www.promiedos.com.ar/man"
 };
 
 const COMPETENCIAS = {
