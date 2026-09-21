@@ -243,6 +243,7 @@ async function sincronizarFixturesEquipos(page) {
         await page.evaluate(() => {
 
           const resultado = [];
+          let competenciaActual = "";
 
           const filas =
             Array.from(
@@ -250,6 +251,31 @@ async function sincronizarFixturesEquipos(page) {
             );
 
           for (const fila of filas) {
+
+            // ================================
+            // DETECTAR FILA DE ENCABEZADO DE COMPETENCIA
+            // Promiedos usa <th> o <td colspan> para separar torneos
+            // ================================
+            const ths = Array.from(fila.querySelectorAll("th"));
+            if (ths.length > 0) {
+              const textoTh = ths.map(th =>
+                (th.innerText || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim()
+              ).join(" ").trim();
+              if (textoTh.length > 3) {
+                competenciaActual = textoTh;
+              }
+              continue;
+            }
+
+            // Detectar td con colspan (fila separadora de torneo)
+            const tdColspan = fila.querySelector("td[colspan]");
+            if (tdColspan) {
+              const textoSep = (tdColspan.innerText || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+              if (textoSep.length > 3 && !/^\d/.test(textoSep)) {
+                competenciaActual = textoSep;
+              }
+              continue;
+            }
 
             const celdas =
               Array.from(
@@ -431,28 +457,12 @@ async function sincronizarFixturesEquipos(page) {
             // GUARDAR
             // ==================================
 
-            // Intentar capturar competencia desde el contexto de la fila
-            let competencia = "";
-            // Buscar en celdas restantes algún texto que parezca nombre de torneo
-            for (const celda of celdas) {
-              const texto = (celda.innerText || "")
-                .replace(/\u00a0/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-              if (!texto || texto === fecha || texto === condicion || texto === hora || texto === rival) continue;
-              // Si tiene más de 3 chars y no es un número ni score, probablemente es torneo
-              if (texto.length > 3 && !/^\d+$/.test(texto) && !/^\d+-\d+$/.test(texto)) {
-                competencia = texto;
-                break;
-              }
-            }
-
             resultado.push({
               fecha,
               condicion,
               rival,
               hora,
-              competencia
+              competencia: competenciaActual
             });
           }
 
@@ -468,7 +478,7 @@ async function sincronizarFixturesEquipos(page) {
       for (const partido of partidos) {
 
         console.log(
-          `${partido.fecha} | ${partido.condicion} | ${partido.rival} | ${partido.hora}`
+          `${partido.fecha} | ${partido.condicion} | ${partido.rival} | ${partido.hora} | ${partido.competencia}`
         );
       }
 
