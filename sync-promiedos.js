@@ -50,6 +50,21 @@ const COMPETENCIAS = {
   conference_league: {
     nombre: "Conference League",
     url: "https://www.promiedos.com.ar/league/uefa-conference-league/hgif"
+  },
+
+  primera_nacional: {
+    nombre: "Primera Nacional",
+    url: "https://www.promiedos.com.ar/league/primera-nacional/ebj"
+  },
+
+  primera_b_metro: {
+    nombre: "Primera B Metro",
+    url: "https://www.promiedos.com.ar/league/primera-b-metropolitana/fahh"
+  },
+
+  primera_c: {
+    nombre: "Primera C",
+    url: "https://www.promiedos.com.ar/league/primera-c/ffjb"
   }
 };
 
@@ -64,7 +79,10 @@ const REDIS_KEYS = {
   copa_argentina: "chiquifutbol_copa_argentina",
   champions: "chiquifutbol_champions",
   europa_league: "chiquifutbol_europa_league",
-  conference_league: "chiquifutbol_conference_league"
+  conference_league: "chiquifutbol_conference_league",
+  primera_nacional: "chiquifutbol_primera_nacional",
+  primera_b_metro: "chiquifutbol_primera_b_metro",
+  primera_c: "chiquifutbol_primera_c"
 };
 
 // ==========================================
@@ -2099,6 +2117,18 @@ async function sincronizarPartidos(
 
         console.log(
           `Redis actualizado: ${REDIS_KEYS[tipo]}`
+        );
+
+      } else if (tipo === "ayer" || tipo === "manana") {
+
+        // Evita que queden partidos viejos de otro día en Redis
+        await redis.set(
+          REDIS_KEYS[tipo],
+          JSON.stringify([])
+        );
+
+        console.log(
+          `No se encontraron partidos de ${tipo}. Se vacía ${REDIS_KEYS[tipo]}.`
         );
 
       } else {

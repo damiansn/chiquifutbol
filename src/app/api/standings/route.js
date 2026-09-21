@@ -41,6 +41,21 @@ const COMPETENCIAS = {
     nombre: "Conference League",
     redis: "chiquifutbol_conference_league",
   },
+
+  primera_nacional: {
+    nombre: "Primera Nacional",
+    redis: "chiquifutbol_primera_nacional",
+  },
+
+  primera_b_metro: {
+    nombre: "Primera B Metropolitana",
+    redis: "chiquifutbol_primera_b_metro",
+  },
+
+  primera_c: {
+    nombre: "Primera C",
+    redis: "chiquifutbol_primera_c",
+  },
 };
 
 export async function GET(request) {
