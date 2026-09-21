@@ -3,52 +3,58 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 
+// ─── PALETA (misma que posiciones) ───────────────────────────────────────────
+const C = {
+  bg:         "#0f1923",
+  surface:    "#1a2535",
+  surfaceAlt: "#141e2b",
+  border:     "#263244",
+  borderSub:  "#1e2d3d",
+  text:       "#e2e8f0",
+  textMuted:  "#64748b",
+  textDim:    "#94a3b8",
+  blue:       "#3b82f6",
+  blueNav:    "#1d4ed8",
+  green:      "#10b981",
+  greenBg:    "rgba(16,185,129,0.08)",
+  red:        "#ef4444",
+  amber:      "#f59e0b",
+  white:      "#f8fafc",
+};
+
 const S = {
-  page: { background: "#F3F4F6", color: "#111111", minHeight: "100vh", fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: "11px" },
-  navbar: { background: "#1E3A8A", padding: "0", borderBottom: "2px solid #162d6e" },
-  navInner: { maxWidth: "1000px", margin: "0 auto", display: "flex", alignItems: "center", gap: "0" },
-  navLogo: { color: "#ffffff", fontWeight: "bold", fontSize: "14px", padding: "6px 10px", textDecoration: "none", borderRight: "1px solid #2d4fa0", whiteSpace: "nowrap" },
-  navLink: { color: "#d0d9f0", fontSize: "11px", padding: "6px 8px", textDecoration: "none", borderRight: "1px solid #2d4fa0", display: "inline-block" },
-  navLinkActive: { color: "#ffffff", background: "#162d6e", fontWeight: "bold" },
-  wrap: { maxWidth: "1000px", margin: "0 auto", padding: "4px", background: "#ffffff" },
-  topBar: { background: "#1E3A8A", color: "#ffffff", fontSize: "10px", padding: "2px 4px", marginBottom: "4px", display: "flex", alignItems: "center", justifyContent: "space-between" },
-  dateBar: { display: "flex", gap: "2px", marginBottom: "0", alignItems: "center", padding: "3px 4px", borderBottom: "1px solid #D1D5DB", borderTop: "none" },
-  dateBtn: { background: "#e8eaf0", border: "1px solid #9ca3af", color: "#1E3A8A", padding: "2px 8px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
-  dateBtnActive: { background: "#1E3A8A", border: "1px solid #162d6e", color: "#ffffff", padding: "2px 8px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
-  grid: { display: "flex", flexDirection: "column", gap: "0px" },
-  leagueBox: { border: "1px solid #D1D5DB", borderTop: "none", background: "#ffffff", marginBottom: "0" },
-  leagueHead: { background: "#1E3A8A", color: "#ffffff", padding: "2px 5px", fontSize: "11px", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  leagueHeadLink: { color: "#ffffff", textDecoration: "none", fontWeight: "bold", fontSize: "11px" },
-  matchRow: { display: "grid", gridTemplateColumns: "72px 1fr 52px", borderBottom: "1px solid #e5e7eb", fontSize: "11px" },
-  matchRowAlt: { display: "grid", gridTemplateColumns: "72px 1fr 52px", borderBottom: "1px solid #e5e7eb", fontSize: "11px", background: "#F9FAFB" },
-  statusCell: { padding: "2px 3px", textAlign: "center", borderRight: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center" },
-  matchCell: { padding: "2px 4px" },
-  tvCell: { padding: "2px 3px", textAlign: "right", color: "#6b7280", fontSize: "10px", borderLeft: "1px solid #e5e7eb" },
-  teamsRow: { display: "grid", gridTemplateColumns: "1fr 44px 1fr", alignItems: "center", gap: "2px" },
-  teamName: { fontSize: "11px", fontWeight: "bold", color: "#111111" },
-  teamNameRight: { fontSize: "11px", fontWeight: "bold", color: "#111111", textAlign: "right" },
-  score: { textAlign: "center", fontWeight: "bold", fontSize: "13px", color: "#111111" },
-  scoreLive: { textAlign: "center", fontWeight: "bold", fontSize: "13px", color: "#10B981" },
-  scoreFinal: { textAlign: "center", fontWeight: "bold", fontSize: "13px", color: "#6b7280" },
-  statusLive: { color: "#10B981", fontWeight: "bold", fontSize: "10px" },
-  statusFinal: { color: "#EF4444", fontSize: "10px" },
-  statusPending: { color: "#1E3A8A", fontSize: "10px" },
-  golesRow: { display: "grid", gridTemplateColumns: "1fr 1fr", fontSize: "10px", color: "#6b7280", marginTop: "1px" },
-  globalBadge: { fontSize: "10px", color: "#6b7280", textAlign: "center", borderTop: "1px solid #e5e7eb", padding: "1px 0" },
-  redCard: { display: "inline-block", width: "6px", height: "9px", background: "#EF4444", marginLeft: "2px", verticalAlign: "middle" },
-  searchWrap: { position: "relative", display: "inline-block" },
-  searchInput: { border: "1px solid #9ca3af", padding: "2px 5px", fontSize: "11px", width: "180px", outline: "none" },
-  dropdown: { position: "absolute", top: "100%", left: 0, zIndex: 100, background: "#ffffff", border: "1px solid #9ca3af", width: "220px", boxShadow: "2px 2px 4px rgba(0,0,0,0.2)" },
-  dropdownItem: { padding: "3px 6px", cursor: "pointer", borderBottom: "1px solid #e5e7eb", fontSize: "11px", color: "#1E3A8A", background: "none", border: "none", width: "100%", textAlign: "left", display: "block" },
-  fixtureBox: { border: "1px solid #D1D5DB", borderTop: "none", marginBottom: "0", background: "#ffffff" },
-  fixtureHead: { background: "#F59E0B", color: "#111111", padding: "2px 5px", fontSize: "11px", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  fixtureRow: { display: "grid", gridTemplateColumns: "50px 20px 1fr 50px 1fr", borderBottom: "1px solid #e5e7eb", fontSize: "11px", padding: "2px 4px", alignItems: "center", gap: "4px" },
-  fixtureRowAlt: { display: "grid", gridTemplateColumns: "50px 20px 1fr 50px 1fr", borderBottom: "1px solid #e5e7eb", fontSize: "11px", padding: "2px 4px", alignItems: "center", gap: "4px", background: "#F9FAFB" },
-  closeBtn: { background: "#EF4444", border: "none", color: "#ffffff", padding: "1px 5px", fontSize: "10px", cursor: "pointer", fontWeight: "bold" },
-  errorBox: { background: "#fef2f2", border: "1px solid #EF4444", color: "#EF4444", padding: "4px 6px", fontSize: "11px", marginBottom: "4px" },
-  loading: { padding: "10px", textAlign: "center", color: "#6b7280", fontSize: "11px" },
-  noMatches: { padding: "8px", textAlign: "center", color: "#6b7280", border: "1px solid #D1D5DB", fontSize: "11px" },
-  footer: { borderTop: "2px solid #1E3A8A", background: "#f3f4f6", padding: "4px 6px", textAlign: "center", color: "#6b7280", fontSize: "10px", marginTop: "0" },
+  page:          { background: C.bg, color: C.text, minHeight: "100vh", fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: "11px" },
+  navbar:        { background: C.blueNav, padding: "0", borderBottom: "2px solid #1e3a8a" },
+  navInner:      { maxWidth: "1000px", margin: "0 auto", display: "flex", alignItems: "center" },
+  navLogo:       { color: C.white, fontWeight: "bold", fontSize: "14px", padding: "7px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap" },
+  navLink:       { color: "#bfdbfe", fontSize: "11px", padding: "7px 10px", textDecoration: "none", borderRight: "1px solid #2563eb", display: "inline-block" },
+  navLinkActive: { color: C.white, background: "#1e3a8a", fontWeight: "bold" },
+  wrap:          { maxWidth: "1000px", margin: "0 auto", padding: "4px", background: C.bg },
+  topBar:        { background: C.surface, color: C.text, fontSize: "10px", padding: "4px 6px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}` },
+  dateBar:       { display: "flex", gap: "3px", alignItems: "center", padding: "4px 6px", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt },
+  dateBtn:       { background: C.surface, border: `1px solid ${C.border}`, color: C.textDim, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
+  dateBtnActive: { background: C.blueNav, border: `1px solid ${C.blue}`, color: C.white, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
+  grid:          { display: "flex", flexDirection: "column" },
+  leagueBox:     { border: `1px solid ${C.border}`, borderTop: "none", background: C.surface },
+  leagueHead:    { background: C.blueNav, color: C.white, padding: "4px 8px", fontSize: "11px", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  leagueHeadLink:{ color: C.white, textDecoration: "none", fontWeight: "bold", fontSize: "11px" },
+  statusLive:    { color: C.green, fontWeight: "bold", fontSize: "10px" },
+  statusFinal:   { color: C.red, fontSize: "10px" },
+  statusPending: { color: C.amber, fontSize: "10px" },
+  golesRow:      { display: "grid", gridTemplateColumns: "1fr 1fr", fontSize: "10px", color: C.textMuted, marginTop: "2px" },
+  globalBadge:   { fontSize: "10px", color: C.textMuted, textAlign: "center", borderTop: `1px solid ${C.borderSub}`, padding: "2px 0" },
+  redCard:       { display: "inline-block", width: "6px", height: "9px", background: C.red, marginLeft: "2px", verticalAlign: "middle" },
+  searchWrap:    { position: "relative", display: "inline-block" },
+  searchInput:   { background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, padding: "3px 7px", fontSize: "11px", width: "190px", outline: "none" },
+  dropdown:      { position: "absolute", top: "100%", left: 0, zIndex: 100, background: C.surface, border: `1px solid ${C.border}`, width: "220px", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" },
+  dropdownItem:  { padding: "5px 8px", cursor: "pointer", borderBottom: `1px solid ${C.borderSub}`, fontSize: "11px", color: C.text, background: "none", border: "none", width: "100%", textAlign: "left", display: "block" },
+  fixtureBox:    { border: `1px solid ${C.border}`, borderTop: "none", background: C.surface },
+  fixtureHead:   { background: C.amber, color: "#111111", padding: "3px 8px", fontSize: "11px", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  closeBtn:      { background: C.red, border: "none", color: C.white, padding: "1px 6px", fontSize: "10px", cursor: "pointer", fontWeight: "bold" },
+  errorBox:      { background: "rgba(239,68,68,0.1)", border: `1px solid ${C.red}`, color: C.red, padding: "4px 8px", fontSize: "11px", marginBottom: "4px" },
+  loading:       { padding: "16px", textAlign: "center", color: C.textMuted, fontSize: "11px" },
+  noMatches:     { padding: "16px", textAlign: "center", color: C.textMuted, border: `1px solid ${C.border}`, fontSize: "11px" },
+  footer:        { borderTop: `1px solid ${C.border}`, padding: "6px", textAlign: "center", color: C.textMuted, fontSize: "10px" },
 };
 
 function normalizarNombre(league) {
@@ -73,6 +79,19 @@ function nombreEquipo(team) {
 
 function logoEquipo(team) {
   return team?.logo || team?.image || team?.icon || team?.symbol || null;
+}
+
+function escudoLocal(team) {
+  const remoto = logoEquipo(team);
+  if (remoto) return remoto;
+  const nombre = nombreEquipo(team);
+  if (!nombre || nombre === "Equipo") return null;
+  const slug = nombre
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `/escudos/${slug}.png`;
 }
 
 function obtenerScore(game, i) {
@@ -219,6 +238,21 @@ function obtenerFechaFixture(f) { return f?.date || f?.fecha || f?.day || "--/--
 function obtenerHoraFixture(f) { return f?.time || f?.hour || f?.hora || f?.start_time || "--:--"; }
 function obtenerCompetenciaFixture(f) { return f?.competition || f?.league || f?.tournament || f?.competencia || ""; }
 
+function EscudoImg({ team }) {
+  const src = escudoLocal(team);
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      width="16"
+      height="16"
+      style={{ objectFit: "contain", verticalAlign: "middle", flexShrink: 0 }}
+      onError={e => { e.currentTarget.style.display = "none"; }}
+    />
+  );
+}
+
 export default function Home() {
   const [date, setDate] = useState("today");
   const [data, setData] = useState([]);
@@ -297,7 +331,7 @@ export default function Home() {
       <div style={S.wrap}>
 
         {/* BARRA SUPERIOR */}
-        <div style={{ ...S.topBar, borderTop: "1px solid #D1D5DB" }}>
+        <div style={S.topBar}>
           <span style={{ fontWeight: "bold" }}>RESULTADOS Y PARTIDOS EN VIVO</span>
           <div style={S.searchWrap}>
             <input
@@ -332,13 +366,13 @@ export default function Home() {
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#f3f4f6" }}>
-                    <th style={{ padding: "2px 4px", textAlign: "left", borderBottom: "1px solid #D1D5DB", width: "50px" }}>Fecha</th>
-                    <th style={{ padding: "2px 4px", textAlign: "center", borderBottom: "1px solid #D1D5DB", width: "20px" }}>L/V</th>
-                    <th style={{ padding: "2px 4px", textAlign: "right", borderBottom: "1px solid #D1D5DB" }}>Local</th>
-                    <th style={{ padding: "2px 4px", textAlign: "center", borderBottom: "1px solid #D1D5DB", width: "50px" }}>Hora</th>
-                    <th style={{ padding: "2px 4px", textAlign: "left", borderBottom: "1px solid #D1D5DB" }}>Visitante</th>
-                    <th style={{ padding: "2px 4px", textAlign: "right", borderBottom: "1px solid #D1D5DB", color: "#6b7280" }}>Competencia</th>
+                  <tr style={{ background: C.surfaceAlt }}>
+                    <th style={{ padding: "3px 5px", textAlign: "left", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "50px" }}>Fecha</th>
+                    <th style={{ padding: "3px 5px", textAlign: "center", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "20px" }}>L/V</th>
+                    <th style={{ padding: "3px 5px", textAlign: "right", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Local</th>
+                    <th style={{ padding: "3px 5px", textAlign: "center", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "50px" }}>Hora</th>
+                    <th style={{ padding: "3px 5px", textAlign: "left", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Visitante</th>
+                    <th style={{ padding: "3px 5px", textAlign: "right", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Competencia</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -349,13 +383,13 @@ export default function Home() {
                     const visita = cond === "V" ? (selectedTeam.name || selectedTeam.nombre || "") : rival;
                     const esLocal = cond !== "V";
                     return (
-                      <tr key={f?.id || `${i}`} style={{ background: i % 2 === 0 ? "#ffffff" : "#F9FAFB", borderBottom: "1px solid #e5e7eb" }}>
-                        <td style={{ padding: "2px 4px", color: "#6b7280" }}>{obtenerFechaFixture(f)}</td>
-                        <td style={{ padding: "2px 4px", textAlign: "center", fontWeight: "bold", color: cond === "L" ? "#10B981" : cond === "V" ? "#1E3A8A" : "#6b7280" }}>{cond}</td>
-                        <td style={{ padding: "2px 4px", textAlign: "right", fontWeight: esLocal ? "bold" : "normal" }}>{local}</td>
-                        <td style={{ padding: "2px 4px", textAlign: "center", fontWeight: "bold", color: "#1E3A8A" }}>{obtenerHoraFixture(f)}</td>
-                        <td style={{ padding: "2px 4px", fontWeight: !esLocal ? "bold" : "normal" }}>{visita}</td>
-                        <td style={{ padding: "2px 4px", textAlign: "right", color: "#6b7280", fontSize: "10px" }}>{obtenerCompetenciaFixture(f)}</td>
+                      <tr key={f?.id || `${i}`} style={{ background: i % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.borderSub}` }}>
+                        <td style={{ padding: "3px 5px", color: C.textMuted }}>{obtenerFechaFixture(f)}</td>
+                        <td style={{ padding: "3px 5px", textAlign: "center", fontWeight: "bold", color: cond === "L" ? C.green : cond === "V" ? C.blue : C.textMuted }}>{cond}</td>
+                        <td style={{ padding: "3px 5px", textAlign: "right", fontWeight: esLocal ? "bold" : "normal", color: esLocal ? C.white : C.textDim }}>{local}</td>
+                        <td style={{ padding: "3px 5px", textAlign: "center", fontWeight: "bold", color: C.amber }}>{obtenerHoraFixture(f)}</td>
+                        <td style={{ padding: "3px 5px", fontWeight: !esLocal ? "bold" : "normal", color: !esLocal ? C.white : C.textDim }}>{visita}</td>
+                        <td style={{ padding: "3px 5px", textAlign: "right", color: C.textMuted, fontSize: "10px" }}>{obtenerCompetenciaFixture(f)}</td>
                       </tr>
                     );
                   })}
@@ -367,7 +401,7 @@ export default function Home() {
 
         {/* SELECTOR FECHA */}
         <div style={S.dateBar}>
-          <span style={{ fontWeight: "bold", marginRight: "4px", color: "#1E3A8A" }}>VER:</span>
+          <span style={{ fontWeight: "bold", marginRight: "4px", color: C.textMuted, fontSize: "10px" }}>VER:</span>
           {[["ayer", "◀ AYER"], ["today", "HOY"], ["manana", "MAÑANA ▶"]].map(([v, l]) => (
             <button key={v} onClick={() => setDate(v)} style={date === v ? S.dateBtnActive : S.dateBtn}>{l}</button>
           ))}
@@ -381,7 +415,7 @@ export default function Home() {
           <div style={S.noMatches}>No hay partidos para esta fecha.</div>
         ) : (
           <div style={S.grid}>
-            <div style={{ borderTop: "1px solid #D1D5DB" }} />
+            <div style={{ borderTop: `1px solid ${C.border}` }} />
             {data.map((league, li) => {
               const games = Array.isArray(league?.games) ? league.games : [];
               if (games.length === 0) return null;
@@ -411,12 +445,12 @@ export default function Home() {
                         const tv = obtenerTV(game);
                         const isLive = estado.tipo === "live";
                         const isFinal = estado.tipo === "final";
-                        const rowBg = gi % 2 === 0 ? "#ffffff" : "#F9FAFB";
+                        const rowBg = gi % 2 === 0 ? C.surface : C.surfaceAlt;
                         return (
                           <tr key={game?.id || gi} style={{ background: rowBg, borderBottom: "1px solid #e5e7eb" }}>
                             {/* ESTADO */}
-                            <td style={{ width: "72px", minWidth: "72px", maxWidth: "72px", padding: "4px 3px", textAlign: "center", borderRight: "1px solid #e5e7eb", verticalAlign: "middle" }}>
-                              {isLive && <span style={{ display: "inline-block", width: "5px", height: "5px", borderRadius: "50%", background: "#10B981", marginRight: "2px", verticalAlign: "middle" }} />}
+                            <td style={{ width: "72px", minWidth: "72px", maxWidth: "72px", padding: "4px 3px", textAlign: "center", borderRight: `1px solid ${C.borderSub}`, verticalAlign: "middle" }}>
+                              {isLive && <span style={{ display: "inline-block", width: "5px", height: "5px", borderRadius: "50%", background: C.green, marginRight: "2px", verticalAlign: "middle" }} />}
                               <span style={isLive ? S.statusLive : isFinal ? S.statusFinal : S.statusPending}>
                                 {isLive ? `⚽ ${estado.texto}` : estado.texto}
                               </span>
@@ -425,19 +459,19 @@ export default function Home() {
                             <td style={{ padding: "4px 6px", verticalAlign: "middle" }}>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 40px 1fr", alignItems: "center", gap: "2px" }}>
                                 {/* LOCAL */}
-                                <div style={{ textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "2px" }}>
+                                <div style={{ textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "3px" }}>
                                   {rojasA > 0 && Array.from({ length: rojasA }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
-                                  {logoEquipo(teamA) && <img src={logoEquipo(teamA)} alt="" width="14" height="14" style={{ objectFit: "contain", verticalAlign: "middle" }} />}
-                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? "#10B981" : "#111111" }}>{nombreEquipo(teamA)}</span>
+                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text }}>{nombreEquipo(teamA)}</span>
+                                  <EscudoImg team={teamA} />
                                 </div>
                                 {/* MARCADOR */}
-                                <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "13px", color: isLive ? "#10B981" : isFinal ? "#6b7280" : "#111111", whiteSpace: "nowrap" }}>
+                                <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "13px", color: isLive ? C.green : isFinal ? C.textMuted : C.white, whiteSpace: "nowrap" }}>
                                   {scoreA} - {scoreB}
                                 </div>
                                 {/* VISITANTE */}
-                                <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                                  {logoEquipo(teamB) && <img src={logoEquipo(teamB)} alt="" width="14" height="14" style={{ objectFit: "contain", verticalAlign: "middle" }} />}
-                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? "#10B981" : "#111111" }}>{nombreEquipo(teamB)}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                                  <EscudoImg team={teamB} />
+                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text }}>{nombreEquipo(teamB)}</span>
                                   {rojasB > 0 && Array.from({ length: rojasB }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
                                 </div>
                               </div>
@@ -468,7 +502,7 @@ export default function Home() {
                               )}
                             </td>
                             {/* TV */}
-                            <td style={{ width: "90px", minWidth: "90px", maxWidth: "90px", padding: "4px 5px", textAlign: "right", verticalAlign: "middle", borderLeft: "1px solid #e5e7eb", color: "#6b7280", fontSize: "10px", lineHeight: "1.4" }}>
+                            <td style={{ width: "90px", minWidth: "90px", maxWidth: "90px", padding: "4px 5px", textAlign: "right", verticalAlign: "middle", borderLeft: `1px solid ${C.borderSub}`, color: C.textMuted, fontSize: "10px", lineHeight: "1.4" }}>
                               {tv.map((n, k) => <div key={k}>{n?.name || n?.title || n}</div>)}
                             </td>
                           </tr>
