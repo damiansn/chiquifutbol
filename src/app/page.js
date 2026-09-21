@@ -178,9 +178,22 @@ function obtenerGlobal(game) {
 function obtenerMinutoLive(game) {
   const src = game?.game_time_to_display || game?.game_time_status_to_display || game?.game_time;
   if (src != null && src !== "") {
-    const m = String(src).match(/(\d{1,3})/);
+    const txt = String(src).toLowerCase();
+    // Detectar entretiempo por palabras clave o por minuto 45 sin tiempo corrido
+    if (
+      txt.includes("ht") ||
+      txt.includes("half") ||
+      txt.includes("et") ||
+      txt.includes("entretiempo") ||
+      txt.includes("descanso") ||
+      txt.includes("interval")
+    ) return "ET";
+    const m = txt.match(/(\d{1,3})/);
     if (m) return parseInt(m[1], 10);
   }
+  // Fallback: si status.name contiene HT
+  const statusName = String(game?.status?.name || "").toLowerCase();
+  if (statusName.includes("ht") || statusName.includes("half") || statusName.includes("entretiempo")) return "ET";
   return null;
 }
 
@@ -246,7 +259,8 @@ function obtenerEstado(game) {
   const en = Number(e?.enum);
   if (en === 2) {
     const min = obtenerMinutoLive(game);
-    return { texto: min !== null ? `${min}'` : "EN VIVO", tipo: "live" };
+    const textoMin = min === "ET" ? "ET" : min !== null ? `${min}'` : "EN VIVO";
+    return { texto: textoMin, tipo: "live" };
   }
   if (en === 3) return { texto: "FINAL", tipo: "final" };
   const hora = formatearHora(game);
@@ -352,17 +366,36 @@ export default function Home() {
 
   const hayPartidos = data.some(l => Array.isArray(l?.games) && l.games.length > 0);
 
+  // Ligas con partidos
+  const ligasConPartidos = useMemo(
+    () => data.filter(l => Array.isArray(l?.games) && l.games.length > 0),
+    [data]
+  );
+
+  // Set de ligas ocultas (clave = key||id||index)
+  const [ligasOcultas, setLigasOcultas] = useState(new Set());
+
+  // Resetear filtros cuando cambia la fecha
+  useEffect(() => { setLigasOcultas(new Set()); }, [date]);
+
+  function toggleLiga(key) {
+    setLigasOcultas(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
   return (
     <div style={S.page}>
 
       {/* NAVBAR */}
       <div style={S.navbar}>
         <div style={S.navInner}>
-          <a href="/" style={S.navLogo}>⚽ ChiquiFútbol</a>
-          <a href="/" style={{ ...S.navLink, ...(true ? S.navLinkActive : {}) }}>Inicio</a>
-          <a href="/posiciones?competition=argentina" style={S.navLink}>Posiciones</a>
-          <a href="/posiciones?competition=libertadores" style={S.navLink}>Libertadores</a>
-          <a href="/posiciones?competition=champions" style={S.navLink}>Champions</a>
+          <a href="/" style={{ ...S.navLogo, display: "flex", alignItems: "center", gap: "8px" }}>
+            <img src="/logo.png" alt="ChiquiFútbol" width="28" height="28" style={{ objectFit: "contain" }} onError={e => { e.currentTarget.style.display = "none"; }} />
+            ChiquiFútbol
+          </a>
         </div>
       </div>
 
@@ -437,6 +470,38 @@ export default function Home() {
           </div>
         )}
 
+        {/* FILTROS DE LIGAS */}
+        {!loading && hayPartidos && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "5px 6px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
+            {ligasConPartidos.map((league, li) => {
+              const key = league?.key || league?.id || String(li);
+              const nombre = normalizarNombre(league);
+              const oculta = ligasOcultas.has(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => toggleLiga(key)}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    border: `1px solid ${oculta ? C.border : C.blue}`,
+                    borderRadius: "3px",
+                    background: oculta ? C.surface : "rgba(59,130,246,0.15)",
+                    color: oculta ? C.textMuted : C.blue,
+                    textDecoration: oculta ? "line-through" : "none",
+                    opacity: oculta ? 0.5 : 1,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {nombre}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* SELECTOR FECHA */}
         <div style={S.dateBar}>
           <span style={{ fontWeight: "bold", marginRight: "4px", color: C.textMuted, fontSize: "10px" }}>VER:</span>
@@ -457,10 +522,12 @@ export default function Home() {
             {data.map((league, li) => {
               const games = Array.isArray(league?.games) ? league.games : [];
               if (games.length === 0) return null;
+              const key = league?.key || league?.id || String(li);
+              if (ligasOcultas.has(key)) return null;
               const comp = obtenerCompetition(league);
               const nombre = normalizarNombre(league);
               return (
-                <div key={league?.key || league?.id || li} style={S.leagueBox}>
+                <div key={key} style={S.leagueBox}>
                   <div style={S.leagueHead}>
                     <Link href={`/posiciones?competition=${comp}`} style={S.leagueHeadLink}>
                       ▶ {nombre.toUpperCase()}
