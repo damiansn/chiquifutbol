@@ -2703,6 +2703,13 @@ async function sincronizarTodo() {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
     );
 
+    // Forzar hora argentina para que Promiedos entregue los horarios
+    // sin importar en qué servidor corra el sync
+    await page.emulateTimezone("America/Argentina/Buenos_Aires");
+    await page.setExtraHTTPHeaders({
+      "Accept-Language": "es-AR,es;q=0.9"
+    });
+
     // ======================================
     // PARTIDOS
     // ======================================

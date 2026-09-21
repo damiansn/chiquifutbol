@@ -314,34 +314,43 @@ function formatearHoraArgentina(game) {
   return game?.time || game?.hour || null;
 }
 
+// Promiedos entrega los horarios con un desfase que depende de desde dónde corre el sync.
+// Ajustá SOLO este valor (en horas) si los horarios se ven corridos:
+//   0 = los horarios ya vienen en hora argentina
+//   2 = vienen 2 horas atrasados (caso actual)
+const AJUSTE_HORAS_PROMIEDOS = 2;
+
+// Suma horas (positivas o negativas) a una fecha/hora y resuelve cambios de día/mes/año.
+function corregirFechaHora(dia, mes, anio, hh, mm) {
+  const d = new Date(Date.UTC(anio, mes - 1, dia, hh + AJUSTE_HORAS_PROMIEDOS, mm));
+  const p = n => String(n).padStart(2, "0");
+  return {
+    dia: p(d.getUTCDate()),
+    mes: p(d.getUTCMonth() + 1),
+    anio: d.getUTCFullYear(),
+    hora: `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`,
+  };
+}
+
+function hoyArgentina() {
+  const hoy = {};
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date()).forEach(p => { hoy[p.type] = p.value; });
+  return hoy;
+}
+
 function formatearHora(game) {
-  // start_time viene como "DD-MM-YYYY HH:MM" con 2hs menos que Argentina
+  // start_time viene como "DD-MM-YYYY HH:MM"
   if (game?.start_time) {
     const txt = String(game.start_time).trim();
     const m = txt.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
     if (m) {
-      const dia = m[1], mes = m[2], anio = m[3], min = m[5];
-      let hora = parseInt(m[4], 10) + 2;
-      let diaFinal = dia, mesFinal = mes, anioFinal = anio;
-      if (hora >= 24) {
-        hora -= 24;
-        // avanzar un día
-        const d = new Date(`${anio}-${mes}-${dia}`);
-        d.setDate(d.getDate() + 1);
-        diaFinal = String(d.getDate()).padStart(2, "0");
-        mesFinal = String(d.getMonth() + 1).padStart(2, "0");
-        anioFinal = String(d.getFullYear());
-      }
-      const horaStr = String(hora).padStart(2, "0");
-      // comparar con hoy en Argentina
-      const hoy = {};
-      new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Argentina/Buenos_Aires",
-        year: "numeric", month: "2-digit", day: "2-digit"
-      }).formatToParts(new Date()).forEach(p => { hoy[p.type] = p.value; });
-      const esHoy = diaFinal === hoy.day && mesFinal === hoy.month && anioFinal === hoy.year;
-      if (!esHoy) return `${diaFinal}/${mesFinal} ${horaStr}:${min}`;
-      return `${horaStr}:${min}`;
+      const c = corregirFechaHora(+m[1], +m[2], +m[3], +m[4], +m[5]);
+      const hoy = hoyArgentina();
+      const esHoy = c.dia === hoy.day && c.mes === hoy.month && String(c.anio) === hoy.year;
+      return esHoy ? c.hora : `${c.dia}/${c.mes} ${c.hora}`;
     }
   }
   const hora = formatearHoraArgentina(game);
@@ -389,8 +398,18 @@ function obtenerCondicionFixture(f) {
   return "";
 }
 
-function obtenerFechaFixture(f) { return f?.date || f?.fecha || f?.day || "--/--"; }
-function obtenerHoraFixture(f) { return f?.hora || f?.time || f?.hour || f?.start_time || "--:--"; }
+function obtenerFechaHoraFixture(f) {
+  const fechaRaw = f?.date || f?.fecha || f?.day || "--/--";
+  const horaRaw = f?.hora || f?.time || f?.hour || f?.start_time || "--:--";
+  const mf = String(fechaRaw).trim().match(/^(\d{1,2})\/(\d{1,2})$/);
+  const mh = String(horaRaw).trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!mf || !mh) return { fecha: fechaRaw, hora: horaRaw };
+  const anio = Number(hoyArgentina().year);
+  const c = corregirFechaHora(+mf[1], +mf[2], anio, +mh[1], +mh[2]);
+  return { fecha: `${c.dia}/${c.mes}`, hora: c.hora };
+}
+function obtenerFechaFixture(f) { return obtenerFechaHoraFixture(f).fecha; }
+function obtenerHoraFixture(f) { return obtenerFechaHoraFixture(f).hora; }
 function obtenerCompetenciaFixture(f) { return f?.competencia || f?.competition || f?.league || f?.tournament || ""; }
 
 function EscudoImg({ team }) {
