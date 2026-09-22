@@ -516,15 +516,20 @@ export default function Home() {
     <div style={S.page}>
 
       {/* NAVBAR */}
-      <div style={S.navbar}>
-        <div style={S.navInner}>
-          <a href="/" style={{ ...S.navLogo, display: "flex", alignItems: "center", gap: "8px" }}>
-            <img src="/logo.png" alt="ChiquiFútbol" width="86" height="86" style={{ objectFit: "contain" }} onError={e => { e.currentTarget.style.display = "none"; }} />
-            
-          </a>
-        </div>
-      </div>
-
+      <div style={{ ...S.navbar, height: "120px" }}>
+  <div style={{ ...S.navInner, display: "flex", alignItems: "center", height: "100%" }}>
+    <a href="/" style={{ ...S.navLogo, display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+      <img 
+        src="/logo.png" 
+        alt="Secanuca" 
+        width="160" 
+        height="120" 
+        style={{ objectFit: "contain", height: "100%", width: "auto" }} 
+        onError={e => { e.currentTarget.style.display = "none"; }} 
+      />
+    </a>
+  </div>
+</div>
       <div style={S.wrap}>
 
         {/* BARRA SUPERIOR */}
