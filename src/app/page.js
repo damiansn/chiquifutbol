@@ -522,7 +522,7 @@ export default function Home() {
       <img 
         src="/logo.png" 
         alt="Secanuca" 
-        style={{ height: "50px", width: "auto", objectFit: "contain", display: "block" }} 
+        style={{ height: "74px", width: "auto", objectFit: "contain", display: "block" }} 
         onError={e => { e.currentTarget.style.display = "none"; }} 
       />
     </a>
