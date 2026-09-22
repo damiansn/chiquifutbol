@@ -519,7 +519,7 @@ export default function Home() {
       <div style={S.navbar}>
         <div style={S.navInner}>
           <a href="/" style={{ ...S.navLogo, display: "flex", alignItems: "center", gap: "8px" }}>
-            <img src="/logo.png" alt="ChiquiFútbol" width="68" height="68" style={{ objectFit: "contain" }} onError={e => { e.currentTarget.style.display = "none"; }} />
+            <img src="/logo.png" alt="ChiquiFútbol" width="86" height="86" style={{ objectFit: "contain" }} onError={e => { e.currentTarget.style.display = "none"; }} />
             
           </a>
         </div>
