@@ -520,7 +520,7 @@ export default function Home() {
         <div style={S.navInner}>
           <a href="/" style={{ ...S.navLogo, display: "flex", alignItems: "center", gap: "8px" }}>
             <img src="/logo.svg" alt="ChiquiFútbol" width="68" height="68" style={{ objectFit: "contain" }} onError={e => { e.currentTarget.style.display = "none"; }} />
-            Secanuca
+            
           </a>
         </div>
       </div>
