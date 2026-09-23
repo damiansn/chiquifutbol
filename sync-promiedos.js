@@ -65,6 +65,11 @@ const COMPETENCIAS = {
   primera_c: {
     nombre: "Primera C",
     url: "https://www.promiedos.com.ar/league/primera-c/ffjb"
+  },
+
+  reserva: {
+    nombre: "Torneo de Reserva",
+    url: "https://www.promiedos.com.ar/league/liga-profesional-reserva/hhbc"
   }
 };
 
@@ -82,7 +87,8 @@ const REDIS_KEYS = {
   conference_league: "chiquifutbol_conference_league",
   primera_nacional: "chiquifutbol_primera_nacional",
   primera_b_metro: "chiquifutbol_primera_b_metro",
-  primera_c: "chiquifutbol_primera_c"
+  primera_c: "chiquifutbol_primera_c",
+  reserva: "chiquifutbol_reserva"
 };
 
 // ==========================================

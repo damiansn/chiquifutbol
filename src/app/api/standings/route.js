@@ -56,6 +56,11 @@ const COMPETENCIAS = {
     nombre: "Primera C",
     redis: "chiquifutbol_primera_c",
   },
+
+  reserva: {
+    nombre: "Torneo de Reserva",
+    redis: "chiquifutbol_reserva",
+  },
 };
 
 export async function GET(request) {

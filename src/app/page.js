@@ -69,7 +69,8 @@ function obtenerCompetition(league) {
   if (n.includes("champions")) return "champions";
   if (n.includes("europa league")) return "europa_league";
   if (n.includes("conference")) return "conference_league";
-  if (n.includes("reserva") || n.includes("femenin")) return "argentina";
+  if (n.includes("reserva")) return "reserva";
+  if (n.includes("femenin")) return "argentina";
   if (n.includes("primera nacional")) return "primera_nacional";
   if (n.includes("primera b metro") || n.includes("primera b metropolitana")) return "primera_b_metro";
   if (n.includes("primera c")) return "primera_c";

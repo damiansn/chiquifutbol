@@ -31,6 +31,10 @@ const COMPETENCIAS = {
   champions:        { nombre: "Champions League",             corto: "Champions League" },
   europa_league:    { nombre: "UEFA Europa League",           corto: "Europa League" },
   conference_league:{ nombre: "UEFA Conference League",       corto: "Conference League" },
+  primera_nacional: { nombre: "Primera Nacional",             corto: "Primera Nacional" },
+  primera_b_metro:  { nombre: "Primera B Metropolitana",      corto: "Primera B Metro" },
+  primera_c:        { nombre: "Primera C",                    corto: "Primera C" },
+  reserva:          { nombre: "Torneo de Reserva",            corto: "Reserva" },
 };
 
 const NAV_ITEMS = [
@@ -41,6 +45,10 @@ const NAV_ITEMS = [
   ["champions",         "Champions"],
   ["europa_league",     "Europa League"],
   ["conference_league", "Conference"],
+  ["primera_nacional",  "Nacional"],
+  ["primera_b_metro",   "B Metro"],
+  ["primera_c",         "Primera C"],
+  ["reserva",           "Reserva"],
 ];
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
