@@ -55,7 +55,7 @@ const NAV_ITEMS = [
   ["conference_league", "Conference"],
   ["primera_nacional",  "Nacional"],
   ["primera_b_metro",   "B Metro"],
-  ["primera_c",         "Primera C"],s
+  ["primera_c",         "Primera C"],
   ["reserva",           "Reserva"],
   ["colombia",          "Colombia"],
   ["mls",               "MLS"],
