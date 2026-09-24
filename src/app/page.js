@@ -193,6 +193,28 @@ const ESCUDOS_POR_ID = {
   bccai: "minnesota-united",
   bddf:  "sporting-kc",
 
+  // ---- Liga BetPlay (Colombia) ----
+  igef:  "america-de-cali",
+  igdh:  "millonarios",
+  iged:  "independiente-medellin",
+  igea:  "atletico-nacional",
+  igdj:  "deportivo-cali",
+  bacce: "atletico-bucaramanga",
+  hgdf:  "deportes-tolima",
+  hgee:  "independiente-santa-fe",
+  badhi: "llaneros-fc",
+  hcij:  "once-caldas",
+  caieb: "aguilas-doradas",
+  ifec:  "internacional-bogota",
+  igde:  "cucuta-deportivo",
+  jiee:  "fortaleza-fc",
+  jaei:  "deportivo-pasto",
+  bacaj: "alianza-fc",
+  igeb:  "boyaca-chico",
+  igdi:  "deportivo-pereira",
+  badhh: "jaguares-de-cordoba",
+  hcae:  "junior-fc",
+
   // ---- Primera Nacional ----
   hcbi:  "ferro-carril-oeste",
   hbba:  "moron",
