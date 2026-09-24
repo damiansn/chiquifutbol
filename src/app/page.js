@@ -670,8 +670,8 @@ function EscudoImg({ team }) {
     <img
       src={src}
       alt=""
-      width="28"
-      height="28"
+      width="32"
+      height="32"
       style={{ objectFit: "contain", verticalAlign: "middle", flexShrink: 0 }}
       onError={e => { e.currentTarget.style.display = "none"; }}
     />
