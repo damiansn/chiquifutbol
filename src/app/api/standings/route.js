@@ -89,6 +89,11 @@ const COMPETENCIAS = {
   brasil: {
     nombre: "Brasileirao",
     redis: "chiquifutbol_brasil",
+  },
+
+  chile: {
+    nombre: "Liga de Primera",
+    redis: "chiquifutbol_chile",
   }
 };
 

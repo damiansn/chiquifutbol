@@ -100,6 +100,11 @@ const COMPETENCIAS = {
   brasil: {
     nombre: "Brasileirao",
     url: "https://www.promiedos.com.ar/league/brasileirao-serie-a/bbd"
+  },
+  
+  chile: {
+    nombre: "Liga de Primera",
+    url: "https://www.promiedos.com.ar/league/campeonato-nacional/bdf"
   }  
 
 };
@@ -125,7 +130,8 @@ const REDIS_KEYS = {
   nations_league: "chiquifutbol_nations_league",
   paraguay: "chiquifutbol_paraguay",
   mexico: "chiquifutbol_mexico",
-  brasil: "chiquifutbol_brasil"
+  brasil: "chiquifutbol_brasil",
+  chile: "chiquifutbol_chile",
 }
 
 // ==========================================

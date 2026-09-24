@@ -79,7 +79,8 @@ function obtenerCompetition(league) {
   if (n.includes("nations league")) return "nations_league";
   if (n.includes("copa de primera") || n.includes("paraguay")) return "paraguay";
   if (n.includes("liga mx") || n.includes("mexico")) return "mexico";
-  if (n.includes("brasileirao") || n.includes("brasil")) return "brasil"
+  if (n.includes("brasileirao") || n.includes("brasil")) return "brasil";
+  if (n.includes("liga de primera") || n.includes("chile")) return "chile"
   return "argentina";
 }
 
@@ -343,8 +344,25 @@ const ESCUDOS_POR_ID = {
   bcbi:  "gremio",
   bcbj:  "internacional",
   hdid:  "remo",
-  hdih:  "chapecoense"
+  hdih:  "chapecoense",
 
+  // ---- Liga de Primera  (Chile) ----
+  bcdj:  "colo-colo",
+  bcef:  "u-catolica",
+  ifeb:  "universidad-de-chile",
+  bcda:  "everton-de-vina",
+  bcdi:  "palestino",
+  fbjie: "deportes-limache",
+  bcee:  "nublense",
+  igcj:  "deportes-concepcion",
+  bcdh:  "deportes-la-serena",
+  igcf:  "coquimbo-unido",
+  bccj:  "audax-italiano",
+  bcdc:  "huachipato",
+  bcde:  "o-higgins",
+  bcdb:  "cobresal",
+  bceh:  "u-de-concepcion",
+  ieaj:  "u-la-calera"
 };
 
 function escudoLocal(team) {
