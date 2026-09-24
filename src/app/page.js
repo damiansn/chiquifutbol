@@ -215,6 +215,20 @@ const ESCUDOS_POR_ID = {
   badhh: "jaguares-de-cordoba",
   hcae:  "junior-fc",
 
+  // ---- Copa de Primera (Paraguay) ----
+  bcig:  "libertad",
+  ifei:  "olimpia",
+  bcia:  "club-nacional",
+  begec: "2-de-mayo",
+  begea: "sportivo-trinidense",
+  hhdj:  "club-guarani",
+  fgfii: "sportivo-ameliano",
+  bcje:  "cerro-porteno",
+  ihhi:  "sportivo-luqueno",
+  ihhe:  "rubio-nu",
+  fdcaj: "cd-recoleta",
+  begde: "cs-san-lorenzo",
+
   // ---- Primera Nacional ----
   hcbi:  "ferro-carril-oeste",
   hbba:  "moron",
