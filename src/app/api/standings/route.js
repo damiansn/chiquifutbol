@@ -86,6 +86,10 @@ const COMPETENCIAS = {
     nombre: "Liga MX",
     redis: "chiquifutbol_mexico",
   },
+  brasil: {
+    nombre: "Brasileirao",
+    redis: "chiquifutbol_brasil",
+  }
 };
 
 export async function GET(request) {

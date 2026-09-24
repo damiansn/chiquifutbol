@@ -79,6 +79,7 @@ function obtenerCompetition(league) {
   if (n.includes("nations league")) return "nations_league";
   if (n.includes("copa de primera") || n.includes("paraguay")) return "paraguay";
   if (n.includes("liga mx") || n.includes("mexico")) return "mexico";
+  if (n.includes("brasileirao") || n.includes("brasil")) return "brasil"
   return "argentina";
 }
 

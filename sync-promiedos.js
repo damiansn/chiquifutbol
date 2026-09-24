@@ -95,7 +95,13 @@ const COMPETENCIAS = {
   mexico: {
     nombre: "Liga MX",
     url: "https://www.promiedos.com.ar/league/liga-mx/beb"
-  }
+  },
+
+  brasil: {
+    nombre: "Brasileirao",
+    url: "https://www.promiedos.com.ar/league/brasileirao-serie-a/bbd"
+  }  
+
 };
 
 const REDIS_KEYS = {
@@ -118,8 +124,9 @@ const REDIS_KEYS = {
   mls: "chiquifutbol_mls",
   nations_league: "chiquifutbol_nations_league",
   paraguay: "chiquifutbol_paraguay",
-  mexico: "chiquifutbol_mexico"
-};
+  mexico: "chiquifutbol_mexico",
+  brasil: "chiquifutbol_brasil"
+}
 
 // ==========================================
 // EQUIPOS DE PRIMERA ARGENTINA

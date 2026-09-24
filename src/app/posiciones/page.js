@@ -40,6 +40,7 @@ const COMPETENCIAS = {
   nations_league:   { nombre: "UEFA Nations League",          corto: "Nations League" },
   paraguay:         { nombre: "Copa de Primera",              corto: "Paraguay" },
   mexico:           { nombre: "Liga MX",                      corto: "Liga MX" },
+  brasil:           { nombre: "Brasileirao",                  corto: "Brasileirao" }
 };
 
 const NAV_ITEMS = [
@@ -58,7 +59,8 @@ const NAV_ITEMS = [
   ["mls",               "MLS"],
   ["nations_league",    "Nations L."],
   ["paraguay",          "Paraguay"],
-  ["mexico",            "Liga MX"],
+  ["mexico",            "México"],
+  ["brasil",            "Brasil"]
 ];
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
