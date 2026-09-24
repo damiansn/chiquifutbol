@@ -35,6 +35,11 @@ const COMPETENCIAS = {
   primera_b_metro:  { nombre: "Primera B Metropolitana",      corto: "Primera B Metro" },
   primera_c:        { nombre: "Primera C",                    corto: "Primera C" },
   reserva:          { nombre: "Torneo de Reserva",            corto: "Reserva" },
+  colombia:         { nombre: "Liga BetPlay",                 corto: "Colombia" },
+  mls:              { nombre: "Major League Soccer",          corto: "MLS" },
+  nations_league:   { nombre: "UEFA Nations League",          corto: "Nations League" },
+  paraguay:         { nombre: "Copa de Primera",              corto: "Paraguay" },
+  mexico:           { nombre: "Liga MX",                      corto: "Liga MX" },
 };
 
 const NAV_ITEMS = [
@@ -49,6 +54,11 @@ const NAV_ITEMS = [
   ["primera_b_metro",   "B Metro"],
   ["primera_c",         "Primera C"],
   ["reserva",           "Reserva"],
+  ["colombia",          "Colombia"],
+  ["mls",               "MLS"],
+  ["nations_league",    "Nations L."],
+  ["paraguay",          "Paraguay"],
+  ["mexico",            "Liga MX"],
 ];
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────

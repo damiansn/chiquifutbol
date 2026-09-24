@@ -74,6 +74,11 @@ function obtenerCompetition(league) {
   if (n.includes("primera nacional")) return "primera_nacional";
   if (n.includes("primera b metro") || n.includes("primera b metropolitana")) return "primera_b_metro";
   if (n.includes("primera c")) return "primera_c";
+  if (n.includes("betplay") || n.includes("colombia")) return "colombia";
+  if (n.includes("mls") || n.includes("major league soccer")) return "mls";
+  if (n.includes("nations league")) return "nations_league";
+  if (n.includes("copa de primera") || n.includes("paraguay")) return "paraguay";
+  if (n.includes("liga mx") || n.includes("mexico")) return "mexico";
   return "argentina";
 }
 
@@ -156,6 +161,37 @@ const ESCUDOS_POR_ID = {
   ghjfa: "platense",
   ghjfb: "colon",
   ijeji: "ferro-carril-oeste",
+  // ---- MLS ----
+  fbbcg: "nashville-sc",
+  bddh:  "new-england-revolution",
+  fehcj: "inter-miami",
+  gjbii: "charlotte-fc",
+  bddd:  "chicago-fire",
+  hdge:  "philadelphia-union",
+  bccae: "orlando-city-sc",
+  bddi:  "new-york-red-bulls",
+  cfcih: "fc-cincinnati",
+  cagcc: "new-york-city-fc",
+  bddj:  "dc-united",
+  bddg:  "toronto-fc",
+  bdde:  "columbus-crew",
+  daejj: "atlanta-united",
+  jbch:  "cf-montreal",
+  idij:  "vancouver-whitecaps",
+  bdeg:  "houston-dynamo",
+  ceehe: "st-louis-city-sc",
+  bdeb:  "fc-dallas",
+  bdef:  "san-jose-earthquakes",
+  fbbhi: "los-angeles-fc",
+  bdea:  "colorado-rapids",
+  bdec:  "los-angeles-galaxy",
+  fjbg:  "portland-timbers",
+  iahhi: "san-diego-fc",
+  ghjah: "austin-fc",
+  bdee:  "real-salt-lake",
+  bdeh:  "seattle-sounders",
+  bccai: "minnesota-united",
+  bddf:  "sporting-kc",
 
   // ---- Primera Nacional ----
   hcbi:  "ferro-carril-oeste",

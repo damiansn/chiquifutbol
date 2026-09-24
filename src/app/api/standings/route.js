@@ -61,6 +61,31 @@ const COMPETENCIAS = {
     nombre: "Torneo de Reserva",
     redis: "chiquifutbol_reserva",
   },
+
+  colombia: {
+    nombre: "Liga BetPlay",
+    redis: "chiquifutbol_colombia",
+  },
+
+  mls: {
+    nombre: "MLS",
+    redis: "chiquifutbol_mls",
+  },
+
+  nations_league: {
+    nombre: "UEFA Nations League",
+    redis: "chiquifutbol_nations_league",
+  },
+
+  paraguay: {
+    nombre: "Copa de Primera",
+    redis: "chiquifutbol_paraguay",
+  },
+
+  mexico: {
+    nombre: "Liga MX",
+    redis: "chiquifutbol_mexico",
+  },
 };
 
 export async function GET(request) {

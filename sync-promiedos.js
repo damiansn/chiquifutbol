@@ -70,6 +70,31 @@ const COMPETENCIAS = {
   reserva: {
     nombre: "Torneo de Reserva",
     url: "https://www.promiedos.com.ar/league/liga-profesional-reserva/hhbc"
+  },
+
+  colombia: {
+    nombre: "Liga BetPlay",
+    url: "https://www.promiedos.com.ar/league/liga-betplay/gca"
+  },
+
+  mls: {
+    nombre: "MLS",
+    url: "https://www.promiedos.com.ar/league/mls/bae"
+  },
+
+  nations_league: {
+    nombre: "UEFA Nations League",
+    url: "https://www.promiedos.com.ar/league/uefa-nations-league/habg"
+  },
+
+  paraguay: {
+    nombre: "Copa de Primera",
+    url: "https://www.promiedos.com.ar/league/copa-de-primera/gcb"
+  },
+
+  mexico: {
+    nombre: "Liga MX",
+    url: "https://www.promiedos.com.ar/league/liga-mx/beb"
   }
 };
 
@@ -88,7 +113,12 @@ const REDIS_KEYS = {
   primera_nacional: "chiquifutbol_primera_nacional",
   primera_b_metro: "chiquifutbol_primera_b_metro",
   primera_c: "chiquifutbol_primera_c",
-  reserva: "chiquifutbol_reserva"
+  reserva: "chiquifutbol_reserva",
+  colombia: "chiquifutbol_colombia",
+  mls: "chiquifutbol_mls",
+  nations_league: "chiquifutbol_nations_league",
+  paraguay: "chiquifutbol_paraguay",
+  mexico: "chiquifutbol_mexico"
 };
 
 // ==========================================
