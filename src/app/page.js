@@ -323,6 +323,28 @@ const ESCUDOS_POR_ID = {
   bdgjd: "fenix",
   bedhh: "muniz",
 
+// ---- Brasileirao (Brasil) ----
+  bcbf:  "flamengo",
+  bccc:  "palmeiras",
+  bcba:  "athletico-paranaense",
+  bcbg:  "fluminense",
+  bhgh:  "bahia",
+  bcbd:  "cruzeiro",
+  bcaj:  "atletico-mineiro",
+  bcce:  "santos",
+  bcbc:  "coritiba",
+  bchd:  "rb-bragantino",
+  bccf:  "sao-paulo",
+  bcbb:  "botafogo",
+  bcci:  "vitoria",
+  bcgh:  "corinthians",
+  bcgj:  "mirassol",
+  bcch:  "vasco-da-gama",
+  bcbi:  "gremio",
+  bcbj:  "internacional",
+  hdid:  "remo",
+  hdih:  "chapecoense"
+
 };
 
 function escudoLocal(team) {
