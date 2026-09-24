@@ -110,8 +110,7 @@ const COMPETENCIAS = {
   uruguay: {
     nombre: "Liga AUF Uruguaya",
     url: "https://www.promiedos.com.ar/league/uruguayan-championship/gbh"
-  } 
-
+  }
 };
 
 const REDIS_KEYS = {
