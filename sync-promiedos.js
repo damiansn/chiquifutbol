@@ -2350,53 +2350,7 @@ async function sincronizarCompetencia(
       `DATOS RECIBIDOS: ${competencia.nombre}`
     );
 
-    console.log(
-      "Claves:",
-      Object.keys(
-        tablaData
-      )
-    );
-
-    console.log(
-      "league:",
-      tablaData.league
-        ? "OK"
-        : "NO"
-    );
-
-    console.log(
-      "tables:",
-      Array.isArray(
-        tablaData.tables
-      )
-        ? tablaData.tables.length
-        : "NO ARRAY"
-    );
-
-    console.log(
-      "tables_groups:",
-      Array.isArray(
-        tablaData.tables_groups
-      )
-        ? tablaData.tables_groups.length
-        : "NO ARRAY"
-    );
-
-    console.log(
-      "games:",
-      Array.isArray(
-        tablaData.games
-      )
-        ? tablaData.games.length
-        : "NO ARRAY"
-    );
-
-    console.log(
-      "players_statistics:",
-      tablaData.players_statistics
-        ? "OK"
-        : "NO"
-    );
+    // Logs detallados eliminados
 
     // ======================================
     // TABLAS
@@ -2435,39 +2389,7 @@ async function sincronizarCompetencia(
         playersStatistics
       );
 
-    console.log(
-      "Categorías estadísticas:",
-      estadisticasAnalizadas.categorias
-    );
-
-    console.log(
-      "Arrays estadísticos encontrados:",
-      estadisticasAnalizadas.arrays.length
-    );
-
-    // ======================================
-    // DEBUG TABLES GROUPS
-    // ======================================
-
-    console.log(
-      "=========================================="
-    );
-
-    console.log(
-      "DEBUG TABLES_GROUPS"
-    );
-
-    console.log(
-      "=========================================="
-    );
-
-    console.log(
-      JSON.stringify(
-        tablaData?.tables_groups,
-        null,
-        2
-      )
-    );
+    // Logs DEBUG TABLES GROUPS eliminados
 
     // ======================================
     // STANDINGS DATA
@@ -2532,53 +2454,7 @@ async function sincronizarCompetencia(
     // DEBUG BRACKETS
     // ======================================
 
-    console.log(
-      "\n=========================================="
-    );
-
-    console.log(
-      "DEBUG STANDINGS DATA"
-    );
-
-    console.log(
-      "=========================================="
-    );
-
-    console.log(
-      "brackets existe:",
-      !!standingsData.brackets
-    );
-
-    console.log(
-      "brackets tipo:",
-      typeof standingsData.brackets
-    );
-
-    console.log(
-      "brackets stages:",
-      standingsData.brackets?.stages?.length ??
-        0
-    );
-
-    if (
-      standingsData.brackets?.stages
-    ) {
-
-      console.log(
-        "etapas:",
-        standingsData.brackets.stages.map(
-          stage =>
-            stage.name
-        )
-      );
-    }
-
-    console.log(
-      "claves standingsData:",
-      Object.keys(
-        standingsData
-      )
-    );
+    // Logs DEBUG BRACKETS eliminados
 
     // ======================================
     // GUARDAR REDIS
