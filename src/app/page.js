@@ -196,6 +196,26 @@ const ESCUDOS_POR_ID = {
   bccai: "minnesota-united",
   bddf:  "sporting-kc",
 
+  // ---- Liga MX (México) ----
+  cahi:  "toluca",
+  bcfj:  "chivas",
+  bcff:  "club-america",
+  bcgb:  "cruz-azul",
+  fjje:  "queretaro",
+  jddj:  "leon",
+  ifai:  "club-tijuana",
+  bcfc:  "puebla",
+  bcfi:  "atlas-fc",//
+  bcfh:  "monterrey",
+  bcfa:  "pachuca",
+  bcej:  "pumas-unam",
+  bcga:  "atletico-san-luis",
+  caih:  "atlante",
+  bcgd:  "necaxa",
+  bcge:  "tigres-uanl",
+  bcfe:  "santos-laguna",
+  cfbej: "juarez",
+
   // ---- Liga BetPlay (Colombia) ----
   igef:  "america-de-cali",
   igdh:  "millonarios",
