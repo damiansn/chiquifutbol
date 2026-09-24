@@ -80,7 +80,8 @@ function obtenerCompetition(league) {
   if (n.includes("copa de primera") || n.includes("paraguay")) return "paraguay";
   if (n.includes("liga mx") || n.includes("mexico")) return "mexico";
   if (n.includes("brasileirao") || n.includes("brasil")) return "brasil";
-  if (n.includes("liga de primera") || n.includes("chile")) return "chile"
+  if (n.includes("liga de primera") || n.includes("chile")) return "chile";
+  if (n.includes("liga auf uruguaya") || n.includes("uruguay")) return "uruguay"
   return "argentina";
 }
 
@@ -362,7 +363,25 @@ const ESCUDOS_POR_ID = {
   bcde:  "o-higgins",
   bcdb:  "cobresal",
   bceh:  "u-de-concepcion",
-  ieaj:  "u-la-calera"
+  ieaj:  "u-la-calera",
+
+  // ---- Primera División (Uruguay) ----
+  bcghf: "montevideo-city-torque",
+  idfi:  "liverpool-montevideo",
+  hehh:  "cerro",
+  hhgg:  "penarol",
+  babjc: "juventud",
+  haih:  "racing-club-montevideo",
+  beagc: "deportivo-maldonado",
+  hehi:  "nacional",
+  igbe:  "montevideo-wanderers",
+  babjb: "progreso",
+  bcghd: "boston-river",
+  igbi:  "cerro-largo",
+  hgdj:  "defensor-sporting",
+  babjd: "central-espanol",
+  igbb:  "danubio-fc",
+  fbfcc: "albion"
 };
 
 function escudoLocal(team) {

@@ -41,7 +41,8 @@ const COMPETENCIAS = {
   paraguay:         { nombre: "Copa de Primera",              corto: "Paraguay" },
   mexico:           { nombre: "Liga MX",                      corto: "Liga MX" },
   brasil:           { nombre: "Brasileirao",                  corto: "Brasileirao" },
-  chile:           { nombre: "Liga de Primera",                  corto: "Liga de Primera" }
+  chile:           { nombre: "Liga de Primera",               corto: "Liga de Primera" },
+  uruguay:           { nombre: "Liga AUF Uruguaya",           corto: "Liga AUF Uruguaya" }
 };
 
 const NAV_ITEMS = [
@@ -54,7 +55,7 @@ const NAV_ITEMS = [
   ["conference_league", "Conference"],
   ["primera_nacional",  "Nacional"],
   ["primera_b_metro",   "B Metro"],
-  ["primera_c",         "Primera C"],
+  ["primera_c",         "Primera C"],s
   ["reserva",           "Reserva"],
   ["colombia",          "Colombia"],
   ["mls",               "MLS"],
@@ -62,7 +63,8 @@ const NAV_ITEMS = [
   ["paraguay",          "Paraguay"],
   ["mexico",            "México"],
   ["brasil",            "Brasil"],
-  ["chile",             "Chile"]
+  ["chile",             "Chile"],
+  ["uruguay",            "Uruguay"]
 ];
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────

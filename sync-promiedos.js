@@ -105,7 +105,12 @@ const COMPETENCIAS = {
   chile: {
     nombre: "Liga de Primera",
     url: "https://www.promiedos.com.ar/league/campeonato-nacional/bdf"
-  }  
+  },
+  
+  uruguay: {
+    nombre: "Liga AUF Uruguaya",
+    url: "https://www.promiedos.com.ar/league/uruguayan-championship/gbh"
+  } 
 
 };
 
@@ -132,6 +137,7 @@ const REDIS_KEYS = {
   mexico: "chiquifutbol_mexico",
   brasil: "chiquifutbol_brasil",
   chile: "chiquifutbol_chile",
+  uruguay: "chiquifutbol_uruguay"
 }
 
 // ==========================================

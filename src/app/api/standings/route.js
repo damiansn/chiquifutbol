@@ -94,6 +94,11 @@ const COMPETENCIAS = {
   chile: {
     nombre: "Liga de Primera",
     redis: "chiquifutbol_chile",
+  },
+
+  uruguay: {
+    nombre: "Liga AUF Uruguaya",
+    redis: "chiquifutbol_uruguay",
   }
 };
 
