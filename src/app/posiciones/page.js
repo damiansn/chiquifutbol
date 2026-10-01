@@ -385,11 +385,23 @@ function EstadisticasJugadores({ tabla }) {
 
   function obtenerEquipoJugador(row) {
     const j = row?.entity?.object;
-    const opts = [j?.team?.name, j?.team?.short_name, j?.club?.name, j?.club?.short_name, row?.team?.name, row?.team?.short_name, j?.team_name, j?.club_name];
+    const opts = [
+      row?.team_name,
+      j?.team_name,
+      j?.club_name,
+      j?.team?.name,
+      j?.team?.short_name,
+      j?.club?.name,
+      j?.club?.short_name,
+      row?.team?.name,
+      row?.team?.short_name,
+    ];
     for (const o of opts) { if (o && typeof o === "string") return o; }
     if (Array.isArray(row?.entities)) {
-      const eq = row.entities.find(e => e?.type === 1 || e?.object?.type === "team");
-      if (eq?.object?.name) return eq.object.name;
+      for (const e of row.entities) {
+        const n = e?.object?.name || e?.object?.short_name || e?.name;
+        if (n && e?.object?.id !== j?.id) return n;
+      }
     }
     return "–";
   }
