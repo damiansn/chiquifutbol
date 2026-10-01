@@ -318,10 +318,37 @@ function normalizarTexto(texto) {
 // Se construye leyendo Redis antes de sincronizar fixtures
 // ==========================================
 
+// Orden de prioridad: los primeros no se sobreescriben por los siguientes
+const PRIORIDAD_COMPETENCIAS = [
+  "argentina",        // Liga Profesional primero
+  "primera_nacional",
+  "primera_b_metro",
+  "primera_c",
+  "reserva",
+  "libertadores",
+  "sudamericana",
+  "copa_argentina",
+  "champions",
+  "europa_league",
+  "conference_league",
+  "colombia",
+  "mls",
+  "nations_league",
+  "paraguay",
+  "mexico",
+  "brasil",
+  "chile",
+  "uruguay",
+];
+
 async function construirMapaEquiposCompetencia() {
   const mapa = {}; // nombreNorm → nombreCompetencia
 
-  for (const [key, competencia] of Object.entries(COMPETENCIAS)) {
+  const entradas = PRIORIDAD_COMPETENCIAS
+    .filter(k => COMPETENCIAS[k])
+    .map(k => [k, COMPETENCIAS[k]]);
+
+  for (const [key, competencia] of entradas) {
     const redisKey = REDIS_KEYS[key];
     if (!redisKey) continue;
 
@@ -383,14 +410,16 @@ async function construirMapaEquiposCompetencia() {
 // ==========================================
 
 function detectarCompetenciaPorRival(rivalNorm, mapaEquipos, competenciaDefault) {
-  // Buscar coincidencia exacta
+  // Coincidencia exacta
   if (mapaEquipos[rivalNorm]) return mapaEquipos[rivalNorm];
 
-  // Buscar coincidencia parcial (el rival puede venir abreviado)
+  // Coincidencia parcial solo si el rival viene abreviado con punto (ej: "Boca Jrs.")
+  // Se exige que el fragmento tenga al menos 6 caracteres para evitar falsos positivos
   for (const [nombreMapa, comp] of Object.entries(mapaEquipos)) {
     if (
-      nombreMapa.length >= 4 &&
-      (nombreMapa.includes(rivalNorm) || rivalNorm.includes(nombreMapa))
+      nombreMapa.length >= 6 &&
+      rivalNorm.length >= 6 &&
+      nombreMapa.startsWith(rivalNorm)
     ) {
       return comp;
     }
