@@ -313,86 +313,69 @@ function normalizarTexto(texto) {
 }
 
 // ==========================================
-// EQUIPOS POR COMPETENCIA (para cruzar rival)
-// Mapa: nombre normalizado del equipo → nombre de competencia
-// Se construye leyendo Redis antes de sincronizar fixtures
+// MAPA ESTÁTICO: nombre normalizado → Liga Profesional
+// Fuente de verdad para rivales de Primera División
 // ==========================================
 
-// Orden de prioridad: los primeros no se sobreescriben por los siguientes
-const PRIORIDAD_COMPETENCIAS = [
-  "argentina",        // Liga Profesional primero
-  "primera_nacional",
-  "primera_b_metro",
-  "primera_c",
-  "reserva",
+const EQUIPOS_PRIMERA_NORM = new Set(
+  Object.values(EQUIPOS_PROMIEDOS).map(n =>
+    String(n).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
+  )
+);
+
+// ==========================================
+// EQUIPOS POR COMPETENCIA INTERNACIONAL
+// Mapa: nombre normalizado → nombre de competencia
+// Solo para torneos internacionales (Libertadores, Sudamericana, etc.)
+// ==========================================
+
+const COMPETENCIAS_INTERNACIONALES = [
   "libertadores",
   "sudamericana",
-  "copa_argentina",
   "champions",
   "europa_league",
   "conference_league",
-  "colombia",
-  "mls",
   "nations_league",
-  "paraguay",
-  "mexico",
-  "brasil",
-  "chile",
-  "uruguay",
 ];
 
 async function construirMapaEquiposCompetencia() {
   const mapa = {}; // nombreNorm → nombreCompetencia
 
-  const entradas = PRIORIDAD_COMPETENCIAS
-    .filter(k => COMPETENCIAS[k])
-    .map(k => [k, COMPETENCIAS[k]]);
-
-  for (const [key, competencia] of entradas) {
+  for (const key of COMPETENCIAS_INTERNACIONALES) {
+    const competencia = COMPETENCIAS[key];
     const redisKey = REDIS_KEYS[key];
-    if (!redisKey) continue;
+    if (!competencia || !redisKey) continue;
 
     try {
       const raw = await redis.get(redisKey);
       if (!raw) continue;
       const data = JSON.parse(raw);
 
-      // Extraer equipos de tables
-      const tables = data?.tables || [];
-      for (const table of tables) {
-        const rows = table?.rows || table?.teams || [];
-        for (const row of rows) {
-          const nombre = row?.team?.name || row?.name || row?.team_name || "";
-          if (nombre) {
-            const norm = normalizarTexto(nombre);
-            if (!mapa[norm]) mapa[norm] = competencia.nombre;
-          }
+      const agregarEquipo = (nombre) => {
+        if (!nombre) return;
+        const norm = normalizarTexto(nombre);
+        if (norm && !mapa[norm]) mapa[norm] = competencia.nombre;
+      };
+
+      // tables
+      for (const table of (data?.tables || [])) {
+        for (const row of (table?.rows || table?.teams || [])) {
+          agregarEquipo(row?.team?.name || row?.name || row?.team_name || "");
         }
       }
 
-      // Extraer equipos de games (fixtures de la competencia)
-      const games = data?.games || [];
-      for (const game of games) {
-        const equipos = Array.isArray(game?.teams) ? game.teams : [];
-        for (const eq of equipos) {
-          const nombre = eq?.name || eq?.short_name || "";
-          if (nombre) {
-            const norm = normalizarTexto(nombre);
-            if (!mapa[norm]) mapa[norm] = competencia.nombre;
-          }
+      // games
+      for (const game of (data?.games || [])) {
+        for (const eq of (game?.teams || [])) {
+          agregarEquipo(eq?.name || eq?.short_name || "");
         }
       }
 
-      // Extraer equipos de brackets
-      const stages = data?.brackets?.stages || [];
-      for (const stage of stages) {
+      // brackets participants
+      for (const stage of (data?.brackets?.stages || [])) {
         for (const group of (stage?.groups || [])) {
-          for (const participant of (group?.participants || [])) {
-            const nombre = participant?.name || participant?.team_name || "";
-            if (nombre) {
-              const norm = normalizarTexto(nombre);
-              if (!mapa[norm]) mapa[norm] = competencia.nombre;
-            }
+          for (const p of (group?.participants || [])) {
+            agregarEquipo(p?.name || p?.team_name || "");
           }
         }
       }
@@ -409,22 +392,37 @@ async function construirMapaEquiposCompetencia() {
 // DETECTAR COMPETENCIA POR NOMBRE DE RIVAL
 // ==========================================
 
-function detectarCompetenciaPorRival(rivalNorm, mapaEquipos, competenciaDefault) {
-  // Coincidencia exacta
-  if (mapaEquipos[rivalNorm]) return mapaEquipos[rivalNorm];
+function detectarCompetenciaPorRival(rivalNorm, mapaInternacional, competenciaDefault) {
+  // 1. Si el rival es de Primera División → siempre Liga Profesional
+  if (EQUIPOS_PRIMERA_NORM.has(rivalNorm)) return "Liga Profesional";
 
-  // Coincidencia parcial solo si el rival viene abreviado con punto (ej: "Boca Jrs.")
-  // Se exige que el fragmento tenga al menos 6 caracteres para evitar falsos positivos
-  for (const [nombreMapa, comp] of Object.entries(mapaEquipos)) {
+  // 2. Coincidencia parcial con nombre abreviado de equipo de Primera
+  //    (ej: "boca jrs" → "boca juniors")
+  for (const nombrePrimera of EQUIPOS_PRIMERA_NORM) {
+    if (
+      nombrePrimera.length >= 6 &&
+      rivalNorm.length >= 4 &&
+      nombrePrimera.startsWith(rivalNorm)
+    ) {
+      return "Liga Profesional";
+    }
+  }
+
+  // 3. Buscar en torneos internacionales (exacto)
+  if (mapaInternacional[rivalNorm]) return mapaInternacional[rivalNorm];
+
+  // 4. Coincidencia parcial en internacionales (nombres abreviados)
+  for (const [nombreMapa, comp] of Object.entries(mapaInternacional)) {
     if (
       nombreMapa.length >= 6 &&
-      rivalNorm.length >= 6 &&
+      rivalNorm.length >= 4 &&
       nombreMapa.startsWith(rivalNorm)
     ) {
       return comp;
     }
   }
 
+  // 5. Fallback al default del equipo
   return competenciaDefault;
 }
 
