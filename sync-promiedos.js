@@ -1646,16 +1646,74 @@ async function agregarGlobalesAPartidos() {
 }
 
 // ==========================================
+// CONSTRUIR MAPA team_id → team_name DESDE tablaData
+// ==========================================
+
+function construirMapaEquiposDesdeTabla(tablaData) {
+  const mapa = { ...EQUIPOS_PROMIEDOS };
+
+  function agregarEquipo(id, name) {
+    if (id && name && !mapa[id]) mapa[id] = name;
+  }
+
+  // Desde tables
+  for (const t of (tablaData?.tables || [])) {
+    for (const g of (t?.tables || [])) {
+      for (const row of (g?.table?.rows || [])) {
+        const obj = row?.entity?.object;
+        if (obj?.id && obj?.name) agregarEquipo(obj.id, obj.name);
+      }
+    }
+  }
+
+  // Desde tables_groups
+  for (const gc of (tablaData?.tables_groups || [])) {
+    for (const tg of (gc?.tables || [])) {
+      for (const row of (tg?.table?.rows || [])) {
+        const obj = row?.entity?.object;
+        if (obj?.id && obj?.name) agregarEquipo(obj.id, obj.name);
+      }
+    }
+  }
+
+  // Desde games
+  for (const game of (tablaData?.games || [])) {
+    for (const team of (game?.teams || [])) {
+      if (team?.id && team?.name) agregarEquipo(team.id, team.name);
+    }
+  }
+
+  // Desde brackets
+  for (const stage of (tablaData?.brackets?.stages || [])) {
+    for (const group of (stage?.groups || [])) {
+      for (const p of (group?.participants || [])) {
+        if (p?.id && p?.name) agregarEquipo(p.id, p.name);
+      }
+      for (const game of (group?.games || [])) {
+        for (const team of (game?.teams || [])) {
+          if (team?.id && team?.name) agregarEquipo(team.id, team.name);
+        }
+      }
+    }
+  }
+
+  return mapa;
+}
+
+// ==========================================
 // AGREGAR NOMBRE DE EQUIPO A ESTADÍSTICAS
 // ==========================================
 
 function agregarEquiposAEstadisticas(
-  playersStatistics
+  playersStatistics,
+  mapaEquipos
 ) {
 
   if (!playersStatistics) {
     return playersStatistics;
   }
+
+  const mapa = mapaEquipos || EQUIPOS_PROMIEDOS;
 
   function recorrer(obj) {
 
@@ -1678,32 +1736,9 @@ function agregarEquiposAEstadisticas(
       return;
     }
 
-    if (
-      obj.team_id &&
-      EQUIPOS_PROMIEDOS[
-        obj.team_id
-      ] &&
-      !obj.team_name
-    ) {
-
-      obj.team_name =
-        EQUIPOS_PROMIEDOS[
-          obj.team_id
-        ];
-    }
-
-    if (
-      obj.teamId &&
-      EQUIPOS_PROMIEDOS[
-        obj.teamId
-      ] &&
-      !obj.team_name
-    ) {
-
-      obj.team_name =
-        EQUIPOS_PROMIEDOS[
-          obj.teamId
-        ];
+    if (!obj.team_name) {
+      const tid = obj.team_id || obj.teamId;
+      if (tid && mapa[tid]) obj.team_name = mapa[tid];
     }
 
     for (
@@ -2541,9 +2576,12 @@ async function sincronizarCompetencia(
 
     if (playersStatistics) {
 
+      const mapaEquipos = construirMapaEquiposDesdeTabla(tablaData);
+
       playersStatistics =
         agregarEquiposAEstadisticas(
-          playersStatistics
+          playersStatistics,
+          mapaEquipos
         );
     }
 
