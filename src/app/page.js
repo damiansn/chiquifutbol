@@ -836,7 +836,29 @@ export default function Home() {
                         <td style={{ padding: "3px 5px", textAlign: "right", fontWeight: esLocal ? "bold" : "normal", color: esLocal ? C.white : C.textDim }}>{local}</td>
                         <td style={{ padding: "3px 5px", textAlign: "center", fontWeight: "bold", color: C.amber }}>{obtenerHoraFixture(f)}</td>
                         <td style={{ padding: "3px 5px", fontWeight: !esLocal ? "bold" : "normal", color: !esLocal ? C.white : C.textDim }}>{visita}</td>
-                        <td style={{ padding: "3px 5px", textAlign: "right", color: C.textMuted, fontSize: "10px" }}>{obtenerCompetenciaFixture(f)}</td>
+                        <td style={{ padding: "3px 5px", textAlign: "right" }}>
+                          {(() => {
+                            const comp = obtenerCompetenciaFixture(f);
+                            if (!comp) return null;
+                            const cl = comp.toLowerCase();
+                            let bg = "rgba(100,116,139,0.2)", color = "#94a3b8";
+                            if (cl.includes("libertador")) { bg = "rgba(16,185,129,0.15)"; color = "#10b981"; }
+                            else if (cl.includes("sudamerican")) { bg = "rgba(245,158,11,0.15)"; color = "#f59e0b"; }
+                            else if (cl.includes("copa argentina")) { bg = "rgba(56,189,248,0.15)"; color = "#38bdf8"; }
+                            else if (cl.includes("liga profesional") || cl.includes("primera")) { bg = "rgba(59,130,246,0.15)"; color = "#3b82f6"; }
+                            else if (cl.includes("champions")) { bg = "rgba(168,85,247,0.15)"; color = "#a855f7"; }
+                            else if (cl.includes("copa de la liga")) { bg = "rgba(59,130,246,0.1)"; color = "#60a5fa"; }
+                            return (
+                              <span style={{
+                                background: bg, color, fontSize: "9px", fontWeight: "bold",
+                                padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap",
+                                border: `1px solid ${color}33`
+                              }}>
+                                {comp}
+                              </span>
+                            );
+                          })()}
+                        </td>
                       </tr>
                     );
                   })}

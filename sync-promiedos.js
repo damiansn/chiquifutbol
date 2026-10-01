@@ -243,6 +243,44 @@ const URLS_FIXTURE_EQUIPOS = {
   ihg: "https://www.promiedos.com.ar/team/racing-club/ihg"
 };
 
+// ==========================================
+// COMPETENCIA POR DEFECTO POR EQUIPO
+// (se usa cuando la página no indica la liga)
+// ==========================================
+
+const COMPETENCIA_DEFAULT = {
+  ihc:   "Liga Profesional",
+  hcbh:  "Liga Profesional",
+  bbjbf: "Liga Profesional",
+  hchc:  "Liga Profesional",
+  igg:   "Liga Profesional",
+  ihe:   "Liga Profesional",
+  igj:   "Liga Profesional",
+  hcag:  "Liga Profesional",
+  ihh:   "Liga Profesional",
+  igf:   "Liga Profesional",
+  igh:   "Liga Profesional",
+  bbjea: "Liga Profesional",
+  hcah:  "Liga Profesional",
+  jche:  "Liga Profesional",
+  beafh: "Liga Profesional",
+  ihb:   "Liga Profesional",
+  hbbh:  "Liga Profesional",
+  iia:   "Liga Profesional",
+  ihf:   "Liga Profesional",
+  hcch:  "Liga Profesional",
+  fhid:  "Liga Profesional",
+  igi:   "Liga Profesional",
+  gbfc:  "Liga Profesional",
+  iie:   "Liga Profesional",
+  iid:   "Liga Profesional",
+  jafb:  "Liga Profesional",
+  ihi:   "Liga Profesional",
+  bheaf: "Liga Profesional",
+  hccd:  "Liga Profesional",
+  ihg:   "Liga Profesional",
+};
+
 const REDIS_TEAM_FIXTURES =
   "chiquifutbol_team_fixtures";
 
@@ -275,6 +313,93 @@ function normalizarTexto(texto) {
 }
 
 // ==========================================
+// EQUIPOS POR COMPETENCIA (para cruzar rival)
+// Mapa: nombre normalizado del equipo → nombre de competencia
+// Se construye leyendo Redis antes de sincronizar fixtures
+// ==========================================
+
+async function construirMapaEquiposCompetencia() {
+  const mapa = {}; // nombreNorm → nombreCompetencia
+
+  for (const [key, competencia] of Object.entries(COMPETENCIAS)) {
+    const redisKey = REDIS_KEYS[key];
+    if (!redisKey) continue;
+
+    try {
+      const raw = await redis.get(redisKey);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
+
+      // Extraer equipos de tables
+      const tables = data?.tables || [];
+      for (const table of tables) {
+        const rows = table?.rows || table?.teams || [];
+        for (const row of rows) {
+          const nombre = row?.team?.name || row?.name || row?.team_name || "";
+          if (nombre) {
+            const norm = normalizarTexto(nombre);
+            if (!mapa[norm]) mapa[norm] = competencia.nombre;
+          }
+        }
+      }
+
+      // Extraer equipos de games (fixtures de la competencia)
+      const games = data?.games || [];
+      for (const game of games) {
+        const equipos = Array.isArray(game?.teams) ? game.teams : [];
+        for (const eq of equipos) {
+          const nombre = eq?.name || eq?.short_name || "";
+          if (nombre) {
+            const norm = normalizarTexto(nombre);
+            if (!mapa[norm]) mapa[norm] = competencia.nombre;
+          }
+        }
+      }
+
+      // Extraer equipos de brackets
+      const stages = data?.brackets?.stages || [];
+      for (const stage of stages) {
+        for (const group of (stage?.groups || [])) {
+          for (const participant of (group?.participants || [])) {
+            const nombre = participant?.name || participant?.team_name || "";
+            if (nombre) {
+              const norm = normalizarTexto(nombre);
+              if (!mapa[norm]) mapa[norm] = competencia.nombre;
+            }
+          }
+        }
+      }
+
+    } catch {
+      // ignorar errores de Redis por competencia
+    }
+  }
+
+  return mapa;
+}
+
+// ==========================================
+// DETECTAR COMPETENCIA POR NOMBRE DE RIVAL
+// ==========================================
+
+function detectarCompetenciaPorRival(rivalNorm, mapaEquipos, competenciaDefault) {
+  // Buscar coincidencia exacta
+  if (mapaEquipos[rivalNorm]) return mapaEquipos[rivalNorm];
+
+  // Buscar coincidencia parcial (el rival puede venir abreviado)
+  for (const [nombreMapa, comp] of Object.entries(mapaEquipos)) {
+    if (
+      nombreMapa.length >= 4 &&
+      (nombreMapa.includes(rivalNorm) || rivalNorm.includes(nombreMapa))
+    ) {
+      return comp;
+    }
+  }
+
+  return competenciaDefault;
+}
+
+// ==========================================
 // SINCRONIZAR FIXTURE DE EQUIPOS
 // ==========================================
 
@@ -285,6 +410,10 @@ async function sincronizarFixturesEquipos(page) {
   console.log("SINCRONIZANDO FIXTURES DE EQUIPOS");
   console.log("##########################################");
 
+  // Construir mapa rival → competencia desde Redis
+  const mapaEquipos = await construirMapaEquiposCompetencia();
+  console.log(`Mapa de equipos construido: ${Object.keys(mapaEquipos).length} equipos`);
+
   const fixtures = {};
 
   for (
@@ -292,8 +421,8 @@ async function sincronizarFixturesEquipos(page) {
     of Object.entries(URLS_FIXTURE_EQUIPOS)
   ) {
 
-    const nombreEquipo =
-      EQUIPOS_PROMIEDOS[teamId];
+    const nombreEquipo = EQUIPOS_PROMIEDOS[teamId];
+    const competenciaDefault = COMPETENCIA_DEFAULT[teamId] || "Liga Profesional";
 
     console.log("\n------------------------------------------");
     console.log(`EQUIPO: ${nombreEquipo}`);
@@ -302,254 +431,163 @@ async function sincronizarFixturesEquipos(page) {
 
     try {
 
+      // ======================================
+      // INTERCEPTAR API DE PROMIEDOS
+      // ======================================
+
+      let apiData = null;
+
+      const listener = async response => {
+        try {
+          const rUrl = response.url();
+          if (
+            rUrl.includes("/team/") &&
+            rUrl.includes("api.promiedos.com.ar") &&
+            !apiData
+          ) {
+            const ct = response.headers()["content-type"] || "";
+            if (ct.includes("application/json")) {
+              apiData = await response.json();
+            }
+          }
+        } catch {
+          // ignorar
+        }
+      };
+
+      page.on("response", listener);
+
       await page.goto(
         url,
-        {
-          waitUntil: "domcontentloaded",
-          timeout: 30000
-        }
+        { waitUntil: "domcontentloaded", timeout: 30000 }
       );
 
-      await sleep(1200);
+      await sleep(1500);
 
-      const partidos =
-        await page.evaluate(() => {
+      page.off("response", listener);
 
-          const resultado = [];
-          let competenciaActual = "";
+      // ======================================
+      // INTENTAR PARSEAR RESPUESTA API
+      // ======================================
 
-          const filas =
-            Array.from(
-              document.querySelectorAll("tr")
+      let partidosDeApi = [];
+
+      if (apiData) {
+        // La API puede devolver los fixtures con league_name o competition
+        const buscarPartidos = (obj) => {
+          if (!obj || typeof obj !== "object") return [];
+          if (Array.isArray(obj)) {
+            // Ver si es un array de partidos con fecha/condicion
+            const tieneFixture = obj.some(item =>
+              item?.date || item?.fecha || item?.day
             );
+            if (tieneFixture) return obj;
+            return obj.flatMap(buscarPartidos);
+          }
+          for (const val of Object.values(obj)) {
+            const found = buscarPartidos(val);
+            if (found.length > 0) return found;
+          }
+          return [];
+        };
 
-          for (const fila of filas) {
+        const rawPartidos = buscarPartidos(apiData);
 
-            // ================================
-            // DETECTAR FILA DE ENCABEZADO DE COMPETENCIA
-            // Promiedos usa <th> o <td colspan> para separar torneos
-            // ================================
-            const ths = Array.from(fila.querySelectorAll("th"));
-            if (ths.length > 0) {
-              const textoTh = ths.map(th =>
-                (th.innerText || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim()
-              ).join(" ").trim();
-              if (textoTh.length > 3) {
-                competenciaActual = textoTh;
-              }
-              continue;
+        for (const p of rawPartidos) {
+          const fecha = p?.date || p?.fecha || p?.day || "";
+          const hora = p?.time || p?.hora || p?.hour || "";
+          const condicion = p?.home_away || p?.condicion || p?.local_visitante || "";
+          const rival = p?.opponent?.name || p?.rival || p?.opponent_name || p?.vs || "";
+          const competencia = p?.league_name || p?.competition?.name || p?.tournament || "";
+
+          if (fecha && rival) {
+            partidosDeApi.push({ fecha, hora, condicion, rival, competencia });
+          }
+        }
+      }
+
+      // ======================================
+      // SCRAPING HTML (siempre, para tener datos)
+      // ======================================
+
+      const partidosScraping = await page.evaluate(() => {
+        const resultado = [];
+
+        function limpiar(t) {
+          return (t || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+        }
+
+        // Buscar el bloque de próximos partidos (.table-team)
+        const tablas = Array.from(document.querySelectorAll(".table-team"));
+        const tabla = tablas[0]; // primera tabla = próximos partidos
+        if (!tabla) return resultado;
+
+        const filas = Array.from(tabla.querySelectorAll("tr"));
+        for (const fila of filas) {
+          const celdas = Array.from(fila.querySelectorAll("td"));
+          if (celdas.length < 3) continue;
+
+          const textos = celdas.map(c => limpiar(c.innerText));
+
+          const fecha = textos.find(t => /^\d{1,2}\/\d{1,2}$/.test(t));
+          const condicion = textos.find(t => /^[LV]$/.test(t));
+          const hora = textos.find(t => /^\d{1,2}:\d{2}$/.test(t));
+
+          if (!fecha || !condicion || !hora) continue;
+
+          // Obtener rival desde la celda con team-block
+          let rival = "";
+          for (const celda of celdas) {
+            const texto = limpiar(celda.innerText);
+            if (!texto || texto === fecha || texto === condicion || texto === hora) continue;
+            const enlace = celda.querySelector("a");
+            if (enlace) {
+              const t = limpiar(enlace.innerText);
+              if (t) { rival = t; break; }
             }
-
-            // Detectar td con colspan (fila separadora de torneo)
-            const tdColspan = fila.querySelector("td[colspan]");
-            if (tdColspan) {
-              const textoSep = (tdColspan.innerText || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
-              if (textoSep.length > 3 && !/^\d/.test(textoSep)) {
-                competenciaActual = textoSep;
-              }
-              continue;
-            }
-
-            const celdas =
-              Array.from(
-                fila.querySelectorAll("td")
-              );
-
-            if (celdas.length < 3) {
-              continue;
-            }
-
-            const textos =
-              celdas.map(td =>
-                (td.innerText || "")
-                  .replace(/\u00a0/g, " ")
-                  .replace(/\s+/g, " ")
-                  .trim()
-              );
-
-            // ==================================
-            // FECHA
-            // ==================================
-
-            const fecha =
-              textos.find(texto =>
-                /^\d{1,2}\/\d{1,2}$/.test(texto)
-              );
-
-            // ==================================
-            // LOCAL / VISITA
-            // ==================================
-
-            const condicion =
-              textos.find(texto =>
-                /^[LV]$/.test(texto)
-              );
-
-            // ==================================
-            // HORA
-            // ==================================
-
-            const hora =
-              textos.find(texto =>
-                /^\d{1,2}:\d{2}$/.test(texto)
-              );
-
-            if (
-              !fecha ||
-              !condicion ||
-              !hora
-            ) {
-              continue;
-            }
-
-            // ==================================
-            // RIVAL
-            // ==================================
-
-            let rival = "";
-
-            for (const celda of celdas) {
-
-              const texto =
-                (celda.innerText || "")
-                  .replace(/\u00a0/g, " ")
-                  .replace(/\s+/g, " ")
-                  .trim();
-
-              if (!texto) {
-                continue;
-              }
-
-              if (texto === fecha) {
-                continue;
-              }
-
-              if (texto === condicion) {
-                continue;
-              }
-
-              if (texto === hora) {
-                continue;
-              }
-
-              // -------------------------------
-              // Intentar obtener texto del link
-              // -------------------------------
-
-              const enlace =
-                celda.querySelector("a");
-
-              if (enlace) {
-
-                const textoEnlace =
-                  (enlace.innerText || "")
-                    .replace(/\s+/g, " ")
-                    .trim();
-
-                if (textoEnlace) {
-                  rival = textoEnlace;
-                  break;
-                }
-              }
-
-              rival = texto;
-              break;
-            }
-
-            if (!rival) {
-              continue;
-            }
-
-            // ==================================
-            // LIMPIEZA
-            // ==================================
-
-            rival =
-              rival
-                .replace(/^Image:\s*/i, "")
-                .trim();
-
-            // ----------------------------------
-            // Corregir nombres duplicados
-            // Ejemplo:
-            // HuracánHuracán
-            // ----------------------------------
-
-            if (rival.length % 2 === 0) {
-
-              const mitad =
-                rival.length / 2;
-
-              const parte1 =
-                rival.substring(
-                  0,
-                  mitad
-                );
-
-              const parte2 =
-                rival.substring(
-                  mitad
-                );
-
-              if (
-                parte1 === parte2
-              ) {
-                rival = parte1;
-              }
-            }
-
-            // ==================================
-            // EXCLUIR RESERVA / FEMENINO
-            // ==================================
-
-            const rivalNormalizado =
-              rival
-                .normalize("NFD")
-                .replace(
-                  /[\u0300-\u036f]/g,
-                  ""
-                )
-                .toLowerCase();
-
-            if (
-              rivalNormalizado.includes("reserva") ||
-              rivalNormalizado.includes("femenino") ||
-              rivalNormalizado.includes("femenina") ||
-              rivalNormalizado.includes("(f)") ||
-              rivalNormalizado.includes("sub-20") ||
-              rivalNormalizado.includes("sub 20") ||
-              rivalNormalizado.includes("sub-19") ||
-              rivalNormalizado.includes("sub 19") ||
-              rivalNormalizado.includes("sub-17") ||
-              rivalNormalizado.includes("sub 17")
-            ) {
-              continue;
-            }
-
-            // ==================================
-            // GUARDAR
-            // ==================================
-
-            resultado.push({
-              fecha,
-              condicion,
-              rival,
-              hora,
-              competencia: competenciaActual
-            });
+            rival = texto;
+            break;
           }
 
-          return resultado;
-        });
+          if (!rival) continue;
 
-      console.log(
-        `Partidos encontrados: ${partidos.length}`
-      );
+          rival = rival.replace(/^Image:\s*/i, "").trim();
+          if (rival.length % 2 === 0) {
+            const mid = rival.length / 2;
+            if (rival.substring(0, mid) === rival.substring(mid)) rival = rival.substring(0, mid);
+          }
+
+          const rivalNorm = rival.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          if (
+            rivalNorm.includes("reserva") || rivalNorm.includes("femenin") ||
+            rivalNorm.includes("(f)") || rivalNorm.includes("sub-") || rivalNorm.includes("sub ")
+          ) continue;
+
+          resultado.push({ fecha, condicion, rival, hora, competencia: "" });
+        }
+
+        return resultado;
+      });
+
+      // ======================================
+      // COMBINAR: preferir API, completar con scraping
+      // ======================================
+
+      let partidos = partidosDeApi.length > 0 ? partidosDeApi : partidosScraping;
+
+      // Asignar competencia cruzando rival con el mapa
+      partidos = partidos.map(p => {
+        if (p.competencia) return p;
+        const rivalNorm = normalizarTexto(p.rival);
+        const comp = detectarCompetenciaPorRival(rivalNorm, mapaEquipos, competenciaDefault);
+        return { ...p, competencia: comp };
+      });
+
+      console.log(`Partidos encontrados: ${partidos.length}`);
 
       fixtures[teamId] = partidos;
 
       for (const partido of partidos) {
-
         console.log(
           `${partido.fecha} | ${partido.condicion} | ${partido.rival} | ${partido.hora} | ${partido.competencia}`
         );
@@ -582,13 +620,8 @@ async function sincronizarFixturesEquipos(page) {
   console.log("FIXTURES DE EQUIPOS GUARDADOS");
   console.log("##########################################");
 
-  console.log(
-    `Redis: ${REDIS_TEAM_FIXTURES}`
-  );
-
-  console.log(
-    `Equipos: ${Object.keys(fixtures).length}`
-  );
+  console.log(`Redis: ${REDIS_TEAM_FIXTURES}`);
+  console.log(`Equipos: ${Object.keys(fixtures).length}`);
 }
 
 // ==========================================
