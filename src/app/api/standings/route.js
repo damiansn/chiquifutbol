@@ -169,7 +169,42 @@ const COMPETENCIAS = {
   coupe_de_france: {
     nombre: "Coupe de France",
     redis: "chiquifutbol_coupe_de_france",
-  }
+  },
+
+  u20_world_cup: {
+    nombre: "Mundial Sub-20",
+    redis: "chiquifutbol_u20_world_cup",
+  },
+
+  copa_america: {
+    nombre: "Copa América",
+    redis: "chiquifutbol_copa_america",
+  },
+
+  eliminatorias_conmebol: {
+    nombre: "Eliminatorias CONMEBOL",
+    redis: "chiquifutbol_eliminatorias_conmebol",
+  },
+
+  eliminatorias_uefa: {
+    nombre: "Eliminatorias UEFA",
+    redis: "chiquifutbol_eliminatorias_uefa",
+  },
+
+  eliminatorias_concacaf: {
+    nombre: "Eliminatorias CONCACAF",
+    redis: "chiquifutbol_eliminatorias_concacaf",
+  },
+
+  euro: {
+    nombre: "Eurocopa",
+    redis: "chiquifutbol_euro",
+  },
+
+  repechaje_mundial: {
+    nombre: "Repechaje Mundial",
+    redis: "chiquifutbol_repechaje_mundial",
+  },
 };
 
 export async function GET(request) {
