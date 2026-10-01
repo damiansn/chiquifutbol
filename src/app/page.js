@@ -710,49 +710,67 @@ export default function Home() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teamFixtures, setTeamFixtures] = useState([]);
   const [teamFixturesLoading, setTeamFixturesLoading] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
 
-  // Convierte date a DD-MM-YYYY para mostrar en el input
-  function dateToInput(d) {
-    if (d === "today" || d === "ayer" || d === "manana") {
-      const offset = d === "ayer" ? -1 : d === "manana" ? 1 : 0;
-      const now = new Date();
-      now.setDate(now.getDate() + offset);
-      const p = v => String(v).padStart(2, "0");
-      return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-    }
-    // DD-MM-YYYY → YYYY-MM-DD
-    const [dd, mm, yyyy] = d.split("-");
-    return `${yyyy}-${mm}-${dd}`;
+  // Devuelve la fecha de hoy en Argentina como "DD-MM-YYYY"
+  function hoyDDMMYYYY() {
+    const parts = {};
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(new Date()).forEach(p => { parts[p.type] = p.value; });
+    return `${parts.day}-${parts.month}-${parts.year}`;
   }
 
-  function inputToDate(val) {
-    // YYYY-MM-DD → DD-MM-YYYY
-    const [yyyy, mm, dd] = val.split("-");
-    return `${dd}-${mm}-${yyyy}`;
+  // Suma N días a una fecha DD-MM-YYYY (sin usar new Date para evitar bugs de timezone)
+  function sumarDias(ddmmyyyy, n) {
+    const [dd, mm, yyyy] = ddmmyyyy.split("-").map(Number);
+    const d = new Date(Date.UTC(yyyy, mm - 1, dd + n));
+    const p = v => String(v).padStart(2, "0");
+    return `${p(d.getUTCDate())}-${p(d.getUTCMonth() + 1)}-${d.getUTCFullYear()}`;
+  }
+
+  // Convierte el estado `date` a DD-MM-YYYY siempre
+  function dateAsDDMMYYYY() {
+    if (date === "today")  return hoyDDMMYYYY();
+    if (date === "ayer")   return sumarDias(hoyDDMMYYYY(), -1);
+    if (date === "manana") return sumarDias(hoyDDMMYYYY(), 1);
+    return date; // ya es DD-MM-YYYY
   }
 
   function moverDia(n) {
-    const current = dateToInput(date);
-    const d = new Date(current);
-    d.setDate(d.getDate() + n);
-    const p = v => String(v).padStart(2, "0");
-    const nuevo = `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}`;
-    // Si es hoy/ayer/mañana usar los alias
-    const hoy = new Date();
-    const ayer = new Date(); ayer.setDate(hoy.getDate() - 1);
-    const manana = new Date(); manana.setDate(hoy.getDate() + 1);
-    const fmt = x => `${p(x.getDate())}-${p(x.getMonth() + 1)}-${x.getFullYear()}`;
-    if (nuevo === fmt(hoy)) setDate("today");
-    else if (nuevo === fmt(ayer)) setDate("ayer");
-    else if (nuevo === fmt(manana)) setDate("manana");
+    const nuevo = sumarDias(dateAsDDMMYYYY(), n);
+    const hoy   = hoyDDMMYYYY();
+    const ayer  = sumarDias(hoy, -1);
+    const man   = sumarDias(hoy, 1);
+    if (nuevo === hoy)  setDate("today");
+    else if (nuevo === ayer) setDate("ayer");
+    else if (nuevo === man)  setDate("manana");
+    else setDate(nuevo);
+  }
+
+  // Para el input type="date" necesitamos YYYY-MM-DD
+  function dateToInputValue() {
+    const [dd, mm, yyyy] = dateAsDDMMYYYY().split("-");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function onInputChange(val) {
+    if (!val) return;
+    const [yyyy, mm, dd] = val.split("-");
+    const nuevo = `${dd}-${mm}-${yyyy}`;
+    const hoy  = hoyDDMMYYYY();
+    const ayer = sumarDias(hoy, -1);
+    const man  = sumarDias(hoy, 1);
+    if (nuevo === hoy)  setDate("today");
+    else if (nuevo === ayer) setDate("ayer");
+    else if (nuevo === man)  setDate("manana");
     else setDate(nuevo);
   }
 
   function labelFecha() {
-    if (date === "today") return "HOY";
-    if (date === "ayer") return "AYER";
-    if (date === "manana") return "MAÑANA";
+    if (date === "today")  return "HOY";
+    if (date === "ayer")   return "◀ AYER";
+    if (date === "manana") return "MAÑANA ▶";
     const [dd, mm, yyyy] = date.split("-");
     return `${dd}/${mm}/${yyyy}`;
   }
@@ -817,7 +835,7 @@ export default function Home() {
   const [ligasOcultas, setLigasOcultas] = useState(new Set());
 
   // Resetear filtros cuando cambia la fecha
-  useEffect(() => { setLigasOcultas(new Set()); setShowCalendar(false); }, [date]);
+  useEffect(() => { setLigasOcultas(new Set()); }, [date]);
 
   function toggleLiga(key) {
     setLigasOcultas(prev => {
@@ -970,28 +988,29 @@ export default function Home() {
 
         {/* SELECTOR FECHA */}
         <div style={S.dateBar}>
-          <button onClick={() => moverDia(-1)} style={S.dateBtn}>◀</button>
-          <button
-            onClick={() => setDate("today")}
-            style={date === "today" ? S.dateBtnActive : S.dateBtn}
-          >HOY</button>
-          <span style={{
-            padding: "2px 12px", fontWeight: "bold", fontSize: "11px",
-            color: ["today","ayer","manana"].includes(date) ? C.textMuted : C.white,
-            minWidth: 80, textAlign: "center", display: "inline-block"
-          }}>
-            {labelFecha()}
-          </span>
-          <button onClick={() => moverDia(1)} style={S.dateBtn}>▶</button>
+          <button onClick={() => moverDia(-1)} style={S.dateBtn}>&#9664;</button>
+          {["ayer", "today", "manana"].map(v => (
+            <button key={v} onClick={() => setDate(v)} style={date === v ? S.dateBtnActive : S.dateBtn}>
+              {v === "today" ? "HOY" : v === "ayer" ? "AYER" : "MAÑANA"}
+            </button>
+          ))}
+          <button onClick={() => moverDia(1)} style={S.dateBtn}>&#9654;</button>
           <input
             type="date"
-            value={dateToInput(date)}
-            onChange={e => { if (e.target.value) setDate(inputToDate(e.target.value)); }}
+            value={dateToInputValue()}
+            onChange={e => onInputChange(e.target.value)}
+            title="Ir a una fecha"
             style={{
-              marginLeft: "6px", background: C.surfaceAlt, border: `1px solid ${C.border}`,
-              color: C.textDim, padding: "2px 4px", fontSize: "10px", cursor: "pointer"
+              marginLeft: "8px", background: C.surfaceAlt, border: `1px solid ${C.border}`,
+              color: C.textDim, padding: "2px 4px", fontSize: "10px", cursor: "pointer",
+              colorScheme: "dark",
             }}
           />
+          {!["today","ayer","manana"].includes(date) && (
+            <span style={{ marginLeft: "8px", fontWeight: "bold", color: C.amber, fontSize: "11px" }}>
+              {labelFecha()}
+            </span>
+          )}
         </div>
 
         {error && <div style={S.errorBox}>⚠ {error}</div>}
