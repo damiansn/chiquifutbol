@@ -3,7 +3,22 @@ import Redis from 'ioredis';
 
 const redis = new Redis(process.env.REDIS_URL);
 
-// Devuelve la fecha de hoy en Argentina como { dia, mes, anio }
+const REDIS_STANDINGS = {
+  libertadores:     'chiquifutbol_libertadores',
+  sudamericana:     'chiquifutbol_sudamericana',
+  copa_argentina:   'chiquifutbol_copa_argentina',
+  champions:        'chiquifutbol_champions',
+  europa_league:    'chiquifutbol_europa_league',
+  conference_league:'chiquifutbol_conference_league',
+  u20_world_cup:    'chiquifutbol_u20_world_cup',
+  copa_america:     'chiquifutbol_copa_america',
+  eliminatorias_conmebol: 'chiquifutbol_eliminatorias_conmebol',
+  eliminatorias_uefa:     'chiquifutbol_eliminatorias_uefa',
+  eliminatorias_concacaf: 'chiquifutbol_eliminatorias_concacaf',
+  euro:             'chiquifutbol_euro',
+  repechaje_mundial:'chiquifutbol_repechaje_mundial',
+};
+
 function hoyArgentina() {
     const parts = {};
     new Intl.DateTimeFormat('en-CA', {
@@ -13,13 +28,93 @@ function hoyArgentina() {
     return { dia: parts.day, mes: parts.month, anio: parts.year };
 }
 
-// Suma N días a una fecha DD-MM-YYYY y devuelve DD-MM-YYYY
-function sumarDias(ddmmyyyy, n) {
-    const [dd, mm, yyyy] = ddmmyyyy.split('-').map(Number);
-    const d = new Date(Date.UTC(yyyy, mm - 1, dd));
-    d.setUTCDate(d.getUTCDate() + n);
-    const p = v => String(v).padStart(2, '0');
-    return `${p(d.getUTCDate())}-${p(d.getUTCMonth() + 1)}-${d.getUTCFullYear()}`;
+// ─── CALCULAR GLOBAL DESDE BRACKETS ──────────────────────────────────────────
+// Dado un partido, busca su serie en los brackets y calcula el global acumulado
+function calcularGlobalDesdeBrackets(game, brackets) {
+    if (!brackets?.stages) return null;
+    const gid = game?.id ? String(game.id) : null;
+    const teamIds = (game?.teams || []).map(t => t?.id ? String(t.id) : null).filter(Boolean);
+    if (teamIds.length < 2) return null;
+
+    for (const stage of brackets.stages) {
+        for (const group of (stage?.groups || [])) {
+            const games = group?.games || [];
+            if (games.length < 2) continue;
+
+            // Ver si este grupo contiene el partido
+            const enGrupo = games.some(g => {
+                if (gid && g?.id && String(g.id) === gid) return true;
+                const gTeamIds = (g?.teams || []).map(t => t?.id ? String(t.id) : null).filter(Boolean);
+                return teamIds.every(id => gTeamIds.includes(id));
+            });
+            if (!enGrupo) continue;
+
+            // Calcular global
+            const scores = { [teamIds[0]]: 0, [teamIds[1]]: 0 };
+            let hayResultados = false;
+            for (const g of games) {
+                const sc = Array.isArray(g?.scores) ? g.scores : [];
+                const ts = (g?.teams || []).map(t => t?.id ? String(t.id) : null);
+                if (sc.length < 2 || ts.length < 2) continue;
+                const s0 = Number(sc[0]); const s1 = Number(sc[1]);
+                if (!Number.isFinite(s0) || !Number.isFinite(s1)) continue;
+                hayResultados = true;
+                if (scores[ts[0]] !== undefined) scores[ts[0]] += s0;
+                if (scores[ts[1]] !== undefined) scores[ts[1]] += s1;
+            }
+            if (!hayResultados) return null;
+            return { score1: scores[teamIds[0]], score2: scores[teamIds[1]] };
+        }
+    }
+    return null;
+}
+
+// ─── CARGAR TODOS LOS BRACKETS EN MEMORIA ────────────────────────────────────
+async function cargarBrackets() {
+    const brackets = {};
+    for (const [key, redisKey] of Object.entries(REDIS_STANDINGS)) {
+        try {
+            const raw = await redis.get(redisKey);
+            if (!raw) continue;
+            const data = JSON.parse(raw);
+            if (data?.brackets?.stages?.length > 0) brackets[key] = data.brackets;
+        } catch {}
+    }
+    return brackets;
+}
+
+// ─── DETECTAR COMPETENCIA DE UN PARTIDO ──────────────────────────────────────
+function detectarCompetencia(leagueName) {
+    const n = (leagueName || '').toLowerCase();
+    if (n.includes('libertadores')) return 'libertadores';
+    if (n.includes('sudamericana')) return 'sudamericana';
+    if (n.includes('copa argentina')) return 'copa_argentina';
+    if (n.includes('champions')) return 'champions';
+    if (n.includes('europa league')) return 'europa_league';
+    if (n.includes('conference')) return 'conference_league';
+    if (n.includes('copa am')) return 'copa_america';
+    if (n.includes('u20') || n.includes('sub-20') || n.includes('mundial sub')) return 'u20_world_cup';
+    if (n.includes('conmebol wc') || n.includes('conmebol-wc') || n.includes('eliminatorias conmebol')) return 'eliminatorias_conmebol';
+    if (n.includes('uefa world cup') || n.includes('eliminatorias uefa')) return 'eliminatorias_uefa';
+    if (n.includes('concacaf world cup') || n.includes('eliminatorias concacaf')) return 'eliminatorias_concacaf';
+    if (n.includes('euro')) return 'euro';
+    if (n.includes('repechaje') || n.includes('inter-confederation')) return 'repechaje_mundial';
+    return null;
+}
+
+// ─── ENRIQUECER PARTIDOS CON GLOBAL ──────────────────────────────────────────
+function enriquecerConGlobal(partidos, allBrackets) {
+    for (const league of partidos) {
+        const comp = detectarCompetencia(league?.name || league?.nombre || '');
+        const brackets = comp ? allBrackets[comp] : null;
+        if (!brackets) continue;
+        for (const game of (league?.games || [])) {
+            if (game.global) continue;
+            const global = calcularGlobalDesdeBrackets(game, brackets);
+            if (global) game.global = global;
+        }
+    }
+    return partidos;
 }
 
 async function fetchFechaArbitraria(ddmmyyyy) {
@@ -27,7 +122,6 @@ async function fetchFechaArbitraria(ddmmyyyy) {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    // API interna de Promiedos
     const [dd, mm, yyyy] = ddmmyyyy.split('-');
     const apiUrl = `https://api.promiedos.com.ar/games/${yyyy}-${mm}-${dd}`;
 
@@ -42,10 +136,8 @@ async function fetchFechaArbitraria(ddmmyyyy) {
     });
 
     if (!res.ok) return null;
-
     const json = await res.json();
 
-    // Normalizar: buscar leagues igual que el sync
     function buscarLeagues(obj) {
         if (!obj || typeof obj !== 'object') return null;
         if (obj.leagues && typeof obj.leagues === 'object') return obj.leagues;
@@ -59,13 +151,15 @@ async function fetchFechaArbitraria(ddmmyyyy) {
     const leagues = buscarLeagues(json);
     if (!leagues) return null;
 
-    // Convertir objeto leagues a array (igual que normalizarLeagues en sync)
-    const partidos = Array.isArray(leagues)
+    let partidos = Array.isArray(leagues)
         ? leagues
         : Object.entries(leagues).map(([key, value]) => ({ ...value, key }));
 
     if (partidos.length > 0) {
-        // Caché 10 minutos para fechas pasadas/futuras, 1 min para hoy
+        // Enriquecer con globales desde brackets
+        const allBrackets = await cargarBrackets();
+        partidos = enriquecerConGlobal(partidos, allBrackets);
+
         const hoy = hoyArgentina();
         const esHoy = ddmmyyyy === `${hoy.dia}-${hoy.mes}-${hoy.anio}`;
         await redis.set(cacheKey, JSON.stringify(partidos), 'EX', esHoy ? 60 : 600);
@@ -79,7 +173,6 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const dateParam = searchParams.get('date') || 'today';
 
-        // Fecha fija: ayer / hoy / mañana → Redis del sync
         if (dateParam === 'today' || dateParam === 'ayer' || dateParam === 'manana') {
             const redisKey =
                 dateParam === 'ayer'   ? 'chiquifutbol_matches_ayer' :
@@ -92,7 +185,6 @@ export async function GET(request) {
             return NextResponse.json(JSON.parse(cachedData));
         }
 
-        // Fecha arbitraria DD-MM-YYYY
         if (/^\d{2}-\d{2}-\d{4}$/.test(dateParam)) {
             const partidos = await fetchFechaArbitraria(dateParam);
             if (!partidos) {

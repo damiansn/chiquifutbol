@@ -543,6 +543,19 @@ function obtenerGlobal(game) {
   return { scoreA: a, scoreB: b };
 }
 
+function obtenerPenales(game) {
+  // Promiedos a veces manda scores_penalties: [a, b]
+  if (Array.isArray(game?.scores_penalties) && game.scores_penalties.length >= 2) {
+    return { a: game.scores_penalties[0], b: game.scores_penalties[1] };
+  }
+  // O dentro de cada team: team.penalty_score
+  const teams = game?.teams || [];
+  const pa = teams[0]?.penalty_score ?? teams[0]?.penalties ?? null;
+  const pb = teams[1]?.penalty_score ?? teams[1]?.penalties ?? null;
+  if (pa != null && pb != null) return { a: pa, b: pb };
+  return null;
+}
+
 function obtenerMinutoLive(game) {
   const src = game?.game_time_to_display || game?.game_time_status_to_display || game?.game_time;
   if (src != null && src !== "") {
@@ -637,17 +650,18 @@ function obtenerEstado(game) {
   if (en === 2) {
     const min = obtenerMinutoLive(game);
     let textoMin;
-    if (min === "ET") {
-      textoMin = "ET";
-    } else if (min === 45) {
-      // Promiedos congela el minuto en 45 durante el entretiempo
-      textoMin = "ET";
-    } else {
-      textoMin = min !== null ? `${min}'` : "EN VIVO";
-    }
+    if (min === "ET") textoMin = "ET";
+    else if (min === 45) textoMin = "ET";
+    else textoMin = min !== null ? `${min}'` : "EN VIVO";
     return { texto: textoMin, tipo: "live" };
   }
-  if (en === 3) return { texto: "FINAL", tipo: "final" };
+  if (en === 3) {
+    // Detectar penales o prórroga desde game_time_status_to_display
+    const gts = String(game?.game_time_status_to_display || "").toLowerCase();
+    if (gts.includes("pen")) return { texto: "FINAL (PEN)", tipo: "final", extra: "PEN" };
+    if (gts.includes("aet") || gts.includes("et") || gts.includes("prorroga") || gts.includes("extra")) return { texto: "FINAL (AET)", tipo: "final", extra: "AET" };
+    return { texto: "FINAL", tipo: "final" };
+  }
   const hora = formatearHora(game);
   if (hora && hora !== "--:--") return { texto: hora, tipo: "pending" };
   const d = obtenerFechaObjeto(game);
@@ -1046,6 +1060,7 @@ export default function Home() {
                         const scoreA = obtenerScore(game, 0);
                         const scoreB = obtenerScore(game, 1);
                         const global = obtenerGlobal(game);
+                        const penales = obtenerPenales(game);
                         const golesA = obtenerGoles(teamA);
                         const golesB = obtenerGoles(teamB);
                         const rojasA = obtenerTarjetasRojas(teamA);
@@ -1087,6 +1102,12 @@ export default function Home() {
                               {global && (
                                 <div style={S.globalBadge}>
                                   Global: <strong>{global.scoreA} - {global.scoreB}</strong>
+                                </div>
+                              )}
+                              {/* PENALES */}
+                              {penales && (
+                                <div style={{ ...S.globalBadge, color: C.amber }}>
+                                  Penales: <strong>{penales.a} - {penales.b}</strong>
                                 </div>
                               )}
                               {/* GOLES */}
