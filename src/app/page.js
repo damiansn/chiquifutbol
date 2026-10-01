@@ -81,7 +81,22 @@ function obtenerCompetition(league) {
   if (n.includes("liga mx") || n.includes("mexico")) return "mexico";
   if (n.includes("brasileirao") || n.includes("brasil")) return "brasil";
   if (n.includes("liga de primera") || n.includes("chile")) return "chile";
-  if (n.includes("liga auf uruguaya") || n.includes("uruguay")) return "uruguay"
+  if (n.includes("liga auf uruguaya") || n.includes("uruguay")) return "uruguay";
+  if (n.includes("premier league")) return "premier_league";
+  if (n.includes("efl cup") || n.includes("carabao")) return "efl_cup";
+  if (n.includes("fa cup")) return "fa_cup";
+  if (n.includes("laliga") || n.includes("la liga")) return "laliga";
+  if (n.includes("copa del rey")) return "copa_del_rey";
+  if (n.includes("supercopa") && n.includes("espa")) return "supercopa_espana";
+  if (n.includes("serie a") && !n.includes("serie b")) return "serie_a";
+  if (n.includes("coppa italia")) return "coppa_italia";
+  if (n.includes("supercoppa")) return "supercoppa_italiana";
+  if (n.includes("bundesliga")) return "bundesliga";
+  if (n.includes("dfb") || n.includes("dfb-pokal")) return "dfb_pokal";
+  if (n.includes("liga portugal") || n.includes("primeira liga")) return "liga_portugal";
+  if (n.includes("ligue 1")) return "ligue_1";
+  if (n.includes("coupe de france")) return "coupe_de_france";
+  if (n.includes("nations") || n.includes("naciones")) return "nations_league";
   return "argentina";
 }
 
