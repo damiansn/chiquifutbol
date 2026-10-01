@@ -180,6 +180,41 @@ const COMPETENCIAS = {
   coupe_de_france: {
     nombre: "Coupe de France",
     url: "https://www.promiedos.com.ar/league/coupe-de-france/dh"
+  },
+
+  u20_world_cup: {
+    nombre: "Mundial Sub-20",
+    url: "https://www.promiedos.com.ar/league/u20-world-cup/ffcf"
+  },
+
+  copa_america: {
+    nombre: "Copa América",
+    url: "https://www.promiedos.com.ar/league/copa-america/fjf"
+  },
+
+  eliminatorias_conmebol: {
+    nombre: "Eliminatorias CONMEBOL",
+    url: "https://www.promiedos.com.ar/league/conmebol-wc-qualification/gbd"
+  },
+
+  eliminatorias_uefa: {
+    nombre: "Eliminatorias UEFA",
+    url: "https://www.promiedos.com.ar/league/uefa-world-cup-qualification/fecb"
+  },
+
+  eliminatorias_concacaf: {
+    nombre: "Eliminatorias CONCACAF",
+    url: "https://www.promiedos.com.ar/league/concacaf-world-cup-qualification/gbb"
+  },
+
+  euro: {
+    nombre: "Eurocopa",
+    url: "https://www.promiedos.com.ar/league/euro/gdbg"
+  },
+
+  repechaje_mundial: {
+    nombre: "Repechaje Mundial",
+    url: "https://www.promiedos.com.ar/league/wc-qual---inter-confederation-playoffs/fhii"
   }
 
 };
@@ -221,7 +256,14 @@ const REDIS_KEYS = {
   dfb_pokal: "chiquifutbol_dfb_pokal",
   liga_portugal: "chiquifutbol_liga_portugal",
   ligue_1: "chiquifutbol_ligue_1",
-  coupe_de_france: "chiquifutbol_coupe_de_france"
+  coupe_de_france: "chiquifutbol_coupe_de_france",
+  u20_world_cup: "chiquifutbol_u20_world_cup",
+  copa_america: "chiquifutbol_copa_america",
+  eliminatorias_conmebol: "chiquifutbol_eliminatorias_conmebol",
+  eliminatorias_uefa: "chiquifutbol_eliminatorias_uefa",
+  eliminatorias_concacaf: "chiquifutbol_eliminatorias_concacaf",
+  euro: "chiquifutbol_euro",
+  repechaje_mundial: "chiquifutbol_repechaje_mundial"
 }
 
 // ==========================================

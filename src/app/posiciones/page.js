@@ -56,7 +56,14 @@ const COMPETENCIAS = {
   dfb_pokal:         { nombre: "DFB Pokal",                 corto: "DFB Pokal" },
   liga_portugal:     { nombre: "Liga Portugal",             corto: "Liga Portugal" },
   ligue_1:           { nombre: "Ligue 1",                   corto: "Ligue 1" },
-  coupe_de_france:   { nombre: "Coupe de France",           corto: "Coupe de France" }
+  coupe_de_france:   { nombre: "Coupe de France",           corto: "Coupe de France" },
+  u20_world_cup:     { nombre: "Mundial Sub-20",             corto: "Mundial Sub-20" },
+  copa_america:      { nombre: "Copa América",               corto: "Copa América" },
+  eliminatorias_conmebol: { nombre: "Eliminatorias CONMEBOL", corto: "Elim. CONMEBOL" },
+  eliminatorias_uefa:     { nombre: "Eliminatorias UEFA",     corto: "Elim. UEFA" },
+  eliminatorias_concacaf: { nombre: "Eliminatorias CONCACAF", corto: "Elim. CONCACAF" },
+  euro:              { nombre: "Eurocopa",                   corto: "Eurocopa" },
+  repechaje_mundial: { nombre: "Repechaje Mundial",          corto: "Repechaje" }
 };
 
 const NAV_ITEMS = [
@@ -93,6 +100,13 @@ const NAV_ITEMS = [
   ["liga_portugal",     "Liga Portugal"],
   ["ligue_1",           "Ligue 1"],
   ["coupe_de_france",   "Coupe de France"],
+  ["u20_world_cup",     "Mundial Sub-20"],
+  ["copa_america",      "Copa América"],
+  ["eliminatorias_conmebol", "Elim. CONMEBOL"],
+  ["eliminatorias_uefa",     "Elim. UEFA"],
+  ["eliminatorias_concacaf", "Elim. CONCACAF"],
+  ["euro",              "Eurocopa"],
+  ["repechaje_mundial", "Repechaje"],
 ];
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────

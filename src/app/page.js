@@ -96,6 +96,13 @@ function obtenerCompetition(league) {
   if (n.includes("liga portugal") || n.includes("primeira liga")) return "liga_portugal";
   if (n.includes("ligue 1")) return "ligue_1";
   if (n.includes("coupe de france")) return "coupe_de_france";
+  if (n.includes("mundial sub") || n.includes("u20 world") || n.includes("sub-20") || n.includes("sub 20")) return "u20_world_cup";
+  if (n.includes("copa am")) return "copa_america";
+  if (n.includes("eliminatorias conmebol") || n.includes("conmebol wc") || n.includes("conmebol-wc")) return "eliminatorias_conmebol";
+  if (n.includes("eliminatorias uefa") || n.includes("uefa world cup qual") || n.includes("uefa wc")) return "eliminatorias_uefa";
+  if (n.includes("eliminatorias concacaf") || n.includes("concacaf world cup qual") || n.includes("concacaf wc")) return "eliminatorias_concacaf";
+  if (n.includes("eurocopa") || n.includes("euro 20") || n.includes("uefa euro")) return "euro";
+  if (n.includes("repechaje") || n.includes("inter-confederation") || n.includes("inter confederation")) return "repechaje_mundial";
   if (n.includes("nations") || n.includes("naciones")) return "nations_league";
   return "argentina";
 }
