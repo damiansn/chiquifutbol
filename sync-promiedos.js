@@ -1719,7 +1719,8 @@ function construirMapaEquiposDesdeTabla(tablaData) {
   }
 
   // Desde games
-  for (const game of (tablaData?.games || [])) {
+  const gamesArr = Array.isArray(tablaData?.games) ? tablaData.games : [];
+  for (const game of gamesArr) {
     for (const team of (game?.teams || [])) {
       if (team?.id && team?.name) agregarEquipo(team.id, team.name);
     }
