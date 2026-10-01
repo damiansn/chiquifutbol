@@ -710,6 +710,52 @@ export default function Home() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teamFixtures, setTeamFixtures] = useState([]);
   const [teamFixturesLoading, setTeamFixturesLoading] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  // Convierte date a DD-MM-YYYY para mostrar en el input
+  function dateToInput(d) {
+    if (d === "today" || d === "ayer" || d === "manana") {
+      const offset = d === "ayer" ? -1 : d === "manana" ? 1 : 0;
+      const now = new Date();
+      now.setDate(now.getDate() + offset);
+      const p = v => String(v).padStart(2, "0");
+      return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+    }
+    // DD-MM-YYYY → YYYY-MM-DD
+    const [dd, mm, yyyy] = d.split("-");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function inputToDate(val) {
+    // YYYY-MM-DD → DD-MM-YYYY
+    const [yyyy, mm, dd] = val.split("-");
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  function moverDia(n) {
+    const current = dateToInput(date);
+    const d = new Date(current);
+    d.setDate(d.getDate() + n);
+    const p = v => String(v).padStart(2, "0");
+    const nuevo = `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}`;
+    // Si es hoy/ayer/mañana usar los alias
+    const hoy = new Date();
+    const ayer = new Date(); ayer.setDate(hoy.getDate() - 1);
+    const manana = new Date(); manana.setDate(hoy.getDate() + 1);
+    const fmt = x => `${p(x.getDate())}-${p(x.getMonth() + 1)}-${x.getFullYear()}`;
+    if (nuevo === fmt(hoy)) setDate("today");
+    else if (nuevo === fmt(ayer)) setDate("ayer");
+    else if (nuevo === fmt(manana)) setDate("manana");
+    else setDate(nuevo);
+  }
+
+  function labelFecha() {
+    if (date === "today") return "HOY";
+    if (date === "ayer") return "AYER";
+    if (date === "manana") return "MAÑANA";
+    const [dd, mm, yyyy] = date.split("-");
+    return `${dd}/${mm}/${yyyy}`;
+  }
 
   async function cargarPartidos() {
     try {
@@ -771,7 +817,7 @@ export default function Home() {
   const [ligasOcultas, setLigasOcultas] = useState(new Set());
 
   // Resetear filtros cuando cambia la fecha
-  useEffect(() => { setLigasOcultas(new Set()); }, [date]);
+  useEffect(() => { setLigasOcultas(new Set()); setShowCalendar(false); }, [date]);
 
   function toggleLiga(key) {
     setLigasOcultas(prev => {
@@ -924,10 +970,28 @@ export default function Home() {
 
         {/* SELECTOR FECHA */}
         <div style={S.dateBar}>
-          <span style={{ fontWeight: "bold", marginRight: "4px", color: C.textMuted, fontSize: "10px" }}>VER:</span>
-          {[["ayer", "◀ AYER"], ["today", "HOY"], ["manana", "MAÑANA ▶"]].map(([v, l]) => (
-            <button key={v} onClick={() => setDate(v)} style={date === v ? S.dateBtnActive : S.dateBtn}>{l}</button>
-          ))}
+          <button onClick={() => moverDia(-1)} style={S.dateBtn}>◀</button>
+          <button
+            onClick={() => setDate("today")}
+            style={date === "today" ? S.dateBtnActive : S.dateBtn}
+          >HOY</button>
+          <span style={{
+            padding: "2px 12px", fontWeight: "bold", fontSize: "11px",
+            color: ["today","ayer","manana"].includes(date) ? C.textMuted : C.white,
+            minWidth: 80, textAlign: "center", display: "inline-block"
+          }}>
+            {labelFecha()}
+          </span>
+          <button onClick={() => moverDia(1)} style={S.dateBtn}>▶</button>
+          <input
+            type="date"
+            value={dateToInput(date)}
+            onChange={e => { if (e.target.value) setDate(inputToDate(e.target.value)); }}
+            style={{
+              marginLeft: "6px", background: C.surfaceAlt, border: `1px solid ${C.border}`,
+              color: C.textDim, padding: "2px 4px", fontSize: "10px", cursor: "pointer"
+            }}
+          />
         </div>
 
         {error && <div style={S.errorBox}>⚠ {error}</div>}
