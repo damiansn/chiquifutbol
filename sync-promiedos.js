@@ -110,6 +110,76 @@ const COMPETENCIAS = {
   uruguay: {
     nombre: "Liga AUF Uruguaya",
     url: "https://www.promiedos.com.ar/league/uruguayan-championship/gbh"
+  },
+
+  premier_league: {
+    nombre: "Premier League",
+    url: "https://www.promiedos.com.ar/league/premier-league/h"
+  },
+
+  efl_cup: {
+    nombre: "EFL Cup",
+    url: "https://www.promiedos.com.ar/league/efl-cup/j"
+  },
+
+  fa_cup: {
+    nombre: "FA Cup",
+    url: "https://www.promiedos.com.ar/league/fa-cup/i"
+  },
+
+  laliga: {
+    nombre: "LaLiga",
+    url: "https://www.promiedos.com.ar/league/laliga/bb"
+  },
+
+  copa_del_rey: {
+    nombre: "Copa del Rey",
+    url: "https://www.promiedos.com.ar/league/copa-del-rey/bd"
+  },
+
+  supercopa_espana: {
+    nombre: "Supercopa de España",
+    url: "https://www.promiedos.com.ar/league/super-cup/bf"
+  },
+
+  serie_a: {
+    nombre: "Serie A",
+    url: "https://www.promiedos.com.ar/league/serie-a/bh"
+  },
+
+  coppa_italia: {
+    nombre: "Coppa Italia",
+    url: "https://www.promiedos.com.ar/league/coppa-italia/ca"
+  },
+
+  supercoppa_italiana: {
+    nombre: "Supercoppa Italiana",
+    url: "https://www.promiedos.com.ar/league/supercoppa-italiana/cd"
+  },
+
+  bundesliga: {
+    nombre: "Bundesliga",
+    url: "https://www.promiedos.com.ar/league/bundesliga/cf"
+  },
+
+  dfb_pokal: {
+    nombre: "DFB Pokal",
+    url: "https://www.promiedos.com.ar/league/dfb-pokal/ci"
+  },
+
+  liga_portugal: {
+    nombre: "Liga Portugal",
+    url: "https://www.promiedos.com.ar/league/liga-portugal/hd"
+  },
+
+  ligue_1: {
+    nombre: "Ligue 1",
+    url: "https://www.promiedos.com.ar/league/ligue-1/df"
+  },
+
+  coupe_de_france: {
+    nombre: "Coupe de France",
+    url: "https://www.promiedos.com.ar/league/coupe-de-france/dh"
   }
 
 };
@@ -137,7 +207,21 @@ const REDIS_KEYS = {
   mexico: "chiquifutbol_mexico",
   brasil: "chiquifutbol_brasil",
   chile: "chiquifutbol_chile",
-  uruguay: "chiquifutbol_uruguay"
+  uruguay: "chiquifutbol_uruguay",
+  premier_league: "chiquifutbol_premier_league",
+  efl_cup: "chiquifutbol_efl_cup",
+  fa_cup: "chiquifutbol_fa_cup",
+  laliga: "chiquifutbol_laliga",
+  copa_del_rey: "chiquifutbol_copa_del_rey",
+  supercopa_espana: "chiquifutbol_supercopa_espana",
+  serie_a: "chiquifutbol_serie_a",
+  coppa_italia: "chiquifutbol_coppa_italia",
+  supercoppa_italiana: "chiquifutbol_supercoppa_italiana",
+  bundesliga: "chiquifutbol_bundesliga",
+  dfb_pokal: "chiquifutbol_dfb_pokal",
+  liga_portugal: "chiquifutbol_liga_portugal",
+  ligue_1: "chiquifutbol_ligue_1",
+  coupe_de_france: "chiquifutbol_coupe_de_france"
 }
 
 // ==========================================

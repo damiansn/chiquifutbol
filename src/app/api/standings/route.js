@@ -99,6 +99,76 @@ const COMPETENCIAS = {
   uruguay: {
     nombre: "Liga AUF Uruguaya",
     redis: "chiquifutbol_uruguay",
+  },
+
+  premier_league: {
+    nombre: "Premier League",
+    redis: "chiquifutbol_premier_league",
+  },
+
+  efl_cup: {
+    nombre: "EFL Cup",
+    redis: "chiquifutbol_efl_cup",
+  },
+
+  fa_cup: {
+    nombre: "FA Cup",
+    redis: "chiquifutbol_fa_cup",
+  },
+
+  laliga: {
+    nombre: "LaLiga",
+    redis: "chiquifutbol_laliga",
+  },
+
+  copa_del_rey: {
+    nombre: "Copa del Rey",
+    redis: "chiquifutbol_copa_del_rey",
+  },
+
+  supercopa_espana: {
+    nombre: "Supercopa de España",
+    redis: "chiquifutbol_supercopa_espana",
+  },
+
+  serie_a: {
+    nombre: "Serie A",
+    redis: "chiquifutbol_serie_a",
+  },
+
+  coppa_italia: {
+    nombre: "Coppa Italia",
+    redis: "chiquifutbol_coppa_italia",
+  },
+
+  supercoppa_italiana: {
+    nombre: "Supercoppa Italiana",
+    redis: "chiquifutbol_supercoppa_italiana",
+  },
+
+  bundesliga: {
+    nombre: "Bundesliga",
+    redis: "chiquifutbol_bundesliga",
+  },
+
+  dfb_pokal: {
+    nombre: "DFB Pokal",
+    redis: "chiquifutbol_dfb_pokal",
+  },
+
+  liga_portugal: {
+    nombre: "Liga Portugal",
+    redis: "chiquifutbol_liga_portugal",
+  },
+
+  ligue_1: {
+    nombre: "Ligue 1",
+    redis: "chiquifutbol_ligue_1",
+  },
+
+  coupe_de_france: {
+    nombre: "Coupe de France",
+    redis: "chiquifutbol_coupe_de_france",
   }
 };
 

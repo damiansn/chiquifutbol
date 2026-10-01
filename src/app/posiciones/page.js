@@ -41,8 +41,22 @@ const COMPETENCIAS = {
   paraguay:         { nombre: "Copa de Primera",              corto: "Paraguay" },
   mexico:           { nombre: "Liga MX",                      corto: "Liga MX" },
   brasil:           { nombre: "Brasileirao",                  corto: "Brasileirao" },
-  chile:           { nombre: "Liga de Primera",               corto: "Liga de Primera" },
-  uruguay:           { nombre: "Liga AUF Uruguaya",           corto: "Liga AUF Uruguaya" }
+  chile:            { nombre: "Liga de Primera",          corto: "Chile" },
+  uruguay:           { nombre: "Liga AUF Uruguaya",         corto: "Uruguay" },
+  premier_league:    { nombre: "Premier League",            corto: "Premier League" },
+  efl_cup:           { nombre: "EFL Cup",                   corto: "EFL Cup" },
+  fa_cup:            { nombre: "FA Cup",                    corto: "FA Cup" },
+  laliga:            { nombre: "LaLiga",                    corto: "LaLiga" },
+  copa_del_rey:      { nombre: "Copa del Rey",              corto: "Copa del Rey" },
+  supercopa_espana:  { nombre: "Supercopa de España",       corto: "Supercopa ESP" },
+  serie_a:           { nombre: "Serie A",                   corto: "Serie A" },
+  coppa_italia:      { nombre: "Coppa Italia",              corto: "Coppa Italia" },
+  supercoppa_italiana:{ nombre: "Supercoppa Italiana",      corto: "Supercoppa ITA" },
+  bundesliga:        { nombre: "Bundesliga",                corto: "Bundesliga" },
+  dfb_pokal:         { nombre: "DFB Pokal",                 corto: "DFB Pokal" },
+  liga_portugal:     { nombre: "Liga Portugal",             corto: "Liga Portugal" },
+  ligue_1:           { nombre: "Ligue 1",                   corto: "Ligue 1" },
+  coupe_de_france:   { nombre: "Coupe de France",           corto: "Coupe de France" }
 };
 
 const NAV_ITEMS = [
@@ -64,7 +78,21 @@ const NAV_ITEMS = [
   ["mexico",            "México"],
   ["brasil",            "Brasil"],
   ["chile",             "Chile"],
-  ["uruguay",            "Uruguay"]
+  ["uruguay",           "Uruguay"],
+  ["premier_league",    "Premier"],
+  ["efl_cup",           "EFL Cup"],
+  ["fa_cup",            "FA Cup"],
+  ["laliga",            "LaLiga"],
+  ["copa_del_rey",      "Copa del Rey"],
+  ["supercopa_espana",  "Supercopa ESP"],
+  ["serie_a",           "Serie A"],
+  ["coppa_italia",      "Coppa Italia"],
+  ["supercoppa_italiana","Supercoppa ITA"],
+  ["bundesliga",        "Bundesliga"],
+  ["dfb_pokal",         "DFB Pokal"],
+  ["liga_portugal",     "Liga Portugal"],
+  ["ligue_1",           "Ligue 1"],
+  ["coupe_de_france",   "Coupe de France"],
 ];
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
