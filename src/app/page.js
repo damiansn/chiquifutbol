@@ -42,7 +42,7 @@ const S = {
   statusFinal:   { color: C.red, fontSize: "10px" },
   statusPending: { color: C.amber, fontSize: "10px" },
   golesRow:      { display: "grid", gridTemplateColumns: "1fr 1fr", fontSize: "10px", color: C.textMuted, marginTop: "2px" },
-  globalBadge:   { fontSize: "10px", color: C.textMuted, textAlign: "center", borderTop: `1px solid ${C.borderSub}`, padding: "2px 0" },
+  globalBadge:   { fontSize: "9px", color: C.textMuted, textAlign: "center", padding: "2px 0 0", display: "flex", justifyContent: "center", alignItems: "center", gap: "5px" },
   redCard:       { display: "inline-block", width: "6px", height: "9px", background: C.red, marginLeft: "2px", verticalAlign: "middle" },
   searchWrap:    { position: "relative", display: "inline-block" },
   searchInput:   { background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, padding: "3px 7px", fontSize: "11px", width: "190px", outline: "none" },
@@ -543,16 +543,75 @@ function obtenerGlobal(game) {
   return { scoreA: a, scoreB: b };
 }
 
+function normalizarResultadoNumerico(valor) {
+  if (valor == null || valor === "") return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
 function obtenerPenales(game) {
-  // Promiedos a veces manda scores_penalties: [a, b]
-  if (Array.isArray(game?.scores_penalties) && game.scores_penalties.length >= 2) {
-    return { a: game.scores_penalties[0], b: game.scores_penalties[1] };
+  const arrays = [
+    game?.scores_penalties,
+    game?.scores_penalty,
+    game?.score_penalties,
+    game?.score_penalty,
+    game?.penalty_scores,
+    game?.penalty_score,
+    game?.penalties_scores,
+    game?.penalties_score,
+  ];
+
+  for (const arr of arrays) {
+    if (Array.isArray(arr) && arr.length >= 2) {
+      const a = normalizarResultadoNumerico(arr[0]);
+      const b = normalizarResultadoNumerico(arr[1]);
+      if (a != null && b != null) return { a, b };
+    }
   }
-  // O dentro de cada team: team.penalty_score
+
   const teams = game?.teams || [];
-  const pa = teams[0]?.penalty_score ?? teams[0]?.penalties ?? null;
-  const pb = teams[1]?.penalty_score ?? teams[1]?.penalties ?? null;
-  if (pa != null && pb != null) return { a: pa, b: pb };
+  const teamKeys = ["penalty_score", "penalties", "shootout_score", "shootout_goals", "penalty_goals"];
+  for (const key of teamKeys) {
+    const pa = normalizarResultadoNumerico(teams[0]?.[key]);
+    const pb = normalizarResultadoNumerico(teams[1]?.[key]);
+    if (pa != null && pb != null) return { a: pa, b: pb };
+  }
+
+  const teamScorePairs = [
+    [game?.team1_penalty_score, game?.team2_penalty_score],
+    [game?.team_1_penalty_score, game?.team_2_penalty_score],
+    [game?.local_penalty_score, game?.visitor_penalty_score],
+    [game?.home_penalty_score, game?.away_penalty_score],
+    [game?.team1_penalties, game?.team2_penalties],
+    [game?.team_1_penalties, game?.team_2_penalties],
+  ];
+
+  for (const [a, b] of teamScorePairs) {
+    const pa = normalizarResultadoNumerico(a);
+    const pb = normalizarResultadoNumerico(b);
+    if (pa != null && pb != null) return { a: pa, b: pb };
+  }
+
+  return null;
+}
+
+function obtenerMarcadorPrincipal(game) {
+  const scoreA = normalizarResultadoNumerico(obtenerScore(game, 0));
+  const scoreB = normalizarResultadoNumerico(obtenerScore(game, 1));
+  const penales = obtenerPenales(game);
+
+  if (penales && Number.isFinite(scoreA) && Number.isFinite(scoreB)) {
+    return { a: penales.a, b: penales.b, regularA: scoreA, regularB: scoreB };
+  }
+
+  if (penales) {
+    return { a: penales.a, b: penales.b, regularA: null, regularB: null };
+  }
+
+  if (Number.isFinite(scoreA) && Number.isFinite(scoreB)) {
+    return { a: scoreA, b: scoreB, regularA: scoreA, regularB: scoreB };
+  }
+
   return null;
 }
 
@@ -1061,6 +1120,7 @@ export default function Home() {
                         const scoreB = obtenerScore(game, 1);
                         const global = obtenerGlobal(game);
                         const penales = obtenerPenales(game);
+                        const marcadorPrincipal = obtenerMarcadorPrincipal(game);
                         const golesA = obtenerGoles(teamA);
                         const golesB = obtenerGoles(teamB);
                         const rojasA = obtenerTarjetasRojas(teamA);
@@ -1080,34 +1140,40 @@ export default function Home() {
                             </td>
                             {/* PARTIDO */}
                             <td style={{ padding: "4px 6px", verticalAlign: "middle" }}>
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 40px 1fr", alignItems: "center", gap: "2px" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                                 {/* LOCAL */}
-                                <div style={{ textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "3px" }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "3px", minWidth: 0, flex: 1 }}>
                                   {rojasA > 0 && Array.from({ length: rojasA }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
-                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text }}>{nombreEquipo(teamA)}</span>
+                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamA)}</span>
                                   <EscudoImg team={teamA} />
                                 </div>
                                 {/* MARCADOR */}
-                                <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "13px", color: isLive ? C.green : isFinal ? C.textMuted : C.white, whiteSpace: "nowrap" }}>
-                                  {scoreA} - {scoreB}
+                                <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "13px", color: isLive ? C.green : isFinal ? C.textMuted : C.white, whiteSpace: "nowrap", flexShrink: 0 }}>
+                                  {penales && marcadorPrincipal && marcadorPrincipal.regularA != null && marcadorPrincipal.regularB != null
+                                    ? `(${marcadorPrincipal.a}) ${marcadorPrincipal.regularA} - ${marcadorPrincipal.regularB} (${marcadorPrincipal.b})`
+                                    : penales && marcadorPrincipal
+                                      ? `(${marcadorPrincipal.a}) - (${marcadorPrincipal.b})`
+                                      : `${scoreA} - ${scoreB}`}
                                 </div>
                                 {/* VISITANTE */}
-                                <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "3px", minWidth: 0, flex: 1 }}>
                                   <EscudoImg team={teamB} />
-                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text }}>{nombreEquipo(teamB)}</span>
+                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamB)}</span>
                                   {rojasB > 0 && Array.from({ length: rojasB }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
                                 </div>
                               </div>
                               {/* GLOBAL */}
                               {global && (
-                                <div style={S.globalBadge}>
-                                  Global: <strong>{global.scoreA} - {global.scoreB}</strong>
+                                <div style={{ ...S.globalBadge, marginTop: "2px" }}>
+                                  <span style={{ background: "rgba(15,23,42,0.95)", color: C.text, fontWeight: 700, padding: "1px 6px", borderRadius: "999px", border: "1px solid rgba(148,163,184,0.35)", lineHeight: 1.2 }}>Global</span>
+                                  <span style={{ color: C.text, fontWeight: 700 }}>{global.scoreA} - {global.scoreB}</span>
                                 </div>
                               )}
                               {/* PENALES */}
                               {penales && (
-                                <div style={{ ...S.globalBadge, color: C.amber }}>
-                                  Penales: <strong>{penales.a} - {penales.b}</strong>
+                                <div style={{ ...S.globalBadge, color: C.amber, marginTop: "2px" }}>
+                                  <span style={{ background: "rgba(245,158,11,0.14)", color: C.amber, fontWeight: 700, padding: "1px 6px", borderRadius: "999px", border: `1px solid ${C.amber}55`, lineHeight: 1.2 }}>Penales</span>
+                                  <span style={{ color: C.amber, fontWeight: 700 }}>{penales.a} - {penales.b}</span>
                                 </div>
                               )}
                               {/* GOLES */}
