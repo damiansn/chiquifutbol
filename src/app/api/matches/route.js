@@ -123,20 +123,8 @@ async function fetchFechaArbitraria(ddmmyyyy) {
     if (cached) return JSON.parse(cached);
 
     const [dd, mm, yyyy] = ddmmyyyy.split('-');
-    const apiUrl = `https://api.promiedos.com.ar/games/${yyyy}-${mm}-${dd}`;
-
-    const res = await fetch(apiUrl, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-            'Accept': 'application/json',
-            'Referer': 'https://www.promiedos.com.ar/',
-            'Origin': 'https://www.promiedos.com.ar',
-        },
-        next: { revalidate: 0 }
-    });
-
-    if (!res.ok) return null;
-    const json = await res.json();
+    const apiUrl = `https://api.promiedos.com.ar/games/${dd}-${mm}-${yyyy}`;
+    const pageUrl = `https://www.promiedos.com.ar/games/${dd}-${mm}-${yyyy}`;
 
     function buscarLeagues(obj) {
         if (!obj || typeof obj !== 'object') return null;
@@ -148,7 +136,47 @@ async function fetchFechaArbitraria(ddmmyyyy) {
         return null;
     }
 
-    const leagues = buscarLeagues(json);
+    let json = null;
+    let res = await fetch(apiUrl, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+            'Accept': 'application/json',
+            'Referer': 'https://www.promiedos.com.ar/',
+            'Origin': 'https://www.promiedos.com.ar',
+        },
+        next: { revalidate: 0 }
+    });
+
+    if (res.ok) {
+        try {
+            json = await res.json();
+        } catch {}
+    }
+
+    let leagues = buscarLeagues(json);
+
+    if (!leagues) {
+        try {
+            const pageRes = await fetch(pageUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml',
+                    'Referer': 'https://www.promiedos.com.ar/',
+                },
+                next: { revalidate: 0 }
+            });
+            if (pageRes.ok) {
+                const html = await pageRes.text();
+                const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+                if (match) {
+                    const pageJson = JSON.parse(match[1]);
+                    leagues = buscarLeagues(pageJson);
+                    if (leagues) json = pageJson;
+                }
+            }
+        } catch {}
+    }
+
     if (!leagues) return null;
 
     let partidos = Array.isArray(leagues)

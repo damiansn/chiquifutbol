@@ -42,7 +42,7 @@ const S = {
   statusFinal:   { color: C.red, fontSize: "10px" },
   statusPending: { color: C.amber, fontSize: "10px" },
   golesRow:      { display: "grid", gridTemplateColumns: "1fr 1fr", fontSize: "10px", color: C.textMuted, marginTop: "2px" },
-  globalBadge:   { fontSize: "9px", color: C.textMuted, textAlign: "center", padding: "2px 0 0", display: "flex", justifyContent: "center", alignItems: "center", gap: "5px" },
+  globalBadge:   { fontSize: "9px", color: C.textMuted, textAlign: "center", padding: "2px 0 0", display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "5px", lineHeight: 1.2, whiteSpace: "nowrap" },
   redCard:       { display: "inline-block", width: "6px", height: "9px", background: C.red, marginLeft: "2px", verticalAlign: "middle" },
   searchWrap:    { position: "relative", display: "inline-block" },
   searchInput:   { background: C.surfaceAlt, border: `1px solid ${C.border}`, color: C.text, padding: "3px 7px", fontSize: "11px", width: "190px", outline: "none" },
@@ -534,47 +534,133 @@ function obtenerTV(game) {
   return Array.isArray(game?.tv_networks) ? game.tv_networks : [];
 }
 
+function obtenerParejaDesdeValor(valor) {
+  if (valor == null || valor === "") return null;
+
+  if (Array.isArray(valor)) {
+    const a = normalizarResultadoNumerico(valor[0]);
+    const b = normalizarResultadoNumerico(valor[1]);
+    if (a != null && b != null) return { a, b };
+  }
+
+  if (typeof valor === "object") {
+    const pairs = [
+      [valor.score1, valor.score2],
+      [valor.scoreA, valor.scoreB],
+      [valor.team1_score, valor.team2_score],
+      [valor.home_score, valor.away_score],
+      [valor.local_score, valor.visit_score],
+      [valor.local, valor.visitor],
+      [valor.team1, valor.team2],
+      [valor.home, valor.away],
+      [valor.score?.[0], valor.score?.[1]],
+      [valor.scores?.[0], valor.scores?.[1]],
+      [valor.result?.[0], valor.result?.[1]],
+      [valor.penalty_score, valor.penalty_score_away],
+      [valor.penalty_score?.home, valor.penalty_score?.away],
+      [valor.penalties?.home, valor.penalties?.away],
+      [valor.penalty?.score1, valor.penalty?.score2],
+      [valor.penalty?.home, valor.penalty?.away],
+    ];
+
+    for (const [a, b] of pairs) {
+      const pa = normalizarResultadoNumerico(a);
+      const pb = normalizarResultadoNumerico(b);
+      if (pa != null && pb != null) return { a: pa, b: pb };
+    }
+  }
+
+  if (typeof valor === "string") {
+    const texto = valor.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
+
+    const regexPenales = /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i;
+    const matchPenales = texto.match(regexPenales);
+    if (matchPenales) return { a: Number(matchPenales[1]), b: Number(matchPenales[4]) };
+
+    const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
+    const matchAlternativo = texto.match(regexAlternativo);
+    if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
+
+    const regexSimple = /(\d+)\s*[-:]\s*(\d+)/;
+    const matchSimple = texto.match(regexSimple);
+    if (matchSimple) return { a: Number(matchSimple[1]), b: Number(matchSimple[2]) };
+  }
+
+  return null;
+}
+
 function obtenerGlobal(game) {
   if (!game?.global) return null;
+
   const g = game.global;
-  let a = g.score1 ?? g.team1?.score;
-  let b = g.score2 ?? g.team2?.score;
-  if (a == null || b == null) return null;
-  return { scoreA: a, scoreB: b };
+  const pair = obtenerParejaDesdeValor({
+    score1: g.score1 ?? g.scoreA ?? g.team1?.score ?? g.home?.score,
+    score2: g.score2 ?? g.scoreB ?? g.team2?.score ?? g.away?.score,
+    team1: g.team1,
+    team2: g.team2,
+    score: g.score,
+    scores: g.scores,
+  });
+
+  if (!pair) return null;
+  return { scoreA: pair.a, scoreB: pair.b };
 }
 
 function normalizarResultadoNumerico(valor) {
   if (valor == null || valor === "") return null;
+  if (typeof valor === "string") {
+    const m = valor.trim().match(/-?\d+(?:[.,]\d+)?/);
+    if (!m) return null;
+    const n = Number(m[0].replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
   const n = Number(valor);
   return Number.isFinite(n) ? n : null;
 }
 
 function obtenerPenales(game) {
-  const arrays = [
-    game?.scores_penalties,
-    game?.scores_penalty,
-    game?.score_penalties,
-    game?.score_penalty,
-    game?.penalty_scores,
-    game?.penalty_score,
-    game?.penalties_scores,
-    game?.penalties_score,
+  const candidates = [
+    ["scores_penalties", game?.scores_penalties],
+    ["scores_penalty", game?.scores_penalty],
+    ["score_penalties", game?.score_penalties],
+    ["score_penalty", game?.score_penalty],
+    ["penalty_scores", game?.penalty_scores],
+    ["penalty_score", game?.penalty_score],
+    ["penalties_scores", game?.penalties_scores],
+    ["penalties_score", game?.penalties_score],
+    ["penalty_result", game?.penalty_result],
+    ["shootout_result", game?.shootout_result],
+    ["penaltyResult", game?.penaltyResult],
+    ["result", game?.result],
+    ["scoreline", game?.scoreline],
+    ["match_result", game?.match_result],
+    ["resultado", game?.resultado],
   ];
 
-  for (const arr of arrays) {
-    if (Array.isArray(arr) && arr.length >= 2) {
-      const a = normalizarResultadoNumerico(arr[0]);
-      const b = normalizarResultadoNumerico(arr[1]);
-      if (a != null && b != null) return { a, b };
+  for (const [key, candidate] of candidates) {
+    if (typeof candidate === "string") {
+      const texto = candidate.toLowerCase();
+      const keyName = String(key).toLowerCase();
+      const esPenalLike = keyName.includes("pen") || keyName.includes("shootout") || texto.includes("pen") || texto.includes("shootout") || texto.includes("(");
+      if (!esPenalLike) continue;
     }
+    const pair = obtenerParejaDesdeValor(candidate);
+    if (pair) return pair;
   }
 
   const teams = game?.teams || [];
-  const teamKeys = ["penalty_score", "penalties", "shootout_score", "shootout_goals", "penalty_goals"];
+  const teamKeys = [
+    "penalty_score",
+    "penalties",
+    "shootout_score",
+    "shootout_goals",
+    "penalty_goals",
+    "penalty_result",
+    "shootout_result",
+  ];
   for (const key of teamKeys) {
-    const pa = normalizarResultadoNumerico(teams[0]?.[key]);
-    const pb = normalizarResultadoNumerico(teams[1]?.[key]);
-    if (pa != null && pb != null) return { a: pa, b: pb };
+    const pair = obtenerParejaDesdeValor([teams[0]?.[key], teams[1]?.[key]]);
+    if (pair) return pair;
   }
 
   const teamScorePairs = [
@@ -584,12 +670,21 @@ function obtenerPenales(game) {
     [game?.home_penalty_score, game?.away_penalty_score],
     [game?.team1_penalties, game?.team2_penalties],
     [game?.team_1_penalties, game?.team_2_penalties],
+    [game?.team1?.penalty_score, game?.team2?.penalty_score],
+    [game?.team1?.penalties, game?.team2?.penalties],
+    [game?.home_team?.penalty_score, game?.away_team?.penalty_score],
+    [game?.local_team?.penalty_score, game?.visitor_team?.penalty_score],
   ];
 
   for (const [a, b] of teamScorePairs) {
-    const pa = normalizarResultadoNumerico(a);
-    const pb = normalizarResultadoNumerico(b);
-    if (pa != null && pb != null) return { a: pa, b: pb };
+    const pair = obtenerParejaDesdeValor([a, b]);
+    if (pair) return pair;
+  }
+
+  const textKeys = ["result", "description", "summary", "label", "status_text", "game_time_status_to_display"];
+  for (const key of textKeys) {
+    const pair = obtenerParejaDesdeValor(game?.[key]);
+    if (pair) return pair;
   }
 
   return null;
@@ -1164,16 +1259,16 @@ export default function Home() {
                               </div>
                               {/* GLOBAL */}
                               {global && (
-                                <div style={{ ...S.globalBadge, marginTop: "2px" }}>
-                                  <span style={{ background: "rgba(15,23,42,0.95)", color: C.text, fontWeight: 700, padding: "1px 6px", borderRadius: "999px", border: "1px solid rgba(148,163,184,0.35)", lineHeight: 1.2 }}>Global</span>
-                                  <span style={{ color: C.text, fontWeight: 700 }}>{global.scoreA} - {global.scoreB}</span>
+                                <div style={{ ...S.globalBadge, marginTop: "2px", width: "fit-content" }}>
+                                  <span style={{ background: "rgba(15,23,42,0.95)", color: C.text, fontWeight: 700, padding: "1px 6px", borderRadius: "999px", border: "1px solid rgba(148,163,184,0.35)", lineHeight: 1.2, fontSize: "8px", letterSpacing: "0.04em", textTransform: "uppercase" }}>Global</span>
+                                  <span style={{ color: C.text, fontWeight: 700, fontSize: "10px" }}>{global.scoreA} - {global.scoreB}</span>
                                 </div>
                               )}
                               {/* PENALES */}
                               {penales && (
-                                <div style={{ ...S.globalBadge, color: C.amber, marginTop: "2px" }}>
-                                  <span style={{ background: "rgba(245,158,11,0.14)", color: C.amber, fontWeight: 700, padding: "1px 6px", borderRadius: "999px", border: `1px solid ${C.amber}55`, lineHeight: 1.2 }}>Penales</span>
-                                  <span style={{ color: C.amber, fontWeight: 700 }}>{penales.a} - {penales.b}</span>
+                                <div style={{ ...S.globalBadge, color: C.amber, marginTop: "2px", width: "fit-content" }}>
+                                  <span style={{ background: "rgba(245,158,11,0.14)", color: C.amber, fontWeight: 700, padding: "1px 6px", borderRadius: "999px", border: `1px solid ${C.amber}55`, lineHeight: 1.2, fontSize: "8px", letterSpacing: "0.04em", textTransform: "uppercase" }}>Penales</span>
+                                  <span style={{ color: C.amber, fontWeight: 700, fontSize: "10px" }}>{penales.a} - {penales.b}</span>
                                 </div>
                               )}
                               {/* GOLES */}
