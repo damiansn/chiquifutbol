@@ -600,12 +600,24 @@ function obtenerParejaDesdeValor(valor) {
       [valor.penalties?.home, valor.penalties?.away],
       [valor.penalty?.score1, valor.penalty?.score2],
       [valor.penalty?.home, valor.penalty?.away],
+      [valor?.scores_score, valor?.score_result],
+      [valor?.scores_result, valor?.score_score],
+      [valor?.penalties_score, valor?.score_penalties],
+      [valor?.penalties_score_rf_gk, valor?.penalties_score_away],
+      [valor?.scores_score_result, valor?.scores_score_away],
     ];
 
     for (const [a, b] of pairs) {
       const pa = normalizarResultadoNumerico(a);
       const pb = normalizarResultadoNumerico(b);
       if (pa != null && pb != null) return { a: pa, b: pb };
+    }
+
+    for (const [key, value] of Object.entries(valor)) {
+      if ((key || "").toLowerCase().includes("pen") || (key || "").toLowerCase().includes("score") || (key || "").toLowerCase().includes("result")) {
+        const pair = obtenerParejaDesdeValor(value);
+        if (pair) return pair;
+      }
     }
 
     for (const item of Object.values(valor)) {
@@ -712,6 +724,10 @@ function obtenerPenales(game) {
     ["scores_result", game?.scores_result],
     ["scores_score", game?.scores_score],
     ["score_score", game?.score_score],
+    ["penalties_score_rf_gk", game?.penalties_score_rf_gk],
+    ["penalties_score_r_fgk", game?.penalties_score_r_fgk],
+    ["penalties_score_away", game?.penalties_score_away],
+    ["scores_score_result", game?.scores_score_result],
   ];
 
   for (const [key, candidate] of candidates) {
@@ -723,6 +739,7 @@ function obtenerPenales(game) {
         keyName.includes("pen") ||
         keyName.includes("shootout") ||
         keyName.includes("score") ||
+        keyName.includes("result") ||
         texto.includes("pen") ||
         texto.includes("shootout") ||
         texto.includes("(") ||
