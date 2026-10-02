@@ -540,6 +540,12 @@ function extraerPenalesDesdeTexto(texto) {
   const limpio = texto.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
   if (!limpio) return null;
 
+  const parens = [...limpio.matchAll(/\((\d+)\)/g)].map(m => Number(m[1]));
+  if (parens.length >= 2) {
+    const score = limpio.match(/(\d+)\s*-\s*(\d+)/);
+    if (score) return { a: parens[0], b: parens[parens.length - 1] };
+  }
+
   const regexPenales = /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i;
   const matchPenales = limpio.match(regexPenales);
   if (matchPenales) return { a: Number(matchPenales[1]), b: Number(matchPenales[4]) };
@@ -547,14 +553,6 @@ function extraerPenalesDesdeTexto(texto) {
   const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
   const matchAlternativo = limpio.match(regexAlternativo);
   if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
-
-  const regexString = /(\d+)\s*\(\s*(\d+)\s*\)\s*\d+\s*-\s*\d+\s*\(\s*(\d+)\s*\)/i;
-  const matchString = limpio.match(regexString);
-  if (matchString) return { a: Number(matchString[2]), b: Number(matchString[3]) };
-
-  const regexConParentesis = /\((\d+)\)\s*(\d+)\s*-\s*(\d+)\s*\((\d+)\)/i;
-  const matchConParentesis = limpio.match(regexConParentesis);
-  if (matchConParentesis) return { a: Number(matchConParentesis[1]), b: Number(matchConParentesis[4]) };
 
   return null;
 }
@@ -829,11 +827,9 @@ function formatearHoraArgentina(game) {
   return game?.time || game?.hour || null;
 }
 
-// Promiedos entrega los horarios con un desfase que depende de desde dónde corre el sync.
-// Ajustá SOLO este valor (en horas) si los horarios se ven corridos:
-//   0 = los horarios ya vienen en hora argentina
-//  -1 = vienen 1 hora adelantados respecto de la hora local (caso actual)
-const AJUSTE_HORAS_PROMIEDOS = -1;
+// El horario que trae Promiedos ya viene expresado en hora local de la cancha.
+// No aplicar corrección adicional, porque en este caso estaba desplazando los partidos.
+const AJUSTE_HORAS_PROMIEDOS = 0;
 
 // Suma horas (positivas o negativas) a una fecha/hora y resuelve cambios de día/mes/año.
 function corregirFechaHora(dia, mes, anio, hh, mm) {
