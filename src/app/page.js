@@ -540,19 +540,30 @@ function extraerPenalesDesdeTexto(texto) {
   const limpio = texto.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
   if (!limpio) return null;
 
-  const parens = [...limpio.matchAll(/\((\d+)\)/g)].map(m => Number(m[1]));
-  if (parens.length >= 2) {
-    const score = limpio.match(/(\d+)\s*-\s*(\d+)/);
-    if (score) return { a: parens[0], b: parens[parens.length - 1] };
+  const patrones = [
+    /\((\d+)\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)\)/i,
+    /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i,
+    /(\d+)\s*[-:]\s*(\d+)\s*\(\s*(\d+)\s*[-:]\s*(\d+)\)/i,
+    /\((\d+)\)\s*(\d+)\s*[-:]\s*(\d+)\s*\(\s*(\d+)\)/i,
+  ];
+
+  for (const regex of patrones) {
+    const match = limpio.match(regex);
+    if (!match) continue;
+
+    const candidateA = Number(match[1]);
+    const candidateB = Number(match[match.length - 1]);
+    if (Number.isFinite(candidateA) && Number.isFinite(candidateB)) {
+      return { a: candidateA, b: candidateB };
+    }
   }
 
-  const regexPenales = /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i;
-  const matchPenales = limpio.match(regexPenales);
-  if (matchPenales) return { a: Number(matchPenales[1]), b: Number(matchPenales[4]) };
-
-  const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
-  const matchAlternativo = limpio.match(regexAlternativo);
-  if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
+  const parens = [...limpio.matchAll(/\((\d+)\)/g)].map(m => Number(m[1]));
+  if (parens.length >= 2) {
+    const a = Number(parens[0]);
+    const b = Number(parens[parens.length - 1]);
+    if (Number.isFinite(a) && Number.isFinite(b)) return { a, b };
+  }
 
   return null;
 }
@@ -669,10 +680,7 @@ function buscarPenalesRecursivo(valor) {
     const penal = extraerPenalesDesdeTexto(texto);
     if (penal) return penal;
 
-    if (!texto.includes("(") && !texto.includes("pen") && !texto.includes("shootout")) return null;
-    const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
-    const matchAlternativo = texto.match(regexAlternativo);
-    if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
+    return null;
   }
 
   return null;
@@ -827,19 +835,17 @@ function formatearHoraArgentina(game) {
   return game?.time || game?.hour || null;
 }
 
-// El horario que trae Promiedos ya viene expresado en hora local de la cancha.
-// No aplicar corrección adicional, porque en este caso estaba desplazando los partidos.
+// El horario que trae Promiedos ya viene expresado en hora local. No conviene
+// volver a convertirlo con Date.UTC porque eso desplaza la hora en la UI.
 const AJUSTE_HORAS_PROMIEDOS = 0;
 
-// Suma horas (positivas o negativas) a una fecha/hora y resuelve cambios de día/mes/año.
 function corregirFechaHora(dia, mes, anio, hh, mm) {
-  const d = new Date(Date.UTC(anio, mes - 1, dia, hh + AJUSTE_HORAS_PROMIEDOS, mm));
   const p = n => String(n).padStart(2, "0");
   return {
-    dia: p(d.getUTCDate()),
-    mes: p(d.getUTCMonth() + 1),
-    anio: d.getUTCFullYear(),
-    hora: `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`,
+    dia: p(dia),
+    mes: p(mes),
+    anio: Number(anio),
+    hora: `${p(hh)}:${p(mm)}`,
   };
 }
 
