@@ -545,16 +545,17 @@ function extraerPenalesDesdeTexto(texto) {
     /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i,
     /(\d+)\s*[-:]\s*(\d+)\s*\(\s*(\d+)\s*[-:]\s*(\d+)\)/i,
     /\((\d+)\)\s*(\d+)\s*[-:]\s*(\d+)\s*\(\s*(\d+)\)/i,
+    /\((\d+)\)\s*\d+\s*-\s*\d+\s*\(\s*(\d+)\)/i,
   ];
 
   for (const regex of patrones) {
     const match = limpio.match(regex);
     if (!match) continue;
 
-    const candidateA = Number(match[1]);
-    const candidateB = Number(match[match.length - 1]);
-    if (Number.isFinite(candidateA) && Number.isFinite(candidateB)) {
-      return { a: candidateA, b: candidateB };
+    const a = Number(match[1] ?? match[match.length - 2]);
+    const b = Number(match[match.length - 1]);
+    if (Number.isFinite(a) && Number.isFinite(b)) {
+      return { a, b };
     }
   }
 
@@ -707,15 +708,21 @@ function obtenerPenales(game) {
     ["label", game?.label],
     ["summary", game?.summary],
     ["status_text", game?.status_text],
+    ["score_result", game?.score_result],
+    ["scores_result", game?.scores_result],
+    ["scores_score", game?.scores_score],
+    ["score_score", game?.score_score],
   ];
 
   for (const [key, candidate] of candidates) {
+    if (candidate == null) continue;
     if (typeof candidate === "string") {
       const texto = candidate.toLowerCase();
       const keyName = String(key).toLowerCase();
       const esPenalLike =
         keyName.includes("pen") ||
         keyName.includes("shootout") ||
+        keyName.includes("score") ||
         texto.includes("pen") ||
         texto.includes("shootout") ||
         texto.includes("(") ||
