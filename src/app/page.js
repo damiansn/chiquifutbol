@@ -965,7 +965,14 @@ function EscudoImg({ team }) {
       width="32"
       height="32"
       style={{ objectFit: "contain", verticalAlign: "middle", flexShrink: 0 }}
-      onError={e => { e.currentTarget.style.display = "none"; }}
+      onError={e => {
+        if (e.currentTarget.src.endsWith("/logo.png")) {
+          e.currentTarget.style.display = "none";
+          return;
+        }
+        e.currentTarget.onerror = null;
+        e.currentTarget.src = "/logo.png";
+      }}
     />
   );
 }
