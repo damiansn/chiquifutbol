@@ -534,6 +534,31 @@ function obtenerTV(game) {
   return Array.isArray(game?.tv_networks) ? game.tv_networks : [];
 }
 
+function extraerPenalesDesdeTexto(texto) {
+  if (typeof texto !== "string") return null;
+
+  const limpio = texto.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
+  if (!limpio) return null;
+
+  const regexPenales = /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i;
+  const matchPenales = limpio.match(regexPenales);
+  if (matchPenales) return { a: Number(matchPenales[1]), b: Number(matchPenales[4]) };
+
+  const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
+  const matchAlternativo = limpio.match(regexAlternativo);
+  if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
+
+  const regexString = /(\d+)\s*\(\s*(\d+)\s*\)\s*\d+\s*-\s*\d+\s*\(\s*(\d+)\s*\)/i;
+  const matchString = limpio.match(regexString);
+  if (matchString) return { a: Number(matchString[2]), b: Number(matchString[3]) };
+
+  const regexConParentesis = /\((\d+)\)\s*(\d+)\s*-\s*(\d+)\s*\((\d+)\)/i;
+  const matchConParentesis = limpio.match(regexConParentesis);
+  if (matchConParentesis) return { a: Number(matchConParentesis[1]), b: Number(matchConParentesis[4]) };
+
+  return null;
+}
+
 function obtenerParejaDesdeValor(valor) {
   if (valor == null || valor === "") return null;
 
@@ -580,22 +605,11 @@ function obtenerParejaDesdeValor(valor) {
   }
 
   if (typeof valor === "string") {
-    const texto = valor.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
-
-    const regexPenales = /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i;
-    const matchPenales = texto.match(regexPenales);
-    if (matchPenales) return { a: Number(matchPenales[1]), b: Number(matchPenales[4]) };
-
-    const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
-    const matchAlternativo = texto.match(regexAlternativo);
-    if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
-
-    const regexString = /(\d+)\s*\(\s*(\d+)\s*\)\s*\d+\s*-\s*\d+\s*\(\s*(\d+)\s*\)/i;
-    const matchString = texto.match(regexString);
-    if (matchString) return { a: Number(matchString[2]), b: Number(matchString[3]) };
+    const penal = extraerPenalesDesdeTexto(valor);
+    if (penal) return penal;
 
     const regexSimple = /(\d+)\s*[-:]\s*(\d+)/;
-    const matchSimple = texto.match(regexSimple);
+    const matchSimple = valor.trim().match(regexSimple);
     if (matchSimple) return { a: Number(matchSimple[1]), b: Number(matchSimple[2]) };
   }
 
@@ -652,12 +666,12 @@ function buscarPenalesRecursivo(valor) {
 
   if (typeof valor === "string") {
     const texto = valor.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
-    if (!texto || (!texto.includes("(") && !texto.includes("pen") && !texto.includes("shootout"))) return null;
+    if (!texto) return null;
 
-    const regexPenales = /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i;
-    const matchPenales = texto.match(regexPenales);
-    if (matchPenales) return { a: Number(matchPenales[1]), b: Number(matchPenales[4]) };
+    const penal = extraerPenalesDesdeTexto(texto);
+    if (penal) return penal;
 
+    if (!texto.includes("(") && !texto.includes("pen") && !texto.includes("shootout")) return null;
     const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
     const matchAlternativo = texto.match(regexAlternativo);
     if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
@@ -693,7 +707,13 @@ function obtenerPenales(game) {
     if (typeof candidate === "string") {
       const texto = candidate.toLowerCase();
       const keyName = String(key).toLowerCase();
-      const esPenalLike = keyName.includes("pen") || keyName.includes("shootout") || texto.includes("pen") || texto.includes("shootout") || texto.includes("(");
+      const esPenalLike =
+        keyName.includes("pen") ||
+        keyName.includes("shootout") ||
+        texto.includes("pen") ||
+        texto.includes("shootout") ||
+        texto.includes("(") ||
+        extraerPenalesDesdeTexto(candidate) != null;
       if (!esPenalLike) continue;
     }
     const pair = obtenerParejaDesdeValor(candidate);
@@ -812,8 +832,8 @@ function formatearHoraArgentina(game) {
 // Promiedos entrega los horarios con un desfase que depende de desde dónde corre el sync.
 // Ajustá SOLO este valor (en horas) si los horarios se ven corridos:
 //   0 = los horarios ya vienen en hora argentina
-//   1 = vienen 1 hora atrasados (caso actual)
-const AJUSTE_HORAS_PROMIEDOS = 1;
+//  -1 = vienen 1 hora adelantados respecto de la hora local (caso actual)
+const AJUSTE_HORAS_PROMIEDOS = -1;
 
 // Suma horas (positivas o negativas) a una fecha/hora y resuelve cambios de día/mes/año.
 function corregirFechaHora(dia, mes, anio, hh, mm) {
