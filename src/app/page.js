@@ -538,6 +538,10 @@ function obtenerParejaDesdeValor(valor) {
   if (valor == null || valor === "") return null;
 
   if (Array.isArray(valor)) {
+    for (const item of valor) {
+      const pair = obtenerParejaDesdeValor(item);
+      if (pair) return pair;
+    }
     const a = normalizarResultadoNumerico(valor[0]);
     const b = normalizarResultadoNumerico(valor[1]);
     if (a != null && b != null) return { a, b };
@@ -568,6 +572,11 @@ function obtenerParejaDesdeValor(valor) {
       const pb = normalizarResultadoNumerico(b);
       if (pa != null && pb != null) return { a: pa, b: pb };
     }
+
+    for (const item of Object.values(valor)) {
+      const pair = obtenerParejaDesdeValor(item);
+      if (pair) return pair;
+    }
   }
 
   if (typeof valor === "string") {
@@ -580,6 +589,10 @@ function obtenerParejaDesdeValor(valor) {
     const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
     const matchAlternativo = texto.match(regexAlternativo);
     if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
+
+    const regexString = /(\d+)\s*\(\s*(\d+)\s*\)\s*\d+\s*-\s*\d+\s*\(\s*(\d+)\s*\)/i;
+    const matchString = texto.match(regexString);
+    if (matchString) return { a: Number(matchString[2]), b: Number(matchString[3]) };
 
     const regexSimple = /(\d+)\s*[-:]\s*(\d+)/;
     const matchSimple = texto.match(regexSimple);
@@ -618,6 +631,41 @@ function normalizarResultadoNumerico(valor) {
   return Number.isFinite(n) ? n : null;
 }
 
+function buscarPenalesRecursivo(valor) {
+  if (valor == null) return null;
+
+  if (Array.isArray(valor)) {
+    for (const item of valor) {
+      const found = buscarPenalesRecursivo(item);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (typeof valor === "object") {
+    for (const item of Object.values(valor)) {
+      const found = buscarPenalesRecursivo(item);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (typeof valor === "string") {
+    const texto = valor.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
+    if (!texto || (!texto.includes("(") && !texto.includes("pen") && !texto.includes("shootout"))) return null;
+
+    const regexPenales = /(\d+)\s*\)\s*(\d+)\s*-\s*(\d+)\s*\(\s*(\d+)/i;
+    const matchPenales = texto.match(regexPenales);
+    if (matchPenales) return { a: Number(matchPenales[1]), b: Number(matchPenales[4]) };
+
+    const regexAlternativo = /(\d+)\s*[-:]\s*(\d+)\s*\((\d+)\s*[-:]\s*(\d+)\)/i;
+    const matchAlternativo = texto.match(regexAlternativo);
+    if (matchAlternativo) return { a: Number(matchAlternativo[3]), b: Number(matchAlternativo[4]) };
+  }
+
+  return null;
+}
+
 function obtenerPenales(game) {
   const candidates = [
     ["scores_penalties", game?.scores_penalties],
@@ -635,6 +683,10 @@ function obtenerPenales(game) {
     ["scoreline", game?.scoreline],
     ["match_result", game?.match_result],
     ["resultado", game?.resultado],
+    ["description", game?.description],
+    ["label", game?.label],
+    ["summary", game?.summary],
+    ["status_text", game?.status_text],
   ];
 
   for (const [key, candidate] of candidates) {
@@ -647,6 +699,9 @@ function obtenerPenales(game) {
     const pair = obtenerParejaDesdeValor(candidate);
     if (pair) return pair;
   }
+
+  const recursive = buscarPenalesRecursivo(game);
+  if (recursive) return recursive;
 
   const teams = game?.teams || [];
   const teamKeys = [
@@ -757,8 +812,8 @@ function formatearHoraArgentina(game) {
 // Promiedos entrega los horarios con un desfase que depende de desde dónde corre el sync.
 // Ajustá SOLO este valor (en horas) si los horarios se ven corridos:
 //   0 = los horarios ya vienen en hora argentina
-//   2 = vienen 2 horas atrasados (caso actual)
-const AJUSTE_HORAS_PROMIEDOS = 2;
+//   1 = vienen 1 hora atrasados (caso actual)
+const AJUSTE_HORAS_PROMIEDOS = 1;
 
 // Suma horas (positivas o negativas) a una fecha/hora y resuelve cambios de día/mes/año.
 function corregirFechaHora(dia, mes, anio, hh, mm) {
