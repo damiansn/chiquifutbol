@@ -852,6 +852,20 @@ function formatearHora(game) {
 function obtenerEstado(game) {
   const e = game?.status || {};
   const en = Number(e?.enum);
+  const statusText = [
+    e?.name,
+    e?.description,
+    game?.game_time_status_to_display,
+    game?.status_text,
+  ]
+    .filter(value => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+
+  if (statusText.includes("aplaz") || statusText.includes("postpon")) {
+    return { texto: "Aplazado", tipo: "pending" };
+  }
+
   if (en === 2) {
     const min = obtenerMinutoLive(game);
     let textoMin;
