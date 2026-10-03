@@ -639,20 +639,33 @@ function obtenerParejaDesdeValor(valor) {
 }
 
 function obtenerGlobal(game) {
-  if (!game?.global) return null;
+  if (game?.global) {
+    const g = game.global;
+    const pair = obtenerParejaDesdeValor({
+      score1: g.score1 ?? g.scoreA ?? g.team1?.score ?? g.home?.score,
+      score2: g.score2 ?? g.scoreB ?? g.team2?.score ?? g.away?.score,
+      team1: g.team1,
+      team2: g.team2,
+      score: g.score,
+      scores: g.scores,
+    });
 
-  const g = game.global;
-  const pair = obtenerParejaDesdeValor({
-    score1: g.score1 ?? g.scoreA ?? g.team1?.score ?? g.home?.score,
-    score2: g.score2 ?? g.scoreB ?? g.team2?.score ?? g.away?.score,
-    team1: g.team1,
-    team2: g.team2,
-    score: g.score,
-    scores: g.scores,
-  });
+    if (pair) return { scoreA: pair.a, scoreB: pair.b };
+  }
 
-  if (!pair) return null;
-  return { scoreA: pair.a, scoreB: pair.b };
+  if (Array.isArray(game?.agg_scores) && game.agg_scores.length >= 2) {
+    const scoreA = normalizarResultadoNumerico(game.agg_scores[0]);
+    const scoreB = normalizarResultadoNumerico(game.agg_scores[1]);
+    if (scoreA != null && scoreB != null) return { scoreA, scoreB };
+  }
+
+  const description = game?.description;
+  if (typeof description !== "string") return null;
+
+  const match = description.match(/\bglobal\b\s*:?\s*(\d+)\s*[-:\u2013]\s*(\d+)\b/i);
+  if (!match) return null;
+
+  return { scoreA: Number(match[1]), scoreB: Number(match[2]) };
 }
 
 function normalizarResultadoNumerico(valor) {
