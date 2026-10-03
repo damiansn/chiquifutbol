@@ -667,38 +667,6 @@ function normalizarResultadoNumerico(valor) {
   return Number.isFinite(n) ? n : null;
 }
 
-function buscarPenalesRecursivo(valor) {
-  if (valor == null) return null;
-
-  if (Array.isArray(valor)) {
-    for (const item of valor) {
-      const found = buscarPenalesRecursivo(item);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  if (typeof valor === "object") {
-    for (const item of Object.values(valor)) {
-      const found = buscarPenalesRecursivo(item);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  if (typeof valor === "string") {
-    const texto = valor.trim().replace(/\u00A0/g, " ").replace(/\s+/g, " ");
-    if (!texto) return null;
-
-    const penal = extraerPenalesDesdeTexto(texto);
-    if (penal) return penal;
-
-    return null;
-  }
-
-  return null;
-}
-
 function obtenerPenales(game) {
   const candidates = [
     ["scores_penalties", game?.scores_penalties],
@@ -712,46 +680,16 @@ function obtenerPenales(game) {
     ["penalty_result", game?.penalty_result],
     ["shootout_result", game?.shootout_result],
     ["penaltyResult", game?.penaltyResult],
-    ["result", game?.result],
-    ["scoreline", game?.scoreline],
-    ["match_result", game?.match_result],
-    ["resultado", game?.resultado],
-    ["description", game?.description],
-    ["label", game?.label],
-    ["summary", game?.summary],
-    ["status_text", game?.status_text],
-    ["score_result", game?.score_result],
-    ["scores_result", game?.scores_result],
-    ["scores_score", game?.scores_score],
-    ["score_score", game?.score_score],
     ["penalties_score_rf_gk", game?.penalties_score_rf_gk],
     ["penalties_score_r_fgk", game?.penalties_score_r_fgk],
     ["penalties_score_away", game?.penalties_score_away],
-    ["scores_score_result", game?.scores_score_result],
   ];
 
-  for (const [key, candidate] of candidates) {
+  for (const [, candidate] of candidates) {
     if (candidate == null) continue;
-    if (typeof candidate === "string") {
-      const texto = candidate.toLowerCase();
-      const keyName = String(key).toLowerCase();
-      const esPenalLike =
-        keyName.includes("pen") ||
-        keyName.includes("shootout") ||
-        keyName.includes("score") ||
-        keyName.includes("result") ||
-        texto.includes("pen") ||
-        texto.includes("shootout") ||
-        texto.includes("(") ||
-        extraerPenalesDesdeTexto(candidate) != null;
-      if (!esPenalLike) continue;
-    }
     const pair = obtenerParejaDesdeValor(candidate);
     if (pair) return pair;
   }
-
-  const recursive = buscarPenalesRecursivo(game);
-  if (recursive) return recursive;
 
   const teams = game?.teams || [];
   const teamKeys = [
@@ -786,9 +724,20 @@ function obtenerPenales(game) {
     if (pair) return pair;
   }
 
-  const textKeys = ["result", "description", "summary", "label", "status_text", "game_time_status_to_display"];
-  for (const key of textKeys) {
-    const pair = obtenerParejaDesdeValor(game?.[key]);
+  const textKeys = [
+    game?.result,
+    game?.scoreline,
+    game?.match_result,
+    game?.resultado,
+    game?.description,
+    game?.label,
+    game?.summary,
+    game?.status_text,
+    game?.game_time_status_to_display,
+  ];
+  for (const value of textKeys) {
+    if (typeof value !== "string" || !/\b(penales|penalty|penalties|shootout)\b/i.test(value)) continue;
+    const pair = obtenerParejaDesdeValor(value);
     if (pair) return pair;
   }
 
