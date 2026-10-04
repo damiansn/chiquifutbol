@@ -1098,6 +1098,7 @@ export default function Home() {
 
   // Set de ligas ocultas (clave = key||id||index)
   const [ligasOcultas, setLigasOcultas] = useState(new Set());
+  const [filtrosLigasAbiertos, setFiltrosLigasAbiertos] = useState(false);
 
   // Resetear filtros cuando cambia la fecha
   useEffect(() => { setLigasOcultas(new Set()); }, [date]);
@@ -1292,43 +1293,59 @@ export default function Home() {
 
         {/* FILTROS DE LIGAS */}
         {!loading && hayPartidos && (
-          <div className="match-league-filters" style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "5px 6px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
+          <section className="match-league-filter-section">
             <button
               type="button"
-              className="match-clear-leagues"
-              onClick={ocultarTodasLasLigas}
-              title="Desactivar todas las competencias"
-              aria-label="Desactivar todas las competencias"
+              className="match-league-filter-toggle"
+              onClick={() => setFiltrosLigasAbiertos(open => !open)}
+              aria-expanded={filtrosLigasAbiertos}
+              aria-controls="match-league-filter-options"
             >
-              Desactivar todas
+              <span>{filtrosLigasAbiertos ? "▾" : "▸"} Filtrar ligas</span>
+              <span className="match-league-filter-count">
+                {ligasConPartidos.length - ligasOcultas.size}/{ligasConPartidos.length} activas
+              </span>
             </button>
-            {ligasConPartidos.map((league, li) => {
-              const key = league?.key || league?.id || String(li);
-              const nombre = normalizarNombre(league);
-              const oculta = ligasOcultas.has(key);
-              return (
+            {filtrosLigasAbiertos && (
+              <div id="match-league-filter-options" className="match-league-filters">
                 <button
-                  key={key}
-                  onClick={() => toggleLiga(key)}
-                  style={{
-                    padding: "2px 8px",
-                    fontSize: "10px",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                    border: `1px solid ${oculta ? C.border : C.blue}`,
-                    borderRadius: "3px",
-                    background: oculta ? C.surface : "rgba(59,130,246,0.15)",
-                    color: oculta ? C.textMuted : C.blue,
-                    textDecoration: oculta ? "line-through" : "none",
-                    opacity: oculta ? 0.5 : 1,
-                    transition: "all 0.15s",
-                  }}
+                  type="button"
+                  className="match-clear-leagues"
+                  onClick={ocultarTodasLasLigas}
+                  title="Desactivar todas las competencias"
+                  aria-label="Desactivar todas las competencias"
                 >
-                  {nombre}
+                  Desactivar todas
                 </button>
-              );
-            })}
-          </div>
+                {ligasConPartidos.map((league, li) => {
+                  const key = league?.key || league?.id || String(li);
+                  const nombre = normalizarNombre(league);
+                  const oculta = ligasOcultas.has(key);
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => toggleLiga(key)}
+                      style={{
+                        padding: "2px 8px",
+                        fontSize: "10px",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        border: `1px solid ${oculta ? C.border : C.blue}`,
+                        borderRadius: "3px",
+                        background: oculta ? C.surface : "rgba(59,130,246,0.15)",
+                        color: oculta ? C.textMuted : C.blue,
+                        textDecoration: oculta ? "line-through" : "none",
+                        opacity: oculta ? 0.5 : 1,
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
 
         {error && <div style={S.errorBox}>⚠ {error}</div>}
