@@ -32,6 +32,7 @@ const S = {
   wrap:          { maxWidth: "1000px", margin: "0 auto", padding: "4px", background: C.bg },
   topBar:        { background: C.surface, color: C.text, fontSize: "10px", padding: "4px 6px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}` },
   dateBar:       { display: "flex", gap: "3px", alignItems: "center", padding: "4px 6px", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt },
+  refreshBtn:    { background: C.blueNav, border: `1px solid ${C.blue}`, color: C.white, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
   dateBtn:       { background: C.surface, border: `1px solid ${C.border}`, color: C.textDim, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
   dateBtnActive: { background: C.blueNav, border: `1px solid ${C.blue}`, color: C.white, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
   grid:          { display: "flex", flexDirection: "column" },
@@ -957,6 +958,7 @@ export default function Home() {
   const [date, setDate] = useState("today");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [teams, setTeams] = useState([]);
@@ -1042,6 +1044,15 @@ export default function Home() {
     }
   }
 
+  async function actualizarPartidos() {
+    setActualizando(true);
+    try {
+      await cargarPartidos();
+    } finally {
+      setActualizando(false);
+    }
+  }
+
   useEffect(() => { setLoading(true); cargarPartidos(); }, [date]);
   useEffect(() => { const t = setInterval(cargarPartidos, 30000); return () => clearInterval(t); }, [date]);
 
@@ -1119,11 +1130,15 @@ export default function Home() {
         {/* BARRA SUPERIOR */}
         <div style={S.topBar}>
           <span style={{ fontWeight: "bold" }}>RESULTADOS Y PARTIDOS EN VIVO</span>
-          <div style={S.searchWrap}>
+        </div>
+        <div className="match-search-row">
+          <div className="match-search-wrap" style={S.searchWrap}>
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); if (selectedTeam) { setSelectedTeam(null); setTeamFixtures([]); } }}
               placeholder="Buscar equipo..."
+              aria-label="Buscar equipo"
+              className="match-search-input"
               style={S.searchInput}
             />
             {search.trim() && !selectedTeam && equiposFiltrados.length > 0 && (
@@ -1240,15 +1255,16 @@ export default function Home() {
         )}
 
         {/* SELECTOR FECHA */}
-        <div style={S.dateBar}>
-          <button onClick={() => moverDia(-1)} style={S.dateBtn}>&#9664;</button>
+        <div className="match-date-bar" style={S.dateBar}>
+          <button className="match-date-button" onClick={() => moverDia(-1)} style={S.dateBtn} aria-label="Día anterior">&#9664;</button>
           {["ayer", "today", "manana"].map(v => (
-            <button key={v} onClick={() => setDate(v)} style={date === v ? S.dateBtnActive : S.dateBtn}>
+            <button className="match-date-button" key={v} onClick={() => setDate(v)} style={date === v ? S.dateBtnActive : S.dateBtn}>
               {v === "today" ? "HOY" : v === "ayer" ? "AYER" : "MAÑANA"}
             </button>
           ))}
-          <button onClick={() => moverDia(1)} style={S.dateBtn}>&#9654;</button>
+          <button className="match-date-button" onClick={() => moverDia(1)} style={S.dateBtn} aria-label="Día siguiente">&#9654;</button>
           <input
+            className="match-date-picker"
             type="date"
             value={dateToInputValue()}
             onChange={e => onInputChange(e.target.value)}
@@ -1264,6 +1280,16 @@ export default function Home() {
               {labelFecha()}
             </span>
           )}
+          <button
+            type="button"
+            className="match-refresh-button"
+            style={S.refreshBtn}
+            onClick={actualizarPartidos}
+            disabled={actualizando}
+            aria-label={actualizando ? "Actualizando partidos" : "Actualizar partidos"}
+          >
+            {actualizando ? "ACTUALIZANDO..." : "↻ ACTUALIZAR"}
+          </button>
         </div>
 
         {error && <div style={S.errorBox}>⚠ {error}</div>}

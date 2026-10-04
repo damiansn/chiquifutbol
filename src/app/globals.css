@@ -43,3 +43,77 @@ input {
   font-family: Arial, Tahoma, Verdana, sans-serif;
   font-size: 11px;
 }
+
+.match-search-row {
+  padding: 6px;
+  background: #1a2535;
+  border-bottom: 1px solid #263244;
+}
+
+.match-search-wrap {
+  display: block !important;
+  width: 100%;
+  max-width: 360px;
+}
+
+.match-search-input {
+  width: 100% !important;
+  min-height: 40px;
+}
+
+.match-date-bar {
+  flex-wrap: wrap;
+  gap: 5px !important;
+}
+
+.match-date-button,
+.match-refresh-button {
+  min-height: 36px;
+}
+
+.match-date-picker {
+  min-height: 36px;
+}
+
+.match-refresh-button {
+  margin-left: auto;
+}
+
+.match-refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.match-search-row input {
+  font-size: 16px;
+}
+
+.match-search-row button {
+  min-height: 44px;
+}
+
+@media (max-width: 600px) {
+  .match-search-wrap {
+    max-width: none;
+  }
+
+  .match-date-bar {
+    gap: 4px !important;
+  }
+
+  .match-date-button {
+    flex: 1 1 auto;
+    padding-right: 7px !important;
+    padding-left: 7px !important;
+  }
+
+  .match-date-picker {
+    flex: 1 1 130px;
+    margin-left: 0 !important;
+  }
+
+  .match-refresh-button {
+    flex: 1 0 100%;
+    margin-left: 0;
+  }
+}
