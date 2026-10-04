@@ -1110,6 +1110,12 @@ export default function Home() {
     });
   }
 
+  function ocultarTodasLasLigas() {
+    setLigasOcultas(new Set(
+      ligasConPartidos.map((league, index) => league?.key || league?.id || String(index))
+    ));
+  }
+
   return (
     <div style={S.page}>
 
@@ -1287,6 +1293,15 @@ export default function Home() {
         {/* FILTROS DE LIGAS */}
         {!loading && hayPartidos && (
           <div className="match-league-filters" style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "5px 6px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
+            <button
+              type="button"
+              className="match-clear-leagues"
+              onClick={ocultarTodasLasLigas}
+              title="Desactivar todas las competencias"
+              aria-label="Desactivar todas las competencias"
+            >
+              Desactivar todas
+            </button>
             {ligasConPartidos.map((league, li) => {
               const key = league?.key || league?.id || String(li);
               const nombre = normalizarNombre(league);
