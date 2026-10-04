@@ -960,6 +960,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState("");
+  const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [search, setSearch] = useState("");
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -1128,133 +1129,114 @@ export default function Home() {
       <div style={S.wrap}>
 
         {/* BARRA SUPERIOR */}
-        <div style={S.topBar}>
+        <div className="match-top-bar" style={S.topBar}>
           <span style={{ fontWeight: "bold" }}>RESULTADOS Y PARTIDOS EN VIVO</span>
-        </div>
-        <div className="match-search-row">
-          <div className="match-search-wrap" style={S.searchWrap}>
-            <input
-              value={search}
-              onChange={e => { setSearch(e.target.value); if (selectedTeam) { setSelectedTeam(null); setTeamFixtures([]); } }}
-              placeholder="Buscar equipo..."
-              aria-label="Buscar equipo"
-              className="match-search-input"
-              style={S.searchInput}
-            />
-            {search.trim() && !selectedTeam && equiposFiltrados.length > 0 && (
-              <div style={S.dropdown}>
-                {equiposFiltrados.map(t => (
-                  <button key={t.id || t.name} onClick={() => seleccionarEquipo(t)} style={S.dropdownItem}>
-                    {t.name || t.nombre}
-                  </button>
-                ))}
+          <button
+            type="button"
+            className="match-search-toggle"
+            onClick={() => setBusquedaAbierta(abierta => !abierta)}
+            aria-label={busquedaAbierta ? "Cerrar búsqueda de equipo" : "Buscar equipo"}
+            aria-expanded={busquedaAbierta}
+            title={busquedaAbierta ? "Cerrar búsqueda" : "Buscar equipo"}
+          >
+            {busquedaAbierta ? "×" : "⌕"}
+          </button>
+          {busquedaAbierta && (
+            <div className="match-search-panel">
+              <div className="match-search-wrap" style={S.searchWrap}>
+                <input
+                  autoFocus
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); if (selectedTeam) { setSelectedTeam(null); setTeamFixtures([]); } }}
+                  placeholder="Buscar equipo..."
+                  aria-label="Buscar equipo"
+                  className="match-search-input"
+                  style={S.searchInput}
+                />
+                {search.trim() && !selectedTeam && equiposFiltrados.length > 0 && (
+                  <div style={S.dropdown} role="listbox" aria-label="Equipos encontrados">
+                    {equiposFiltrados.map(t => (
+                      <button key={t.id || t.name} role="option" onClick={() => seleccionarEquipo(t)} style={S.dropdownItem}>
+                        {t.name || t.nombre}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              {selectedTeam && (
+                <div className="match-fixture-panel" style={S.fixtureBox}>
+                  <div style={S.fixtureHead}>
+                    <span>⚽ PRÓXIMOS PARTIDOS: {(selectedTeam.name || selectedTeam.nombre || "").toUpperCase()}</span>
+                    <button style={S.closeBtn} onClick={() => { setSelectedTeam(null); setTeamFixtures([]); setSearch(""); }}>X</button>
+                  </div>
+                  {teamFixturesLoading ? (
+                    <div style={S.loading}>Cargando fixture...</div>
+                  ) : teamFixtures.length === 0 ? (
+                    <div style={S.loading}>Sin próximos partidos.</div>
+                  ) : (
+                    <div className="match-fixture-table-scroll">
+                      <table style={{ width: "100%", minWidth: "520px", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: C.surfaceAlt }}>
+                            <th style={{ padding: "3px 5px", textAlign: "left", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "50px" }}>Fecha</th>
+                            <th style={{ padding: "3px 5px", textAlign: "center", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "20px" }}>L/V</th>
+                            <th style={{ padding: "3px 5px", textAlign: "right", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Local</th>
+                            <th style={{ padding: "3px 5px", textAlign: "center", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "50px" }}>Hora</th>
+                            <th style={{ padding: "3px 5px", textAlign: "left", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Visitante</th>
+                            <th style={{ padding: "3px 5px", textAlign: "right", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Competencia</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teamFixtures.map((f, i) => {
+                            const rival = obtenerRivalFixture(f);
+                            const cond = obtenerCondicionFixture(f);
+                            const local = cond === "V" ? rival : (selectedTeam.name || selectedTeam.nombre || "");
+                            const visita = cond === "V" ? (selectedTeam.name || selectedTeam.nombre || "") : rival;
+                            const esLocal = cond !== "V";
+                            return (
+                              <tr key={f?.id || `${i}`} style={{ background: i % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.borderSub}` }}>
+                                <td style={{ padding: "3px 5px", color: C.textMuted }}>{obtenerFechaFixture(f)}</td>
+                                <td style={{ padding: "3px 5px", textAlign: "center", fontWeight: "bold", color: cond === "L" ? C.green : cond === "V" ? C.blue : C.textMuted }}>{cond}</td>
+                                <td style={{ padding: "3px 5px", textAlign: "right", fontWeight: esLocal ? "bold" : "normal", color: esLocal ? C.white : C.textDim }}>{local}</td>
+                                <td style={{ padding: "3px 5px", textAlign: "center", fontWeight: "bold", color: C.amber }}>{obtenerHoraFixture(f)}</td>
+                                <td style={{ padding: "3px 5px", fontWeight: !esLocal ? "bold" : "normal", color: !esLocal ? C.white : C.textDim }}>{visita}</td>
+                                <td style={{ padding: "3px 5px", textAlign: "right" }}>
+                                  {(() => {
+                                    const comp = obtenerCompetenciaFixture(f);
+                                    if (!comp) return null;
+                                    const cl = comp.toLowerCase();
+                                    let bg = "rgba(100,116,139,0.2)", color = "#94a3b8";
+                                    if (cl.includes("libertador")) { bg = "rgba(16,185,129,0.15)"; color = "#10b981"; }
+                                    else if (cl.includes("sudamerican")) { bg = "rgba(245,158,11,0.15)"; color = "#f59e0b"; }
+                                    else if (cl.includes("copa argentina")) { bg = "rgba(56,189,248,0.15)"; color = "#38bdf8"; }
+                                    else if (cl.includes("liga profesional") || cl.includes("primera")) { bg = "rgba(59,130,246,0.15)"; color = "#3b82f6"; }
+                                    else if (cl.includes("champions")) { bg = "rgba(168,85,247,0.15)"; color = "#a855f7"; }
+                                    else if (cl.includes("copa de la liga")) { bg = "rgba(59,130,246,0.1)"; color = "#60a5fa"; }
+                                    return (
+                                      <span style={{
+                                        background: bg, color, fontSize: "9px", fontWeight: "bold",
+                                        padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap",
+                                        border: `1px solid ${color}33`
+                                      }}>
+                                        {comp}
+                                      </span>
+                                    );
+                                  })()}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* FIXTURE EQUIPO */}
-        {selectedTeam && (
-          <div style={S.fixtureBox}>
-            <div style={S.fixtureHead}>
-              <span>⚽ PRÓXIMOS PARTIDOS: {(selectedTeam.name || selectedTeam.nombre || "").toUpperCase()}</span>
-              <button style={S.closeBtn} onClick={() => { setSelectedTeam(null); setTeamFixtures([]); setSearch(""); }}>X</button>
-            </div>
-            {teamFixturesLoading ? (
-              <div style={S.loading}>Cargando fixture...</div>
-            ) : teamFixtures.length === 0 ? (
-              <div style={S.loading}>Sin próximos partidos.</div>
-            ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: C.surfaceAlt }}>
-                    <th style={{ padding: "3px 5px", textAlign: "left", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "50px" }}>Fecha</th>
-                    <th style={{ padding: "3px 5px", textAlign: "center", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "20px" }}>L/V</th>
-                    <th style={{ padding: "3px 5px", textAlign: "right", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Local</th>
-                    <th style={{ padding: "3px 5px", textAlign: "center", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10, width: "50px" }}>Hora</th>
-                    <th style={{ padding: "3px 5px", textAlign: "left", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Visitante</th>
-                    <th style={{ padding: "3px 5px", textAlign: "right", borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontSize: 10 }}>Competencia</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamFixtures.map((f, i) => {
-                    const rival = obtenerRivalFixture(f);
-                    const cond = obtenerCondicionFixture(f);
-                    const local = cond === "V" ? rival : (selectedTeam.name || selectedTeam.nombre || "");
-                    const visita = cond === "V" ? (selectedTeam.name || selectedTeam.nombre || "") : rival;
-                    const esLocal = cond !== "V";
-                    return (
-                      <tr key={f?.id || `${i}`} style={{ background: i % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.borderSub}` }}>
-                        <td style={{ padding: "3px 5px", color: C.textMuted }}>{obtenerFechaFixture(f)}</td>
-                        <td style={{ padding: "3px 5px", textAlign: "center", fontWeight: "bold", color: cond === "L" ? C.green : cond === "V" ? C.blue : C.textMuted }}>{cond}</td>
-                        <td style={{ padding: "3px 5px", textAlign: "right", fontWeight: esLocal ? "bold" : "normal", color: esLocal ? C.white : C.textDim }}>{local}</td>
-                        <td style={{ padding: "3px 5px", textAlign: "center", fontWeight: "bold", color: C.amber }}>{obtenerHoraFixture(f)}</td>
-                        <td style={{ padding: "3px 5px", fontWeight: !esLocal ? "bold" : "normal", color: !esLocal ? C.white : C.textDim }}>{visita}</td>
-                        <td style={{ padding: "3px 5px", textAlign: "right" }}>
-                          {(() => {
-                            const comp = obtenerCompetenciaFixture(f);
-                            if (!comp) return null;
-                            const cl = comp.toLowerCase();
-                            let bg = "rgba(100,116,139,0.2)", color = "#94a3b8";
-                            if (cl.includes("libertador")) { bg = "rgba(16,185,129,0.15)"; color = "#10b981"; }
-                            else if (cl.includes("sudamerican")) { bg = "rgba(245,158,11,0.15)"; color = "#f59e0b"; }
-                            else if (cl.includes("copa argentina")) { bg = "rgba(56,189,248,0.15)"; color = "#38bdf8"; }
-                            else if (cl.includes("liga profesional") || cl.includes("primera")) { bg = "rgba(59,130,246,0.15)"; color = "#3b82f6"; }
-                            else if (cl.includes("champions")) { bg = "rgba(168,85,247,0.15)"; color = "#a855f7"; }
-                            else if (cl.includes("copa de la liga")) { bg = "rgba(59,130,246,0.1)"; color = "#60a5fa"; }
-                            return (
-                              <span style={{
-                                background: bg, color, fontSize: "9px", fontWeight: "bold",
-                                padding: "1px 5px", borderRadius: "3px", whiteSpace: "nowrap",
-                                border: `1px solid ${color}33`
-                              }}>
-                                {comp}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        {/* FILTROS DE LIGAS */}
-        {!loading && hayPartidos && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "5px 6px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
-            {ligasConPartidos.map((league, li) => {
-              const key = league?.key || league?.id || String(li);
-              const nombre = normalizarNombre(league);
-              const oculta = ligasOcultas.has(key);
-              return (
-                <button
-                  key={key}
-                  onClick={() => toggleLiga(key)}
-                  style={{
-                    padding: "2px 8px",
-                    fontSize: "10px",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                    border: `1px solid ${oculta ? C.border : C.blue}`,
-                    borderRadius: "3px",
-                    background: oculta ? C.surface : "rgba(59,130,246,0.15)",
-                    color: oculta ? C.textMuted : C.blue,
-                    textDecoration: oculta ? "line-through" : "none",
-                    opacity: oculta ? 0.5 : 1,
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {nombre}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* SELECTOR FECHA */}
+        {/* NAVEGACIÓN TEMPORAL */}
         <div className="match-date-bar" style={S.dateBar}>
           <button className="match-date-button" onClick={() => moverDia(-1)} style={S.dateBtn} aria-label="Día anterior">&#9664;</button>
           {["ayer", "today", "manana"].map(v => (
@@ -1291,6 +1273,38 @@ export default function Home() {
             {actualizando ? "ACTUALIZANDO..." : "↻ ACTUALIZAR"}
           </button>
         </div>
+
+        {/* FILTROS DE LIGAS */}
+        {!loading && hayPartidos && (
+          <div className="match-league-filters" style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "5px 6px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
+            {ligasConPartidos.map((league, li) => {
+              const key = league?.key || league?.id || String(li);
+              const nombre = normalizarNombre(league);
+              const oculta = ligasOcultas.has(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => toggleLiga(key)}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    border: `1px solid ${oculta ? C.border : C.blue}`,
+                    borderRadius: "3px",
+                    background: oculta ? C.surface : "rgba(59,130,246,0.15)",
+                    color: oculta ? C.textMuted : C.blue,
+                    textDecoration: oculta ? "line-through" : "none",
+                    opacity: oculta ? 0.5 : 1,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {nombre}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {error && <div style={S.errorBox}>⚠ {error}</div>}
 
