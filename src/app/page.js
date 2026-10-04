@@ -1131,38 +1131,40 @@ export default function Home() {
         {/* BARRA SUPERIOR */}
         <div className="match-top-bar" style={S.topBar}>
           <span style={{ fontWeight: "bold" }}>RESULTADOS Y PARTIDOS EN VIVO</span>
-          <button
-            type="button"
-            className="match-search-toggle"
-            onClick={() => setBusquedaAbierta(abierta => !abierta)}
-            aria-label={busquedaAbierta ? "Cerrar búsqueda de equipo" : "Buscar equipo"}
+        </div>
+        <div className="match-search-container">
+          <input
+            value={search}
+            onFocus={() => setBusquedaAbierta(true)}
+            onChange={e => {
+              setBusquedaAbierta(true);
+              setSearch(e.target.value);
+              if (selectedTeam) { setSelectedTeam(null); setTeamFixtures([]); }
+            }}
+            onKeyDown={e => {
+              if (e.key === "Escape") setBusquedaAbierta(false);
+            }}
+            placeholder="🔍 Buscar equipo..."
+            aria-label="Buscar equipo"
             aria-expanded={busquedaAbierta}
-            title={busquedaAbierta ? "Cerrar búsqueda" : "Buscar equipo"}
-          >
-            {busquedaAbierta ? "×" : "⌕"}
-          </button>
+            aria-controls="match-search-panel"
+            className="match-search-input"
+            style={S.searchInput}
+          />
           {busquedaAbierta && (
-            <div className="match-search-panel">
-              <div className="match-search-wrap" style={S.searchWrap}>
-                <input
-                  autoFocus
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); if (selectedTeam) { setSelectedTeam(null); setTeamFixtures([]); } }}
-                  placeholder="Buscar equipo..."
-                  aria-label="Buscar equipo"
-                  className="match-search-input"
-                  style={S.searchInput}
-                />
-                {search.trim() && !selectedTeam && equiposFiltrados.length > 0 && (
-                  <div style={S.dropdown} role="listbox" aria-label="Equipos encontrados">
-                    {equiposFiltrados.map(t => (
-                      <button key={t.id || t.name} role="option" onClick={() => seleccionarEquipo(t)} style={S.dropdownItem}>
-                        {t.name || t.nombre}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div id="match-search-panel" className="match-search-panel">
+              {search.trim() && !selectedTeam && equiposFiltrados.length > 0 && (
+                <div style={S.dropdown} role="listbox" aria-label="Equipos encontrados">
+                  {equiposFiltrados.map(t => (
+                    <button key={t.id || t.name} role="option" onClick={() => seleccionarEquipo(t)} style={S.dropdownItem}>
+                      {t.name || t.nombre}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {search.trim() && !selectedTeam && equiposFiltrados.length === 0 && (
+                <div style={S.loading}>No se encontraron equipos.</div>
+              )}
               {selectedTeam && (
                 <div className="match-fixture-panel" style={S.fixtureBox}>
                   <div style={S.fixtureHead}>
@@ -1230,6 +1232,14 @@ export default function Home() {
                       </table>
                     </div>
                   )}
+                  <button
+                    type="button"
+                    className="match-search-close"
+                    onClick={() => setBusquedaAbierta(false)}
+                    aria-label="Cerrar panel de búsqueda"
+                  >
+                    Cerrar
+                  </button>
                 </div>
               )}
             </div>
