@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Redis from 'ioredis';
+import { agregarPenalesScrapeados } from '../../../lib/promiedos-penalties.js';
 
 const redis = new Redis(process.env.REDIS_URL);
 
@@ -137,6 +138,7 @@ async function fetchFechaArbitraria(ddmmyyyy) {
     }
 
     let json = null;
+    let html = null;
     let res = await fetch(apiUrl, {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
@@ -166,7 +168,7 @@ async function fetchFechaArbitraria(ddmmyyyy) {
                 next: { revalidate: 0 }
             });
             if (pageRes.ok) {
-                const html = await pageRes.text();
+                html = await pageRes.text();
                 const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
                 if (match) {
                     const pageJson = JSON.parse(match[1]);
@@ -184,6 +186,25 @@ async function fetchFechaArbitraria(ddmmyyyy) {
         : Object.entries(leagues).map(([key, value]) => ({ ...value, key }));
 
     if (partidos.length > 0) {
+        if (html == null) {
+            try {
+                const pageRes = await fetch(pageUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml',
+                        'Referer': 'https://www.promiedos.com.ar/',
+                    },
+                    next: { revalidate: 0 }
+                });
+                if (pageRes.ok) {
+                    html = await pageRes.text();
+                }
+            } catch (error) {
+                console.error('No se pudieron leer los penales desde Promiedos:', error);
+            }
+        }
+        if (html != null) agregarPenalesScrapeados(partidos, html);
+
         // Enriquecer con globales desde brackets
         const allBrackets = await cargarBrackets();
         partidos = enriquecerConGlobal(partidos, allBrackets);

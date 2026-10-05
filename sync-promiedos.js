@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer";
 import Redis from "ioredis";
 import dotenv from "dotenv";
+import { agregarPenalesScrapeados } from "./src/lib/promiedos-penalties.js";
 
 dotenv.config();
 
@@ -2372,6 +2373,14 @@ async function sincronizarPartidos(
         normalizarLeagues(
           leagues
         );
+
+      const penalesScrapeados = agregarPenalesScrapeados(
+        partidos,
+        await page.content()
+      );
+      if (penalesScrapeados > 0) {
+        console.log(`Penales scrapeados: ${penalesScrapeados} partidos`);
+      }
 
       console.log(
         `Partidos encontrados: ${partidos.length}`
