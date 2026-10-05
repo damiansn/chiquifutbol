@@ -231,8 +231,10 @@ export async function GET(request) {
             const response = await fetch(`https://api.promiedos.com.ar/gamecenter/${encodeURIComponent(gameId)}`, {
                 headers: {
                     'Accept': 'application/json',
+                    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8,tr;q=0.7,zh-TW;q=0.6,zh;q=0.5',
                     'Origin': 'https://www.promiedos.com.ar',
                     'Referer': 'https://www.promiedos.com.ar/',
+                    'X-Ver': '1.11.7.5',
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
                 },
                 cache: 'no-store',

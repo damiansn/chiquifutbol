@@ -972,12 +972,13 @@ export default function Home() {
   const [matchStatsLoading, setMatchStatsLoading] = useState(false);
   const [matchStatsError, setMatchStatsError] = useState("");
 
-  function seleccionarPartido(game, league) {
+  function seleccionarPartido(game, league, estado) {
     setSelectedMatch({
       id: String(game.id),
       home: nombreEquipo(obtenerEquipo(game, 0)),
       away: nombreEquipo(obtenerEquipo(game, 1)),
       league: normalizarNombre(league),
+      status: estado.texto,
     });
     setMatchStats(null);
     setMatchStatsError("");
@@ -1463,7 +1464,7 @@ export default function Home() {
                         return (
                           <tr
                             key={game?.id || gi}
-                            onClick={puedeVerEstadisticas ? () => seleccionarPartido(game, league) : undefined}
+                            onClick={puedeVerEstadisticas ? () => seleccionarPartido(game, league, estado) : undefined}
                             title={puedeVerEstadisticas ? "Seleccionar para ver estadísticas" : undefined}
                             style={{
                               background: rowBg,
@@ -1608,7 +1609,7 @@ export default function Home() {
                 <div id="match-stats-title" style={{ color: C.white, fontSize: "13px", fontWeight: "bold" }}>
                   {selectedMatch.home} - {selectedMatch.away}
                 </div>
-                <div style={{ color: "#bfdbfe", fontSize: "10px", marginTop: "3px" }}>{selectedMatch.league} · En vivo</div>
+                <div style={{ color: "#bfdbfe", fontSize: "10px", marginTop: "3px" }}>{selectedMatch.league} · {selectedMatch.status}</div>
               </div>
               <button type="button" onClick={() => setSelectedMatch(null)} style={S.closeBtn} aria-label="Cerrar estadísticas">X</button>
             </header>
