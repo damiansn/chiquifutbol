@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  outputFileTracingIncludes: {
+    "/api/referees": ["./src/data/*.csv"],
+  },
 };
 
 export default nextConfig;

@@ -1195,6 +1195,9 @@ export default function Home() {
         onError={e => { e.currentTarget.style.display = "none"; }} 
       />
     </a>
+    <Link href="/arbitros" style={{ ...S.navLink, marginLeft: "auto", borderLeft: "1px solid #2563eb" }}>
+      ÁRBITROS
+    </Link>
   </div>
 </div>
       <div style={S.wrap}>
