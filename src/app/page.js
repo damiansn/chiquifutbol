@@ -1617,33 +1617,6 @@ export default function Home() {
             ) : (
               <>
                 {matchStatsError && <div role="alert" style={{ ...S.errorBox, margin: "12px" }}>{matchStatsError}</div>}
-                <section style={{ padding: "8px 12px" }}>
-                  <h3 style={{ margin: "0 0 4px", color: C.white, fontSize: "11px" }}>ESTADÍSTICAS</h3>
-                  {!matchStatsError && (!Array.isArray(matchStats?.statistics) || matchStats.statistics.length === 0) ? (
-                    <div style={{ color: C.textMuted, padding: "8px 0" }}>Todavía no hay estadísticas disponibles.</div>
-                  ) : (
-                    (matchStats?.statistics || []).map((stat, index) => {
-                      const values = Array.isArray(stat?.values) ? stat.values : [];
-                      return (
-                        <div
-                          key={`${stat?.name || "estadistica"}-${index}`}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "minmax(48px, 1fr) minmax(110px, 1.5fr) minmax(48px, 1fr)",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "8px 2px",
-                            borderBottom: `1px solid ${C.borderSub}`,
-                          }}
-                        >
-                          <span style={{ color: C.text, fontWeight: "bold", textAlign: "right" }}>{values[0] ?? "–"}</span>
-                          <span style={{ color: C.textDim, textAlign: "center" }}>{stat?.name || "Estadística"}</span>
-                          <span style={{ color: C.text, fontWeight: "bold", textAlign: "left" }}>{values[1] ?? "–"}</span>
-                        </div>
-                      );
-                    })
-                  )}
-                </section>
                 <section style={{ padding: "8px 12px 12px" }}>
                   <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>MINUTO A MINUTO</h3>
                   {Array.isArray(matchStats?.events) && matchStats.events.length > 0 ? (
@@ -1684,11 +1657,45 @@ export default function Home() {
                           })}
                         </div>
                       ))}
+                      <div style={{ padding: "5px 8px", background: C.blueNav, borderTop: `1px solid ${C.blue}`, color: C.white, textAlign: "center", fontWeight: "bold", fontSize: "9px" }}>
+                        INICIO DEL PARTIDO
+                      </div>
                     </div>
                   ) : (
                     <div style={{ color: C.textMuted, padding: "8px 0" }}>Todavía no hay eventos disponibles.</div>
                   )}
                 </section>
+                <details style={{ margin: "0 12px 12px", border: `1px solid ${C.border}`, borderRadius: "4px", background: C.surfaceAlt }}>
+                  <summary style={{ padding: "8px 10px", color: C.white, background: C.blueNav, cursor: "pointer", fontSize: "11px", fontWeight: "bold" }}>
+                    ESTADÍSTICAS
+                  </summary>
+                  <div style={{ padding: "4px 10px 8px" }}>
+                    {!matchStatsError && (!Array.isArray(matchStats?.statistics) || matchStats.statistics.length === 0) ? (
+                      <div style={{ color: C.textMuted, padding: "8px 0" }}>Todavía no hay estadísticas disponibles.</div>
+                    ) : (
+                      (matchStats?.statistics || []).map((stat, index) => {
+                        const values = Array.isArray(stat?.values) ? stat.values : [];
+                        return (
+                          <div
+                            key={`${stat?.name || "estadistica"}-${index}`}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "minmax(48px, 1fr) minmax(110px, 1.5fr) minmax(48px, 1fr)",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "8px 2px",
+                              borderBottom: `1px solid ${C.borderSub}`,
+                            }}
+                          >
+                            <span style={{ color: C.text, fontWeight: "bold", textAlign: "right" }}>{values[0] ?? "–"}</span>
+                            <span style={{ color: C.textDim, textAlign: "center" }}>{stat?.name || "Estadística"}</span>
+                            <span style={{ color: C.text, fontWeight: "bold", textAlign: "left" }}>{values[1] ?? "–"}</span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </details>
               </>
             )}
           </section>
