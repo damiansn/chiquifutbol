@@ -1647,11 +1647,11 @@ export default function Home() {
                 <section style={{ padding: "8px 12px 12px" }}>
                   <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>MINUTO A MINUTO</h3>
                   {Array.isArray(matchStats?.events) && matchStats.events.length > 0 ? (
-                    <div style={{ background: "#0b2b20", borderRadius: "4px", overflow: "hidden" }}>
+                    <div style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: "4px", overflow: "hidden" }}>
                       {[...matchStats.events].reverse().map((stage, stageIndex) => (
                         <div key={`${stage?.name || "periodo"}-${stageIndex}`}>
                           {stage?.show_stage_title !== false && (
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "8px", padding: "5px 8px", borderBottom: "1px solid #49665b", color: C.white, fontWeight: "bold", fontSize: "9px" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "8px", padding: "6px 8px", background: C.blueNav, borderBottom: `1px solid ${C.blue}`, color: C.white, fontWeight: "bold", fontSize: "9px" }}>
                               <span>{stage?.name || "Partido"}</span>
                               <span style={{ color: C.red }}>{stage?.scores?.[0] ?? ""}</span>
                               <span style={{ textAlign: "right" }}>{stage?.scores?.[1] ?? ""}</span>
@@ -1664,19 +1664,19 @@ export default function Home() {
                               const type = Number(event?.type);
                               const label = type === 1 ? "Gol" : type === 4 ? "Tarjeta amarilla" : type === 6 ? "Tarjeta roja" : type === 15 ? "Cambio" : "Evento";
                               return (
-                                <div key={`${type}-${eventIndex}`} style={{ display: "flex", alignItems: "center", gap: "5px", minWidth: 0, color: C.white }}>
+                                <div key={`${type}-${eventIndex}`} style={{ display: "flex", alignItems: "center", gap: "5px", minWidth: 0, color: C.text }}>
                                   <img src={`https://api.promiedos.com.ar/images/games/event/${type}`} alt="" width="18" height="18" style={{ objectFit: "contain", flexShrink: 0 }} />
                                   <span style={{ overflowWrap: "anywhere" }} title={label}>{(event?.texts || []).join(" · ") || label}</span>
                                 </div>
                               );
                             };
                             return (
-                              <div key={`${row?.time || "minuto"}-${rowIndex}`} style={{ display: "grid", gridTemplateColumns: "1fr 42px 1fr", alignItems: "center", gap: "6px", minHeight: "31px", padding: "4px 8px", borderBottom: "1px solid #314d42", fontSize: "10px" }}>
-                                <div style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start" }}>
+                              <div key={`${row?.time || "minuto"}-${rowIndex}`} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 42px minmax(0, 1fr)", alignItems: "center", gap: "6px", minHeight: "34px", padding: "4px 8px", background: rowIndex % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.borderSub}`, fontSize: "10px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start", minWidth: 0 }}>
                                   {homeEvents.map(renderEvent)}
                                 </div>
-                                <strong style={{ color: C.white, textAlign: "center" }}>{row?.time || ""}</strong>
-                                <div style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-end", textAlign: "right" }}>
+                                <strong style={{ color: C.blue, textAlign: "center", whiteSpace: "nowrap" }}>{row?.time || ""}</strong>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-end", minWidth: 0, textAlign: "right" }}>
                                   {awayEvents.map(renderEvent)}
                                 </div>
                               </div>
