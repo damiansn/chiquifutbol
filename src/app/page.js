@@ -967,6 +967,21 @@ export default function Home() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teamFixtures, setTeamFixtures] = useState([]);
   const [teamFixturesLoading, setTeamFixturesLoading] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [matchStats, setMatchStats] = useState(null);
+  const [matchStatsLoading, setMatchStatsLoading] = useState(false);
+  const [matchStatsError, setMatchStatsError] = useState("");
+
+  function seleccionarPartido(game, league) {
+    setSelectedMatch({
+      id: String(game.id),
+      home: nombreEquipo(obtenerEquipo(game, 0)),
+      away: nombreEquipo(obtenerEquipo(game, 1)),
+      league: normalizarNombre(league),
+    });
+    setMatchStats(null);
+    setMatchStatsError("");
+  }
 
   // Devuelve la fecha de hoy en Argentina como "DD-MM-YYYY"
   function hoyDDMMYYYY() {
@@ -1057,6 +1072,53 @@ export default function Home() {
 
   useEffect(() => { setLoading(true); cargarPartidos(); }, [date]);
   useEffect(() => { const t = setInterval(cargarPartidos, 30000); return () => clearInterval(t); }, [date]);
+
+  useEffect(() => {
+    if (!selectedMatch) return undefined;
+
+    const controller = new AbortController();
+    let primeraCarga = true;
+    let solicitudEnCurso = false;
+    const cargarEstadisticas = async () => {
+      if (solicitudEnCurso) return;
+      solicitudEnCurso = true;
+      if (primeraCarga) setMatchStatsLoading(true);
+      try {
+        const res = await fetch(`/api/matches?game=${encodeURIComponent(selectedMatch.id)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "No se pudieron cargar las estadísticas.");
+        setMatchStats(json);
+        setMatchStatsError("");
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          setMatchStatsError(err.message || "Error cargando las estadísticas.");
+        }
+      } finally {
+        if (!controller.signal.aborted && primeraCarga) setMatchStatsLoading(false);
+        primeraCarga = false;
+        solicitudEnCurso = false;
+      }
+    };
+
+    cargarEstadisticas();
+    const interval = setInterval(cargarEstadisticas, 30000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [selectedMatch]);
+
+  useEffect(() => {
+    if (!selectedMatch) return undefined;
+    function cerrarConEscape(event) {
+      if (event.key === "Escape") setSelectedMatch(null);
+    }
+    window.addEventListener("keydown", cerrarConEscape);
+    return () => window.removeEventListener("keydown", cerrarConEscape);
+  }, [selectedMatch]);
 
   useEffect(() => {
     fetch("/api/team-fixture?list=true", { cache: "no-store" })
@@ -1391,6 +1453,12 @@ export default function Home() {
                         const tv = obtenerTV(game);
                         const isLive = estado.tipo === "live";
                         const isFinal = estado.tipo === "final";
+                        const nombreLiga = normalizarNombre(league).toLowerCase();
+                        const admiteEstadisticas = nombreLiga.includes("libertadores")
+                          || nombreLiga.includes("sudamericana")
+                          || nombreLiga.includes("liga profesional");
+                        const puedeVerEstadisticas = isLive && admiteEstadisticas && game?.id != null;
+                        const LineaPartido = puedeVerEstadisticas ? "button" : "div";
                         const rowBg = gi % 2 === 0 ? C.surface : C.surfaceAlt;
                         return (
                           <tr key={game?.id || gi} style={{ background: rowBg, borderBottom: "1px solid #e5e7eb" }}>
@@ -1403,7 +1471,26 @@ export default function Home() {
                             </td>
                             {/* PARTIDO */}
                             <td style={{ padding: "4px 6px", verticalAlign: "middle" }}>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                              <LineaPartido
+                                type={puedeVerEstadisticas ? "button" : undefined}
+                                onClick={puedeVerEstadisticas ? () => seleccionarPartido(game, league) : undefined}
+                                title={puedeVerEstadisticas ? "Ver estadísticas del partido" : undefined}
+                                aria-label={puedeVerEstadisticas ? `Ver estadísticas de ${nombreEquipo(teamA)} contra ${nombreEquipo(teamB)}` : undefined}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: "8px",
+                                  width: "100%",
+                                  padding: 0,
+                                  border: 0,
+                                  background: "transparent",
+                                  color: "inherit",
+                                  font: "inherit",
+                                  textAlign: "inherit",
+                                  cursor: puedeVerEstadisticas ? "pointer" : "inherit",
+                                }}
+                              >
                                 {/* LOCAL */}
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "3px", minWidth: 0, flex: 1 }}>
                                   {rojasA > 0 && Array.from({ length: rojasA }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
@@ -1417,6 +1504,7 @@ export default function Home() {
                                     : penales && marcadorPrincipal
                                       ? `(${marcadorPrincipal.a}) - (${marcadorPrincipal.b})`
                                       : `${scoreA} - ${scoreB}`}
+                                  {puedeVerEstadisticas && <span aria-hidden="true" style={{ marginLeft: "4px", fontSize: "10px" }}>📊</span>}
                                 </div>
                                 {/* VISITANTE */}
                                 <div style={{ display: "flex", alignItems: "center", gap: "3px", minWidth: 0, flex: 1 }}>
@@ -1424,7 +1512,7 @@ export default function Home() {
                                   <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamB)}</span>
                                   {rojasB > 0 && Array.from({ length: rojasB }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
                                 </div>
-                              </div>
+                              </LineaPartido>
                               {/* GLOBAL */}
                               {global && (
                                 <div style={{ ...S.globalBadge, marginTop: "2px", width: "fit-content" }}>
@@ -1478,6 +1566,76 @@ export default function Home() {
           ChiquiFútbol &copy; {new Date().getFullYear()} &mdash; Resultados en tiempo real
         </div>
       </div>
+      {selectedMatch && (
+        <div
+          onClick={() => setSelectedMatch(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+            background: "rgba(0,0,0,0.72)",
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="match-stats-title"
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: "min(100%, 480px)",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              boxShadow: "0 12px 36px rgba(0,0,0,0.55)",
+            }}
+          >
+            <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "10px 12px", background: C.blueNav }}>
+              <div>
+                <div id="match-stats-title" style={{ color: C.white, fontSize: "13px", fontWeight: "bold" }}>
+                  {selectedMatch.home} - {selectedMatch.away}
+                </div>
+                <div style={{ color: "#bfdbfe", fontSize: "10px", marginTop: "3px" }}>{selectedMatch.league} · En vivo</div>
+              </div>
+              <button type="button" onClick={() => setSelectedMatch(null)} style={S.closeBtn} aria-label="Cerrar estadísticas">X</button>
+            </header>
+            {matchStatsLoading ? (
+              <div style={S.loading}>Cargando estadísticas...</div>
+            ) : matchStatsError ? (
+              <div role="alert" style={{ ...S.errorBox, margin: "12px" }}>{matchStatsError}</div>
+            ) : !Array.isArray(matchStats?.statistics) || matchStats.statistics.length === 0 ? (
+              <div style={S.noMatches}>Todavía no hay estadísticas disponibles para este partido.</div>
+            ) : (
+              <div style={{ padding: "8px 12px" }}>
+                {matchStats.statistics.map((stat, index) => {
+                  const values = Array.isArray(stat?.values) ? stat.values : [];
+                  return (
+                    <div
+                      key={`${stat?.name || "estadistica"}-${index}`}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "minmax(48px, 1fr) minmax(110px, 1.5fr) minmax(48px, 1fr)",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "8px 2px",
+                        borderBottom: `1px solid ${C.borderSub}`,
+                      }}
+                    >
+                      <span style={{ color: C.text, fontWeight: "bold", textAlign: "right" }}>{values[0] ?? "–"}</span>
+                      <span style={{ color: C.textDim, textAlign: "center" }}>{stat?.name || "Estadística"}</span>
+                      <span style={{ color: C.text, fontWeight: "bold", textAlign: "left" }}>{values[1] ?? "–"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }

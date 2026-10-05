@@ -220,7 +220,33 @@ async function fetchFechaArbitraria(ddmmyyyy) {
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
+        const gameId = searchParams.get('game');
         const dateParam = searchParams.get('date') || 'today';
+
+        if (gameId) {
+            if (!/^[a-z0-9]{1,32}$/i.test(gameId)) {
+                return NextResponse.json({ error: 'ID de partido inválido.' }, { status: 400 });
+            }
+
+            const response = await fetch(`https://api.promiedos.com.ar/gamecenter/${encodeURIComponent(gameId)}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Origin': 'https://www.promiedos.com.ar',
+                    'Referer': 'https://www.promiedos.com.ar/',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+                },
+                cache: 'no-store',
+            });
+            if (!response.ok) {
+                return NextResponse.json({ error: 'Promiedos no pudo cargar las estadísticas de este partido.' }, { status: 502 });
+            }
+
+            const data = await response.json();
+            if (!data?.game) {
+                return NextResponse.json({ error: 'No hay datos disponibles para este partido.' }, { status: 404 });
+            }
+            return NextResponse.json(data.game, { headers: { 'Cache-Control': 'no-store' } });
+        }
 
         if (dateParam === 'today' || dateParam === 'ayer' || dateParam === 'manana') {
             const redisKey =
