@@ -1514,7 +1514,6 @@ export default function Home() {
                                     : penales && marcadorPrincipal
                                       ? `(${marcadorPrincipal.a}) - (${marcadorPrincipal.b})`
                                       : `${scoreA} - ${scoreB}`}
-                                  {puedeVerEstadisticas && <span aria-hidden="true" style={{ marginLeft: "4px", fontSize: "10px" }}>📊</span>}
                                 </div>
                                 {/* VISITANTE */}
                                 <div style={{ display: "flex", alignItems: "center", gap: "3px", minWidth: 0, flex: 1 }}>
@@ -1614,34 +1613,83 @@ export default function Home() {
               <button type="button" onClick={() => setSelectedMatch(null)} style={S.closeBtn} aria-label="Cerrar estadísticas">X</button>
             </header>
             {matchStatsLoading ? (
-              <div style={S.loading}>Cargando estadísticas...</div>
-            ) : matchStatsError ? (
-              <div role="alert" style={{ ...S.errorBox, margin: "12px" }}>{matchStatsError}</div>
-            ) : !Array.isArray(matchStats?.statistics) || matchStats.statistics.length === 0 ? (
-              <div style={S.noMatches}>Todavía no hay estadísticas disponibles para este partido.</div>
+              <div style={S.loading}>Cargando datos del partido...</div>
             ) : (
-              <div style={{ padding: "8px 12px" }}>
-                {matchStats.statistics.map((stat, index) => {
-                  const values = Array.isArray(stat?.values) ? stat.values : [];
-                  return (
-                    <div
-                      key={`${stat?.name || "estadistica"}-${index}`}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "minmax(48px, 1fr) minmax(110px, 1.5fr) minmax(48px, 1fr)",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "8px 2px",
-                        borderBottom: `1px solid ${C.borderSub}`,
-                      }}
-                    >
-                      <span style={{ color: C.text, fontWeight: "bold", textAlign: "right" }}>{values[0] ?? "–"}</span>
-                      <span style={{ color: C.textDim, textAlign: "center" }}>{stat?.name || "Estadística"}</span>
-                      <span style={{ color: C.text, fontWeight: "bold", textAlign: "left" }}>{values[1] ?? "–"}</span>
+              <>
+                {matchStatsError && <div role="alert" style={{ ...S.errorBox, margin: "12px" }}>{matchStatsError}</div>}
+                <section style={{ padding: "8px 12px" }}>
+                  <h3 style={{ margin: "0 0 4px", color: C.white, fontSize: "11px" }}>ESTADÍSTICAS</h3>
+                  {!matchStatsError && (!Array.isArray(matchStats?.statistics) || matchStats.statistics.length === 0) ? (
+                    <div style={{ color: C.textMuted, padding: "8px 0" }}>Todavía no hay estadísticas disponibles.</div>
+                  ) : (
+                    (matchStats?.statistics || []).map((stat, index) => {
+                      const values = Array.isArray(stat?.values) ? stat.values : [];
+                      return (
+                        <div
+                          key={`${stat?.name || "estadistica"}-${index}`}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "minmax(48px, 1fr) minmax(110px, 1.5fr) minmax(48px, 1fr)",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 2px",
+                            borderBottom: `1px solid ${C.borderSub}`,
+                          }}
+                        >
+                          <span style={{ color: C.text, fontWeight: "bold", textAlign: "right" }}>{values[0] ?? "–"}</span>
+                          <span style={{ color: C.textDim, textAlign: "center" }}>{stat?.name || "Estadística"}</span>
+                          <span style={{ color: C.text, fontWeight: "bold", textAlign: "left" }}>{values[1] ?? "–"}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </section>
+                <section style={{ padding: "8px 12px 12px" }}>
+                  <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>MINUTO A MINUTO</h3>
+                  {Array.isArray(matchStats?.events) && matchStats.events.length > 0 ? (
+                    <div style={{ background: "#0b2b20", borderRadius: "4px", overflow: "hidden" }}>
+                      {[...matchStats.events].reverse().map((stage, stageIndex) => (
+                        <div key={`${stage?.name || "periodo"}-${stageIndex}`}>
+                          {stage?.show_stage_title !== false && (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "8px", padding: "5px 8px", borderBottom: "1px solid #49665b", color: C.white, fontWeight: "bold", fontSize: "9px" }}>
+                              <span>{stage?.name || "Partido"}</span>
+                              <span style={{ color: C.red }}>{stage?.scores?.[0] ?? ""}</span>
+                              <span style={{ textAlign: "right" }}>{stage?.scores?.[1] ?? ""}</span>
+                            </div>
+                          )}
+                          {[...(stage?.rows || [])].reverse().map((row, rowIndex) => {
+                            const homeEvents = (row?.events || []).filter(event => Number(event?.team) === 1);
+                            const awayEvents = (row?.events || []).filter(event => Number(event?.team) === 2);
+                            const renderEvent = (event, eventIndex) => {
+                              const type = Number(event?.type);
+                              const label = type === 1 ? "Gol" : type === 4 ? "Tarjeta amarilla" : type === 6 ? "Tarjeta roja" : type === 15 ? "Cambio" : "Evento";
+                              return (
+                                <div key={`${type}-${eventIndex}`} style={{ display: "flex", alignItems: "center", gap: "5px", minWidth: 0, color: C.white }}>
+                                  <img src={`https://api.promiedos.com.ar/images/games/event/${type}`} alt="" width="18" height="18" style={{ objectFit: "contain", flexShrink: 0 }} />
+                                  <span style={{ overflowWrap: "anywhere" }} title={label}>{(event?.texts || []).join(" · ") || label}</span>
+                                </div>
+                              );
+                            };
+                            return (
+                              <div key={`${row?.time || "minuto"}-${rowIndex}`} style={{ display: "grid", gridTemplateColumns: "1fr 42px 1fr", alignItems: "center", gap: "6px", minHeight: "31px", padding: "4px 8px", borderBottom: "1px solid #314d42", fontSize: "10px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start" }}>
+                                  {homeEvents.map(renderEvent)}
+                                </div>
+                                <strong style={{ color: C.white, textAlign: "center" }}>{row?.time || ""}</strong>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-end", textAlign: "right" }}>
+                                  {awayEvents.map(renderEvent)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
+                  ) : (
+                    <div style={{ color: C.textMuted, padding: "8px 0" }}>Todavía no hay eventos disponibles.</div>
+                  )}
+                </section>
+              </>
             )}
           </section>
         </div>
