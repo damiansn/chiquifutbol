@@ -1461,7 +1461,16 @@ export default function Home() {
                         const LineaPartido = puedeVerEstadisticas ? "button" : "div";
                         const rowBg = gi % 2 === 0 ? C.surface : C.surfaceAlt;
                         return (
-                          <tr key={game?.id || gi} style={{ background: rowBg, borderBottom: "1px solid #e5e7eb" }}>
+                          <tr
+                            key={game?.id || gi}
+                            onClick={puedeVerEstadisticas ? () => seleccionarPartido(game, league) : undefined}
+                            title={puedeVerEstadisticas ? "Seleccionar para ver estadísticas" : undefined}
+                            style={{
+                              background: rowBg,
+                              borderBottom: "1px solid #e5e7eb",
+                              cursor: puedeVerEstadisticas ? "pointer" : "inherit",
+                            }}
+                          >
                             {/* ESTADO */}
                             <td style={{ width: "72px", minWidth: "72px", maxWidth: "72px", padding: "4px 3px", textAlign: "center", borderRight: `1px solid ${C.borderSub}`, verticalAlign: "middle" }}>
                               {isLive && <span style={{ display: "inline-block", width: "5px", height: "5px", borderRadius: "50%", background: C.green, marginRight: "2px", verticalAlign: "middle" }} />}
