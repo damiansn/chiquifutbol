@@ -1613,6 +1613,24 @@ export default function Home() {
             ) : (
               <>
                 {matchStatsError && <div role="alert" style={{ ...S.errorBox, margin: "12px" }}>{matchStatsError}</div>}
+                {Array.isArray(matchStats?.game_info) && matchStats.game_info.some(info => ["estadio", "capacidad", "árbitro", "arbitro"].includes(String(info?.name || "").toLowerCase())) && (
+                  <section aria-label="Datos del partido" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "6px", padding: "10px 12px 2px" }}>
+                    {matchStats.game_info
+                      .filter(info => ["estadio", "capacidad", "árbitro", "arbitro"].includes(String(info?.name || "").toLowerCase()))
+                      .map(info => {
+                        const nombre = String(info.name).toLowerCase();
+                        const valor = nombre === "capacidad" && /^\d+$/.test(String(info.value))
+                          ? Number(info.value).toLocaleString("es-AR")
+                          : info.value;
+                        return (
+                          <div key={info.name} style={{ minWidth: 0, padding: "7px 8px", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: "4px" }}>
+                            <div style={{ marginBottom: "3px", color: C.textMuted, fontSize: "9px", fontWeight: "bold", textTransform: "uppercase" }}>{info.name}</div>
+                            <div style={{ color: C.text, fontSize: "10px", overflowWrap: "anywhere" }}>{valor || "No disponible"}</div>
+                          </div>
+                        );
+                      })}
+                  </section>
+                )}
                 <section style={{ padding: "8px 12px 12px" }}>
                   <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>MINUTO A MINUTO</h3>
                   {Array.isArray(matchStats?.events) && matchStats.events.length > 0 ? (
