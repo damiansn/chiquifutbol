@@ -258,7 +258,7 @@ export default function RefereesPage() {
         )}
 
         <aside style={{ marginTop: "12px", padding: "10px 12px", color: colors.muted, background: colors.surfaceAlt, border: `1px solid ${colors.border}`, lineHeight: 1.5 }}>
-          <strong style={{ color: colors.text }}>Cobertura actual:</strong> Liga Profesional, temporadas históricas disponibles en el archivo (2016–2025). La exportación 2026 contiene solo partidos de Andrés Merlos, por lo que ese año está incompleto. Copa Argentina todavía no está incluida.
+          <strong style={{ color: colors.text }}>Cobertura actual:</strong> Liga Profesional, temporadas históricas disponibles en el archivo (2016–2025). Copa Argentina todavía no está incluida.
           <div style={{ marginTop: "4px" }}>Partidos disponibles en la base: {options.matchCount.toLocaleString("es-AR")}.</div>
         </aside>
       </div>
