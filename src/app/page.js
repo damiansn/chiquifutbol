@@ -1454,11 +1454,7 @@ export default function Home() {
                         const tv = obtenerTV(game);
                         const isLive = estado.tipo === "live";
                         const isFinal = estado.tipo === "final";
-                        const nombreLiga = normalizarNombre(league).toLowerCase();
-                        const admiteEstadisticas = nombreLiga.includes("libertadores")
-                          || nombreLiga.includes("sudamericana")
-                          || nombreLiga.includes("liga profesional");
-                        const puedeVerEstadisticas = (isLive || isFinal) && admiteEstadisticas && game?.id != null;
+                        const puedeVerEstadisticas = (isLive || isFinal) && game?.id != null;
                         const LineaPartido = puedeVerEstadisticas ? "button" : "div";
                         const rowBg = gi % 2 === 0 ? C.surface : C.surfaceAlt;
                         return (
