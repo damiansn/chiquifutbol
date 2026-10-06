@@ -1441,7 +1441,7 @@ export default function Home() {
                     </Link>
                     <span style={{ fontSize: "10px", fontWeight: "normal" }}>{games.length} partidos</span>
                   </div>
-                  <table className="match-results-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table className="match-results-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                     <tbody>
                       {games.map((game, gi) => {
                         const estado = obtenerEstado(game);
@@ -1469,7 +1469,7 @@ export default function Home() {
                             title={puedeVerEstadisticas ? "Seleccionar para ver estadísticas" : undefined}
                             style={{
                               background: rowBg,
-                              borderBottom: "1px solid #e5e7eb",
+                              borderBottom: `1px solid ${C.borderSub}`,
                               cursor: puedeVerEstadisticas ? "pointer" : "inherit",
                             }}
                           >
@@ -1481,7 +1481,7 @@ export default function Home() {
                               </span>
                             </td>
                             {/* PARTIDO */}
-                            <td style={{ padding: "4px 6px", verticalAlign: "middle" }}>
+                            <td className="match-details-cell" style={{ padding: "4px 6px", verticalAlign: "middle" }}>
                               <LineaPartido
                                 type={puedeVerEstadisticas ? "button" : undefined}
                                 onClick={puedeVerEstadisticas ? () => seleccionarPartido(game, league) : undefined}
@@ -1558,7 +1558,7 @@ export default function Home() {
                               )}
                             </td>
                             {/* TV */}
-                            <td style={{ width: "90px", minWidth: "90px", maxWidth: "90px", padding: "4px 5px", textAlign: "right", verticalAlign: "middle", borderLeft: `1px solid ${C.borderSub}`, color: C.textMuted, fontSize: "10px", lineHeight: "1.4" }}>
+                            <td className="match-tv-cell" style={{ width: "90px", minWidth: "90px", maxWidth: "90px", padding: "4px 5px", textAlign: "right", verticalAlign: "middle", borderLeft: `1px solid ${C.borderSub}`, color: C.textMuted, fontSize: "10px", lineHeight: "1.4" }}>
                               {tv.map((n, k) => <div key={k}>{n?.name || n?.title || n}</div>)}
                             </td>
                           </tr>

@@ -36,9 +36,6 @@ table {
 
 .home-navbar-inner {
   width: 100%;
-  max-width: 1440px !important;
-  padding-right: 12px;
-  padding-left: 12px;
 }
 
 .competition-nav {
@@ -323,6 +320,22 @@ input {
   overflow-x: auto;
 }
 
+.match-results-table {
+  table-layout: fixed;
+}
+
+.match-results-table td {
+  vertical-align: middle;
+}
+
+.match-details-cell > button {
+  min-width: 0;
+}
+
+.match-tv-cell {
+  overflow-wrap: anywhere;
+}
+
 .match-date-bar {
   flex-wrap: wrap;
   gap: 5px !important;
@@ -596,6 +609,19 @@ input {
     padding-right: 2px !important;
     padding-left: 2px !important;
     font-size: 10px;
+  }
+
+  .match-tv-cell {
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    padding-right: 3px !important;
+    padding-left: 3px !important;
+    font-size: 9px !important;
+  }
+
+  .match-details-cell > button > div:nth-child(2) {
+    font-size: 11px !important;
   }
 
   .match-team-name {
