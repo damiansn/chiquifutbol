@@ -474,6 +474,12 @@ function PosicionesContent() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
   const reqRef = useRef(0);
+  const [roundFilters, setRoundFilters] = useState([]);
+  const [selectedRound, setSelectedRound] = useState("");
+  const [roundGames, setRoundGames] = useState([]);
+  const [roundLoading, setRoundLoading] = useState(true);
+  const [roundError, setRoundError] = useState("");
+  const roundRequestRef = useRef(0);
 
   useEffect(() => {
     let cancelado = false;
@@ -496,6 +502,68 @@ function PosicionesContent() {
     cargar();
     return () => { cancelado = true; };
   }, [competition]);
+
+  useEffect(() => {
+    if (competition !== "argentina") {
+      roundRequestRef.current += 1;
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const requestId = ++roundRequestRef.current;
+    async function cargarFecha(round) {
+      setRoundLoading(true);
+      setRoundError("");
+      try {
+        const query = round ? `?round=${encodeURIComponent(round)}` : "";
+        const response = await fetch(`/api/league-fixtures${query}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "No se pudieron cargar los partidos.");
+        if (controller.signal.aborted || requestId !== roundRequestRef.current) return;
+        setRoundFilters(result.filters);
+        setSelectedRound(result.selectedRound);
+        setRoundGames(result.games);
+      } catch (requestError) {
+        if (!controller.signal.aborted && requestId === roundRequestRef.current) {
+          setRoundError(requestError.message || "Error al cargar los partidos de la fecha.");
+        }
+      } finally {
+        if (!controller.signal.aborted && requestId === roundRequestRef.current) setRoundLoading(false);
+      }
+    }
+
+    cargarFecha("");
+    return () => {
+      controller.abort();
+      if (requestId === roundRequestRef.current) roundRequestRef.current += 1;
+    };
+  }, [competition]);
+
+  async function cambiarFecha(round) {
+    if (round === selectedRound && roundFilters.length > 0) return;
+    const requestId = ++roundRequestRef.current;
+    setRoundLoading(true);
+    setRoundError("");
+    try {
+      const query = round ? `?round=${encodeURIComponent(round)}` : "";
+      const response = await fetch(`/api/league-fixtures${query}`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "No se pudieron cargar los partidos.");
+      if (requestId !== roundRequestRef.current) return;
+      setRoundFilters(result.filters);
+      setSelectedRound(result.selectedRound);
+      setRoundGames(result.games);
+    } catch (requestError) {
+      if (requestId === roundRequestRef.current) {
+        setRoundError(requestError.message || "Error al cargar los partidos de la fecha.");
+      }
+    } finally {
+      if (requestId === roundRequestRef.current) setRoundLoading(false);
+    }
+  }
 
   const compConfig = COMPETENCIAS[competition] || { nombre: data?.league?.name || "Competencia", corto: "Competencia" };
 
@@ -576,6 +644,8 @@ function PosicionesContent() {
 
   const wrapStyle = { maxWidth: 1000, margin: "0 auto", padding: "6px 4px", background: C.bg, minHeight: "100vh" };
   const sectionTitleStyle = { fontSize: 11, fontWeight: 800, color: C.blue, borderBottom: `1px solid ${C.border}`, paddingBottom: 3, marginBottom: 5, marginTop: 10, letterSpacing: 0.5 };
+  const roundNavButtonStyle = { border: `1px solid ${C.border}`, background: C.surface, color: C.white, width: 30, height: 30, fontSize: 20, lineHeight: 1, cursor: "pointer" };
+  const roundSelectStyle = { flex: 1, minWidth: 0, height: 30, border: `1px solid ${C.border}`, background: C.surface, color: C.text, padding: "0 8px", fontSize: 11 };
 
   if (loading) return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
@@ -631,6 +701,95 @@ function PosicionesContent() {
           <div style={{ background: "rgba(239,68,68,0.1)", border: `1px solid ${C.red}`, color: C.red, padding: "5px 8px", fontSize: 11, marginBottom: 6 }}>
             ⚠ {error}
           </div>
+        )}
+
+        {competition === "argentina" && (
+          <section style={{ border: `1px solid ${C.border}`, background: C.surface, marginBottom: 8 }}>
+            <div style={{ background: C.blueNav, color: C.white, padding: "5px 8px", fontSize: 11, fontWeight: "bold" }}>
+              TEMPORADA
+            </div>
+            {roundFilters.length > 0 && (() => {
+              const activeRoundIndex = roundFilters.findIndex(filter => filter.key === selectedRound);
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px", background: C.surfaceAlt }}>
+                  <button
+                    type="button"
+                    onClick={() => cambiarFecha(roundFilters[activeRoundIndex - 1]?.key)}
+                    disabled={activeRoundIndex <= 0 || roundLoading}
+                    aria-label="Fecha anterior"
+                    style={{ ...roundNavButtonStyle, opacity: activeRoundIndex <= 0 ? 0.45 : 1 }}
+                  >
+                    ‹
+                  </button>
+                  <select
+                    aria-label="Seleccionar fecha del torneo"
+                    value={selectedRound}
+                    onChange={event => cambiarFecha(event.target.value)}
+                    disabled={roundLoading}
+                    style={roundSelectStyle}
+                  >
+                    {roundFilters.map(filter => (
+                      <option key={filter.key} value={filter.key}>{filter.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => cambiarFecha(roundFilters[activeRoundIndex + 1]?.key)}
+                    disabled={activeRoundIndex < 0 || activeRoundIndex >= roundFilters.length - 1 || roundLoading}
+                    aria-label="Fecha siguiente"
+                    style={{ ...roundNavButtonStyle, opacity: activeRoundIndex >= roundFilters.length - 1 ? 0.45 : 1 }}
+                  >
+                    ›
+                  </button>
+                </div>
+              );
+            })()}
+            {roundError ? (
+              <div style={{ color: C.red, padding: "8px" }} role="alert">
+                {roundError}{" "}
+                <button type="button" onClick={() => cambiarFecha(selectedRound)} style={{ color: C.blue, background: "none", border: 0, cursor: "pointer", textDecoration: "underline" }}>
+                  Reintentar
+                </button>
+              </div>
+            ) : roundLoading ? (
+              <div style={{ color: C.textMuted, padding: "12px", textAlign: "center" }}>Cargando partidos...</div>
+            ) : roundFilters.length === 0 ? (
+              <div style={{ color: C.textMuted, padding: "12px", textAlign: "center" }}>
+                No hay fechas disponibles.{" "}
+                <button type="button" onClick={() => cambiarFecha("")} style={{ color: C.blue, background: "none", border: 0, cursor: "pointer", textDecoration: "underline" }}>
+                  Reintentar
+                </button>
+              </div>
+            ) : roundGames.length === 0 ? (
+              <div style={{ color: C.textMuted, padding: "12px", textAlign: "center" }}>No hay partidos para esta fecha.</div>
+            ) : (
+              <div>
+                {roundGames.map((game, index) => {
+                  const teams = Array.isArray(game?.teams) ? game.teams : [];
+                  const scores = Array.isArray(game?.scores) ? game.scores : [];
+                  const matchTime = formatearFechaHora(game?.start_time);
+                  return (
+                    <a
+                      key={game?.id || index}
+                      href={game?.id && game?.url_name ? `https://www.promiedos.com.ar/game/${game.url_name}/${game.id}` : undefined}
+                      target={game?.id && game?.url_name ? "_blank" : undefined}
+                      rel={game?.id && game?.url_name ? "noreferrer" : undefined}
+                      style={{ display: "grid", gridTemplateColumns: "76px minmax(0, 1fr) auto", alignItems: "center", gap: 8, padding: "7px 9px", color: C.text, textDecoration: "none", background: index % 2 === 0 ? C.surface : C.surfaceAlt, borderTop: `1px solid ${C.borderSub}` }}
+                    >
+                      <span style={{ color: C.textMuted, fontSize: 10 }}>{matchTime || game?.game_time_to_display || ""}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{teams[0]?.short_name || teams[0]?.name || "—"}</span>
+                        <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{teams[1]?.short_name || teams[1]?.name || "—"}</span>
+                      </span>
+                      <span style={{ textAlign: "right", fontSize: 11, fontWeight: "bold", whiteSpace: "nowrap" }}>
+                        {scores.length >= 2 ? `${scores[0]} - ${scores[1]}` : game?.status?.short_name || "—"}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
 
         {/* TABLAS DE POSICIONES */}
