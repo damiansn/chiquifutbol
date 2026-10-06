@@ -103,8 +103,8 @@ function formatearFechaHora(raw) {
 function Navbar({ competition }) {
   return (
     <nav style={{ background: C.blueNav, borderBottom: "2px solid #1e3a8a" }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
-        <Link href="/" aria-label="ChiquiFútbol, inicio" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "4px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
+      <div className="standings-navbar-inner" style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
+        <Link href="/" className="standings-home-link" aria-label="ChiquiFútbol, inicio" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "4px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
           <img
             src="/logo.png"
             alt="Secanuca"
@@ -113,7 +113,7 @@ function Navbar({ competition }) {
           />
         </Link>
         <CompetitionsMenu compact activeCompetition={competition} />
-        <Link href="/arbitros" style={{ color: "#bfdbfe", fontSize: 11, padding: "7px 10px", textDecoration: "none", borderRight: "1px solid #2563eb", marginLeft: "auto" }}>
+        <Link href="/arbitros" className="standings-referee-link" style={{ color: "#bfdbfe", fontSize: 11, padding: "7px 10px", textDecoration: "none", borderRight: "1px solid #2563eb", marginLeft: "auto" }}>
           ÁRBITROS
         </Link>
       </div>

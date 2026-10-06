@@ -1187,8 +1187,8 @@ export default function Home() {
 
       {/* NAVBAR */}
    <div style={S.navbar}>
-  <div style={S.navInner}>
-    <a href="/" style={{ ...S.navLogo, display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+  <div className="home-navbar-inner" style={S.navInner}>
+    <a href="/" className="home-nav-logo" style={{ ...S.navLogo, display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
       <img 
         src="/logo.png" 
         alt="Secanuca" 
@@ -1197,12 +1197,12 @@ export default function Home() {
       />
     </a>
     <CompetitionsMenu />
-    <Link href="/arbitros" style={{ ...S.navLink, borderLeft: "1px solid #2563eb" }}>
+    <Link href="/arbitros" className="home-referee-link" style={{ ...S.navLink, borderLeft: "1px solid #2563eb" }}>
       ÁRBITROS
     </Link>
   </div>
 </div>
-      <div style={S.wrap}>
+      <div className="home-content" style={S.wrap}>
 
         {/* BARRA SUPERIOR */}
         <div className="match-top-bar" style={S.topBar}>
@@ -1441,7 +1441,7 @@ export default function Home() {
                     </Link>
                     <span style={{ fontSize: "10px", fontWeight: "normal" }}>{games.length} partidos</span>
                   </div>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table className="match-results-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <tbody>
                       {games.map((game, gi) => {
                         const estado = obtenerEstado(game);
@@ -1474,7 +1474,7 @@ export default function Home() {
                             }}
                           >
                             {/* ESTADO */}
-                            <td style={{ width: "72px", minWidth: "72px", maxWidth: "72px", padding: "4px 3px", textAlign: "center", borderRight: `1px solid ${C.borderSub}`, verticalAlign: "middle" }}>
+                            <td className="match-status-cell" style={{ width: "72px", minWidth: "72px", maxWidth: "72px", padding: "4px 3px", textAlign: "center", borderRight: `1px solid ${C.borderSub}`, verticalAlign: "middle" }}>
                               {isLive && <span style={{ display: "inline-block", width: "5px", height: "5px", borderRadius: "50%", background: C.green, marginRight: "2px", verticalAlign: "middle" }} />}
                               <span style={isLive ? S.statusLive : isFinal ? S.statusFinal : S.statusPending}>
                                 {isLive ? `⚽ ${estado.texto}` : estado.texto}
@@ -1505,7 +1505,7 @@ export default function Home() {
                                 {/* LOCAL */}
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "3px", minWidth: 0, flex: 1 }}>
                                   {rojasA > 0 && Array.from({ length: rojasA }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
-                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamA)}</span>
+                                  <span className="match-team-name" style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamA)}</span>
                                   <EscudoImg team={teamA} />
                                 </div>
                                 {/* MARCADOR */}
@@ -1519,7 +1519,7 @@ export default function Home() {
                                 {/* VISITANTE */}
                                 <div style={{ display: "flex", alignItems: "center", gap: "3px", minWidth: 0, flex: 1 }}>
                                   <EscudoImg team={teamB} />
-                                  <span style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamB)}</span>
+                                  <span className="match-team-name" style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamB)}</span>
                                   {rojasB > 0 && Array.from({ length: rojasB }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
                                 </div>
                               </LineaPartido>
