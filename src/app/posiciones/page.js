@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { COMPETITION_ITEMS } from "../../lib/competitions.js";
 
 // ─── PALETA OSCURA ────────────────────────────────────────────────────────────
 const C = {
@@ -66,49 +67,6 @@ const COMPETENCIAS = {
   repechaje_mundial: { nombre: "Repechaje Mundial",          corto: "Repechaje" }
 };
 
-const NAV_ITEMS = [
-  ["argentina",         "Liga Argentina"],
-  ["copa_argentina",    "Copa Argentina"],
-  ["libertadores",      "Libertadores"],
-  ["sudamericana",      "Sudamericana"],
-  ["champions",         "Champions"],
-  ["europa_league",     "Europa League"],
-  ["conference_league", "Conference"],
-  ["primera_nacional",  "Nacional"],
-  ["primera_b_metro",   "B Metro"],
-  ["primera_c",         "Primera C"],
-  ["reserva",           "Reserva"],
-  ["colombia",          "Colombia"],
-  ["mls",               "MLS"],
-  ["nations_league",    "Nations L."],
-  ["paraguay",          "Paraguay"],
-  ["mexico",            "México"],
-  ["brasil",            "Brasil"],
-  ["chile",             "Chile"],
-  ["uruguay",           "Uruguay"],
-  ["premier_league",    "Premier"],
-  ["efl_cup",           "EFL Cup"],
-  ["fa_cup",            "FA Cup"],
-  ["laliga",            "LaLiga"],
-  ["copa_del_rey",      "Copa del Rey"],
-  ["supercopa_espana",  "Supercopa ESP"],
-  ["serie_a",           "Serie A"],
-  ["coppa_italia",      "Coppa Italia"],
-  ["supercoppa_italiana","Supercoppa ITA"],
-  ["bundesliga",        "Bundesliga"],
-  ["dfb_pokal",         "DFB Pokal"],
-  ["liga_portugal",     "Liga Portugal"],
-  ["ligue_1",           "Ligue 1"],
-  ["coupe_de_france",   "Coupe de France"],
-  ["u20_world_cup",     "Mundial Sub-20"],
-  ["copa_america",      "Copa América"],
-  ["eliminatorias_conmebol", "Elim. CONMEBOL"],
-  ["eliminatorias_uefa",     "Elim. UEFA"],
-  ["eliminatorias_concacaf", "Elim. CONCACAF"],
-  ["euro",              "Eurocopa"],
-  ["repechaje_mundial", "Repechaje"],
-];
-
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
 
 function obtenerValor(fila, key) {
@@ -145,23 +103,20 @@ function formatearFechaHora(raw) {
 function Navbar() {
   return (
     <nav style={{ background: C.blueNav, borderBottom: "2px solid #1e3a8a" }}>
-  <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
-    <a href="/" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "4px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "8px" }}>
-      <img 
-        src="/logo.png" 
-        alt="Secanuca" 
-        style={{ height: "42px", width: "auto", objectFit: "contain", display: "block" }} 
-        onError={e => { e.currentTarget.style.display = "none"; }} 
-      />
-      <span style={{ lineHeight: 1 }}></span>
-    </a>  
-    {[["/" , "Inicio"], ["/posiciones?competition=argentina","Posiciones"], ["/posiciones?competition=libertadores","Libertadores"], ["/posiciones?competition=champions","Champions"]].map(([href, label]) => (
-      <a key={href} href={href} style={{ color: "#bfdbfe", fontSize: 11, padding: "7px 10px", textDecoration: "none", borderRight: "1px solid #2563eb" }}>
-        {label}
-      </a>
-    ))}
-  </div>
-</nav>
+      <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
+        <Link href="/" aria-label="ChiquiFútbol, inicio" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "4px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
+          <img
+            src="/logo.png"
+            alt="Secanuca"
+            style={{ height: "42px", width: "auto", objectFit: "contain", display: "block" }}
+            onError={e => { e.currentTarget.style.display = "none"; }}
+          />
+        </Link>
+        <Link href="/arbitros" style={{ color: "#bfdbfe", fontSize: 11, padding: "7px 10px", textDecoration: "none", borderRight: "1px solid #2563eb", marginLeft: "auto" }}>
+          ÁRBITROS
+        </Link>
+      </div>
+    </nav>
   );
 }
 
@@ -681,7 +636,7 @@ function PosicionesContent() {
 
         {/* NAV COMPETENCIAS */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
-          {NAV_ITEMS.map(([key, label]) => (
+          {COMPETITION_ITEMS.map(({ key, label }) => (
             <Link key={key} href={`/posiciones?competition=${key}`} style={{
               background:     competition === key ? C.blueNav : C.surface,
               border:         `1px solid ${competition === key ? C.blue : C.border}`,

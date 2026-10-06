@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
+import CompetitionsMenu from "./components/CompetitionsMenu.js";
 
 // ─── PALETA (misma que posiciones) ───────────────────────────────────────────
 const C = {
@@ -1195,7 +1196,10 @@ export default function Home() {
         onError={e => { e.currentTarget.style.display = "none"; }} 
       />
     </a>
-    <Link href="/arbitros" style={{ ...S.navLink, marginLeft: "auto", borderLeft: "1px solid #2563eb" }}>
+    <div style={{ marginLeft: "auto" }}>
+      <CompetitionsMenu />
+    </div>
+    <Link href="/arbitros" style={{ ...S.navLink, borderLeft: "1px solid #2563eb" }}>
       ÁRBITROS
     </Link>
   </div>
