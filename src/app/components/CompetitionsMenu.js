@@ -9,7 +9,6 @@ const SHORTCUT_KEYS = [
   "copa_argentina",
   "libertadores",
   "sudamericana",
-  "premier_league",
 ];
 
 const COMPETITION_GROUPS = [
