@@ -45,6 +45,7 @@ export default function RefereesPage() {
   const [refereeText, setRefereeText] = useState("");
   const [teamText, setTeamText] = useState("");
   const [selectedReferee, setSelectedReferee] = useState("");
+  const [showRefereeList, setShowRefereeList] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState("");
   const [season, setSeason] = useState("");
   const [stats, setStats] = useState(null);
@@ -72,6 +73,11 @@ export default function RefereesPage() {
     if (!query || selectedReferee) return [];
     return options.referees.filter(name => normalize(name).includes(query)).slice(0, 8);
   }, [options.referees, refereeText, selectedReferee]);
+
+  const visibleReferees = useMemo(() => {
+    const query = normalize(refereeText);
+    return options.referees.filter(name => !query || normalize(name).includes(query));
+  }, [options.referees, refereeText]);
 
   const teamsForReferee = options.teamsByReferee[selectedReferee] || EMPTY_TEAMS;
   const teamSuggestions = useMemo(() => {
@@ -109,6 +115,7 @@ export default function RefereesPage() {
   function elegirArbitro(name) {
     setSelectedReferee(name);
     setRefereeText(name);
+    setShowRefereeList(false);
     setSelectedTeam("");
     setTeamText("");
     setStats(null);
@@ -149,21 +156,58 @@ export default function RefereesPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "12px" }}>
             <div style={{ position: "relative" }}>
               <label htmlFor="referee-search" style={{ display: "block", marginBottom: "5px", color: colors.text, fontWeight: "bold" }}>1. Buscá un árbitro</label>
-              <input
-                id="referee-search"
-                value={refereeText}
-                onChange={event => {
-                  setRefereeText(event.target.value);
-                  setSelectedReferee("");
-                  setSelectedTeam("");
-                  setTeamText("");
-                  setStats(null);
-                }}
-                placeholder={loadingOptions ? "Cargando árbitros..." : "Ej.: Nazareno Arasa"}
-                autoComplete="off"
-                style={controlStyle}
-              />
-              {refereeSuggestions.length > 0 && (
+              <div style={{ display: "flex", gap: "5px" }}>
+                <input
+                  id="referee-search"
+                  value={refereeText}
+                  onChange={event => {
+                    setRefereeText(event.target.value);
+                    setSelectedReferee("");
+                    setSelectedTeam("");
+                    setTeamText("");
+                    setStats(null);
+                  }}
+                  placeholder={loadingOptions ? "Cargando árbitros..." : "Ej.: Nazareno Arasa"}
+                  autoComplete="off"
+                  style={{ ...controlStyle, flex: 1, minWidth: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRefereeList(open => !open)}
+                  disabled={loadingOptions || options.referees.length === 0}
+                  aria-label={showRefereeList ? "Ocultar lista de árbitros" : "Mostrar todos los árbitros"}
+                  aria-expanded={showRefereeList}
+                  aria-controls="referee-list"
+                  style={{
+                    minHeight: "40px",
+                    padding: "0 12px",
+                    color: colors.text,
+                    background: colors.surfaceAlt,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: "4px",
+                    cursor: loadingOptions || options.referees.length === 0 ? "not-allowed" : "pointer",
+                    opacity: loadingOptions || options.referees.length === 0 ? 0.55 : 1,
+                    fontSize: "16px",
+                  }}
+                >
+                  {showRefereeList ? "▲" : "▼"}
+                </button>
+              </div>
+              {showRefereeList && (
+                <div id="referee-list" role="group" aria-label="Todos los árbitros" style={{ position: "absolute", zIndex: 2, top: "100%", left: 0, right: 0, maxHeight: "260px", overflowY: "auto", background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: "0 6px 16px #0008" }}>
+                  <div style={{ position: "sticky", top: 0, padding: "7px 10px", color: colors.muted, background: colors.surfaceAlt, borderBottom: `1px solid ${colors.borderSub}`, fontSize: "11px" }}>
+                    {refereeText.trim()
+                      ? `${visibleReferees.length} árbitro${visibleReferees.length === 1 ? "" : "s"} encontrado${visibleReferees.length === 1 ? "" : "s"}`
+                      : `${visibleReferees.length} árbitros disponibles`}
+                  </div>
+                  {visibleReferees.length > 0 ? visibleReferees.map(name => (
+                    <button key={name} type="button" onClick={() => elegirArbitro(name)} style={{ display: "block", width: "100%", padding: "9px 10px", color: colors.text, textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${colors.borderSub}`, cursor: "pointer" }}>{name}</button>
+                  )) : (
+                    <div style={{ padding: "10px", color: colors.muted }}>No hay árbitros que coincidan con la búsqueda.</div>
+                  )}
+                </div>
+              )}
+              {!showRefereeList && refereeSuggestions.length > 0 && (
                 <div role="group" aria-label="Árbitros encontrados" style={{ position: "absolute", zIndex: 2, top: "100%", left: 0, right: 0, maxHeight: "220px", overflowY: "auto", background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: "0 6px 16px #0008" }}>
                   {refereeSuggestions.map(name => (
                     <button key={name} type="button" onClick={() => elegirArbitro(name)} style={{ display: "block", width: "100%", padding: "9px 10px", color: colors.text, textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${colors.borderSub}`, cursor: "pointer" }}>{name}</button>
