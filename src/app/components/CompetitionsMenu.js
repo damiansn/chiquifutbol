@@ -12,6 +12,36 @@ const SHORTCUT_KEYS = [
   "premier_league",
 ];
 
+const COMPETITION_GROUPS = [
+  {
+    label: "ARGENTINA",
+    keys: ["argentina", "copa_argentina", "primera_nacional", "primera_b_metro", "primera_c", "reserva"],
+  },
+  {
+    label: "AMÉRICA",
+    keys: [
+      "libertadores", "sudamericana", "brasil", "chile", "colombia", "mexico",
+      "paraguay", "uruguay", "mls",
+    ],
+  },
+  {
+    label: "EUROPA",
+    keys: [
+      "premier_league", "laliga", "serie_a", "bundesliga", "ligue_1", "liga_portugal",
+      "champions", "europa_league", "conference_league", "fa_cup", "efl_cup",
+      "copa_del_rey", "supercopa_espana", "coppa_italia", "supercoppa_italiana",
+      "dfb_pokal", "coupe_de_france",
+    ],
+  },
+  {
+    label: "SELECCIONES",
+    keys: [
+      "copa_america", "euro", "eliminatorias_conmebol", "eliminatorias_uefa",
+      "eliminatorias_concacaf", "nations_league", "u20_world_cup", "repechaje_mundial",
+    ],
+  },
+];
+
 function normalize(value) {
   return String(value || "")
     .normalize("NFD")
@@ -34,6 +64,7 @@ export default function CompetitionsMenu({ compact = false, activeCompetition = 
       normalize(`${key} ${label} ${name} ${searchTerms.join(" ")}`).includes(normalizedQuery)
     )
     : COMPETITION_ITEMS;
+  const competitionsByKey = new Map(filteredCompetitions.map(item => [item.key, item]));
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -75,11 +106,17 @@ export default function CompetitionsMenu({ compact = false, activeCompetition = 
           aria-expanded={isOpen}
           aria-controls="competition-panel"
         >
-          <svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none">
-            <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.7" />
-            <path d="m13 13 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" />
-          </svg>
-          <span>{compact ? "TODAS" : "TODAS LAS COMPETENCIAS"}</span>
+          {isOpen ? (
+            <svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none">
+              <path d="m4 12 6-6 6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" />
+            </svg>
+          ) : (
+            <svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none">
+              <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.7" />
+              <path d="m13 13 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square" />
+            </svg>
+          )}
+          <span>{isOpen ? (compact ? "CERRAR" : "MENOS") : (compact ? "TODAS" : "TODAS LAS COMPETENCIAS")}</span>
         </button>
       </nav>
 
@@ -107,21 +144,36 @@ export default function CompetitionsMenu({ compact = false, activeCompetition = 
           <div className="competition-results-meta" aria-live="polite">
             {filteredCompetitions.length} {filteredCompetitions.length === 1 ? "competencia" : "competencias"}
           </div>
-          <div className="competition-results">
-            {filteredCompetitions.length > 0 ? filteredCompetitions.map(({ key, name }) => (
-              <Link
-                key={key}
-                href={`/posiciones?competition=${key}`}
-                className={`competition-result${activeCompetition === key ? " competition-result-active" : ""}`}
-                onClick={cerrarPanel}
-              >
-                <span>{name}</span>
-                <span className="competition-result-arrow" aria-hidden="true">↗</span>
-              </Link>
-            )) : (
+          {filteredCompetitions.length > 0 ? (
+            <div className="competition-groups">
+              {COMPETITION_GROUPS.map(group => {
+                const items = group.keys
+                  .map(key => competitionsByKey.get(key))
+                  .filter(Boolean);
+                if (items.length === 0) return null;
+                return (
+                  <section className="competition-group" key={group.label} aria-label={group.label}>
+                    <h3 className="competition-group-title">{group.label}</h3>
+                    <div className="competition-results">
+                      {items.map(({ key, name }) => (
+                        <Link
+                          key={key}
+                          href={`/posiciones?competition=${key}`}
+                          className={`competition-result${activeCompetition === key ? " competition-result-active" : ""}`}
+                          onClick={cerrarPanel}
+                        >
+                          <span>{name}</span>
+                          <span className="competition-result-arrow" aria-hidden="true">↗</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
               <p className="competition-no-results">No se encontraron competencias con ese nombre.</p>
-            )}
-          </div>
+          )}
         </section>
       )}
     </div>

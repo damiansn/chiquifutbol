@@ -28,6 +28,8 @@ table {
 }
 
 .competition-menu {
+  position: relative;
+  z-index: 20;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -106,9 +108,18 @@ table {
   color: #bfdbfe;
 }
 
+.competition-all-button[aria-expanded="true"] {
+  border-color: #60a5fa;
+  background: #1a2b40;
+  color: #f8fafc;
+}
+
 .competition-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1;
   width: 100%;
-  margin-top: 6px;
   padding: 12px;
   border: 1px solid #263b55;
   border-top: 2px solid #3b82f6;
@@ -154,13 +165,30 @@ table {
   letter-spacing: 0.06em;
 }
 
+.competition-groups {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.competition-group + .competition-group {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #263548;
+}
+
+.competition-group-title {
+  margin-bottom: 6px;
+  color: #60a5fa;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 .competition-results {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  max-height: 320px;
-  overflow-y: auto;
-  padding: 4px 0 0;
 }
 
 .competition-result {
@@ -463,14 +491,20 @@ input {
     font-size: 10px;
   }
 
+  .competition-nav:not(.competition-nav-compact) .competition-all-button[aria-expanded="true"] span::after {
+    content: "CERRAR";
+  }
+
+  .competition-groups {
+    max-height: min(45vh, 320px);
+  }
+
   .competition-results {
     grid-template-columns: 1fr;
-    max-height: min(45vh, 320px);
     gap: 5px;
   }
 
   .competition-panel {
-    margin-top: 5px;
     padding: 9px;
   }
 
