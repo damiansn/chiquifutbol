@@ -36,6 +36,9 @@ table {
 
 .home-navbar-inner {
   width: 100%;
+  max-width: 1440px !important;
+  padding-right: 12px;
+  padding-left: 12px;
 }
 
 .competition-nav {
