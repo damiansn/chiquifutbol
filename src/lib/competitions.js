@@ -1,7 +1,7 @@
 export const COMPETITION_ITEMS = [
-  { key: "argentina", label: "Liga Argentina", name: "Liga Profesional Argentina" },
+  { key: "argentina", label: "Liga Profesional Argentina", name: "Liga Profesional Argentina" },
   { key: "copa_argentina", label: "Copa Argentina", name: "Copa Argentina" },
-  { key: "libertadores", label: "Libertadores", name: "CONMEBOL Copa Libertadores" },
+  { key: "libertadores", label: "CONMEBOL Libertadores", name: "CONMEBOL Copa Libertadores" },
   { key: "sudamericana", label: "Sudamericana", name: "CONMEBOL Copa Sudamericana" },
   { key: "champions", label: "Champions", name: "Champions League" },
   { key: "europa_league", label: "Europa League", name: "UEFA Europa League" },
@@ -24,7 +24,7 @@ export const COMPETITION_ITEMS = [
   { key: "laliga", label: "LaLiga", name: "LaLiga" },
   { key: "copa_del_rey", label: "Copa del Rey", name: "Copa del Rey" },
   { key: "supercopa_espana", label: "Supercopa ESP", name: "Supercopa de España" },
-  { key: "serie_a", label: "Serie A", name: "Serie A" },
+  { key: "serie_a", label: "Serie A", name: "Serie A", searchTerms: ["Italia", "Campeonato italiano"] },
   { key: "coppa_italia", label: "Coppa Italia", name: "Coppa Italia" },
   { key: "supercoppa_italiana", label: "Supercoppa ITA", name: "Supercoppa Italiana" },
   { key: "bundesliga", label: "Bundesliga", name: "Bundesliga" },

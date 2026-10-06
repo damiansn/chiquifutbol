@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { COMPETITION_ITEMS } from "../../lib/competitions.js";
+import CompetitionsMenu from "../components/CompetitionsMenu.js";
 
 // ─── PALETA OSCURA ────────────────────────────────────────────────────────────
 const C = {
@@ -100,7 +100,7 @@ function formatearFechaHora(raw) {
 
 // ─── NAVBAR ───────────────────────────────────────────────────────────────────
 
-function Navbar() {
+function Navbar({ competition }) {
   return (
     <nav style={{ background: C.blueNav, borderBottom: "2px solid #1e3a8a" }}>
       <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
@@ -112,6 +112,7 @@ function Navbar() {
             onError={e => { e.currentTarget.style.display = "none"; }}
           />
         </Link>
+        <CompetitionsMenu compact activeCompetition={competition} />
         <Link href="/arbitros" style={{ color: "#bfdbfe", fontSize: 11, padding: "7px 10px", textDecoration: "none", borderRight: "1px solid #2563eb", marginLeft: "auto" }}>
           ÁRBITROS
         </Link>
@@ -604,7 +605,7 @@ function PosicionesContent() {
 
   if (loading) return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
-      <Navbar />
+      <Navbar competition={competition} />
       <div style={wrapStyle}>
         <div style={{ padding: 30, textAlign: "center", color: C.textMuted, fontSize: 12 }}>Cargando posiciones...</div>
       </div>
@@ -617,7 +618,7 @@ function PosicionesContent() {
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: 11, color: C.text }}>
-      <Navbar />
+      <Navbar competition={competition} />
       <div style={wrapStyle}>
 
         {/* BREADCRUMB */}
@@ -632,24 +633,6 @@ function PosicionesContent() {
         {/* TÍTULO */}
         <div style={{ fontSize: 13, fontWeight: 800, color: C.white, borderBottom: `2px solid ${C.blueNav}`, paddingBottom: 4, marginBottom: 6 }}>
           {(data?.league?.name || compConfig.nombre).toUpperCase()}
-        </div>
-
-        {/* NAV COMPETENCIAS */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>
-          {COMPETITION_ITEMS.map(({ key, label }) => (
-            <Link key={key} href={`/posiciones?competition=${key}`} style={{
-              background:     competition === key ? C.blueNav : C.surface,
-              border:         `1px solid ${competition === key ? C.blue : C.border}`,
-              color:          competition === key ? C.white : C.textDim,
-              padding:        "3px 9px",
-              fontSize:       11,
-              fontWeight:     competition === key ? 800 : 400,
-              textDecoration: "none",
-              display:        "inline-block",
-            }}>
-              {label}
-            </Link>
-          ))}
         </div>
 
         {error && (
