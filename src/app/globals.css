@@ -400,20 +400,15 @@ input {
   }
 }
 
-@media (min-width: 601px) and (max-width: 1100px) {
-  .competition-nav {
-    flex-wrap: wrap;
-    row-gap: 5px;
+@media (min-width: 601px) and (max-width: 1200px) {
+  .home-nav-logo img {
+    height: 62px !important;
   }
 
-  .competition-shortcuts {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    overflow: visible;
-  }
-
+  .competition-pill,
   .competition-all-button {
-    margin-left: auto;
+    padding-right: 6px;
+    padding-left: 6px;
   }
 }
 
