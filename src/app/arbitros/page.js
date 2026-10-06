@@ -146,7 +146,7 @@ export default function RefereesPage() {
         <div style={{ maxWidth: "1000px", minHeight: "48px", margin: "0 auto", padding: "6px 12px", display: "flex", alignItems: "center", gap: "14px" }}>
           <Link href="/" style={{ color: colors.white, fontWeight: "bold", textDecoration: "none" }}>← CHIQUIFÚTBOL</Link>
           <span style={{ color: colors.white, fontWeight: "bold" }}>HISTORIAL POR ÁRBITRO</span>
-          <div style={{ marginLeft: "auto" }}><CompetitionsMenu compact /></div>
+          <div style={{ flex: "1 1 auto", minWidth: 0 }}><CompetitionsMenu compact /></div>
         </div>
       </header>
       <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "12px" }}>

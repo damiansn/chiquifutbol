@@ -1196,9 +1196,7 @@ export default function Home() {
         onError={e => { e.currentTarget.style.display = "none"; }} 
       />
     </a>
-    <div style={{ marginLeft: "auto" }}>
-      <CompetitionsMenu />
-    </div>
+    <CompetitionsMenu />
     <Link href="/arbitros" style={{ ...S.navLink, borderLeft: "1px solid #2563eb" }}>
       ÁRBITROS
     </Link>
