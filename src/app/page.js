@@ -1108,12 +1108,12 @@ function EscudoImg({ team }) {
       height="32"
       style={{ objectFit: "contain", verticalAlign: "middle", flexShrink: 0 }}
       onError={e => {
-        if (e.currentTarget.src.endsWith("/logo.png")) {
+        if (e.currentTarget.src.endsWith("/lost.png")) {
           e.currentTarget.style.display = "none";
           return;
         }
         e.currentTarget.onerror = null;
-        e.currentTarget.src = "/logo.png";
+        e.currentTarget.src = "/lost.png";
       }}
     />
   );
