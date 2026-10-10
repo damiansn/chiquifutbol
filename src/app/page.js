@@ -562,7 +562,7 @@ const ESCUDOS_POR_ID = {
   fajb: "iran", 
   fahi: "irak", 
   xxxx: "emiratos-arabes-unidos", 
-  faid: "Jordania", 
+  faid: "jordania", 
   xxxx: "siria", 
  xxxx: "tayikistan", 
   xxxx: "bahrein", 
