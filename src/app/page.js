@@ -779,6 +779,31 @@ function obtenerNombreJugador(value) {
   return String(value).trim();
 }
 
+function grupoPosicionJugador(posicion) {
+  const texto = String(posicion || "").toLowerCase();
+  if (/arquero|portero|goalkeeper/.test(texto)) return "arquero";
+  if (/defensor|defensa|lateral|zaguero/.test(texto)) return "defensor";
+  if (/delantero|atacante|extremo|punta/.test(texto)) return "delantero";
+  if (/mediocampista|mediocampo|volante|medio|interior/.test(texto)) return "mediocampista";
+  return "otro";
+}
+
+function obtenerApellido(nombre) {
+  const partes = String(nombre || "").trim().split(/\s+/).filter(Boolean);
+  return partes.length > 0 ? partes[partes.length - 1] : "";
+}
+
+function estiloPosicionJugador(posicion) {
+  const estilos = {
+    arquero: { color: "#fbbf24", background: "rgba(251,191,36,0.16)", border: "rgba(251,191,36,0.55)" },
+    defensor: { color: "#60a5fa", background: "rgba(96,165,250,0.16)", border: "rgba(96,165,250,0.55)" },
+    mediocampista: { color: "#4ade80", background: "rgba(74,222,128,0.16)", border: "rgba(74,222,128,0.55)" },
+    delantero: { color: "#fb7185", background: "rgba(251,113,133,0.16)", border: "rgba(251,113,133,0.55)" },
+    otro: { color: "#cbd5e1", background: "rgba(203,213,225,0.12)", border: "rgba(203,213,225,0.4)" },
+  };
+  return estilos[grupoPosicionJugador(posicion)];
+}
+
 function extraerFormacionesPartido(matchStats) {
   if (!matchStats || typeof matchStats !== "object") return [];
 
@@ -806,11 +831,15 @@ function extraerFormacionesPartido(matchStats) {
         const indiceEquipo = numeroEquipo === 1 || numeroEquipo === 2 ? numeroEquipo - 1 : index;
         const nombre = equipos[indiceEquipo]?.name || `Equipo ${indiceEquipo + 1}`;
         const id = `${nombre.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${indiceEquipo}`;
+        const entrenador = (Array.isArray(equipo?.staff) ? equipo.staff : [])
+          .find(persona => /entrenador|direcci[oó]n|director t[eé]cnico/i.test(`${persona?.formation_position || ""} ${persona?.position || ""}`));
+        const nombreEntrenador = obtenerNombreJugador(entrenador);
         return {
           id,
           nombre,
           formacion: normalizarFormacion(equipo?.formation),
           estado: equipo?.status || "",
+          entrenador: obtenerApellido(nombreEntrenador),
           jugadores: convertirJugadores(equipo?.starting),
           suplentes: convertirJugadores(equipo?.bench),
         };
@@ -1986,57 +2015,98 @@ export default function Home() {
                       })}
                   </section>
                 )}
-                <section style={{ padding: "8px 12px 0" }}>
-                  <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>FORMACIONES</h3>
-                  {formacionesPartido.length > 0 ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
-                      {formacionesPartido.map((equipo) => (
-                        <div key={equipo.id} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: "4px", padding: "8px" }}>
-                          <div style={{ color: C.white, fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>{equipo.nombre}</div>
-                                          <div style={{ color: C.textMuted, fontSize: "9px", marginBottom: "6px" }}>
-                                            {equipo.formacion || "Formación no disponible"}
-                                            {equipo.estado ? ` · ${equipo.estado}` : ""}
-                                          </div>
-                                          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                                            {equipo.jugadores.length > 0 ? (
-                                              equipo.jugadores.map((jugador) => (
-                                                <div key={`${equipo.id}-${jugador.numero ?? jugador.nombre}`} style={{ display: "flex", alignItems: "flex-start", gap: "5px", color: C.text, fontSize: "9px" }}>
-                                                  {jugador.numero != null && <span style={{ color: C.blue, fontWeight: "bold", minWidth: "15px" }}>{jugador.numero}</span>}
-                                                  <span style={{ overflowWrap: "anywhere" }}>
-                                                    {jugador.nombre}{jugador.esCapitan ? " (C)" : ""}
-                                                    {jugador.posicion && <span style={{ display: "block", color: C.textMuted, fontSize: "8px" }}>{jugador.posicion}</span>}
-                                                  </span>
-                                                </div>
-                                              ))
-                                            ) : (
-                                              <span style={{ color: C.textMuted, fontSize: "9px" }}>Sin datos de alineación.</span>
-                                            )}
-                                          </div>
-                                          {equipo.suplentes?.length > 0 && (
-                                            <details style={{ marginTop: "7px", borderTop: `1px solid ${C.border}`, paddingTop: "5px" }}>
-                                              <summary style={{ color: C.textMuted, cursor: "pointer", fontSize: "9px" }}>Suplentes ({equipo.suplentes.length})</summary>
-                                              <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "5px" }}>
-                                                {equipo.suplentes.map((jugador) => (
-                                                  <div key={`${equipo.id}-suplente-${jugador.numero ?? jugador.nombre}`} style={{ display: "flex", gap: "5px", color: C.text, fontSize: "9px" }}>
-                                                    {jugador.numero != null && <span style={{ color: C.blue, fontWeight: "bold", minWidth: "15px" }}>{jugador.numero}</span>}
-                                                    <span style={{ overflowWrap: "anywhere" }}>
-                                                      {jugador.nombre}
-                                                      {jugador.posicion && <span style={{ display: "block", color: C.textMuted, fontSize: "8px" }}>{jugador.posicion}</span>}
-                                                    </span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </details>
+                <details style={{ margin: "8px 12px 0", border: `1px solid ${C.border}`, borderRadius: "4px", background: C.surfaceAlt }}>
+                  <summary style={{ padding: "8px 10px", color: C.white, background: C.blueNav, cursor: "pointer", fontSize: "11px", fontWeight: "bold" }}>
+                    FORMACIONES
+                  </summary>
+                  <div style={{ padding: "8px" }}>
+                    {formacionesPartido.length > 0 ? (
+                      <>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 10px", marginBottom: "8px" }}>
+                          {[
+                            ["Arquero", "arquero"],
+                            ["Defensor", "defensor"],
+                            ["Mediocampista", "mediocampista"],
+                            ["Delantero", "delantero"],
+                          ].map(([etiqueta, grupo]) => {
+                            const color = estiloPosicionJugador(grupo === "arquero" ? "Arquero" : grupo === "defensor" ? "Defensor" : grupo === "mediocampista" ? "Mediocampista" : "Delantero").color;
+                            return (
+                              <span key={grupo} style={{ display: "flex", alignItems: "center", gap: "4px", color: C.textMuted, fontSize: "8px" }}>
+                                <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: color }} />
+                                {etiqueta}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
+                          {formacionesPartido.map(equipo => (
+                            <div key={equipo.id} style={{ minWidth: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: "4px", padding: "8px" }}>
+                              <div style={{ color: C.white, fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>{equipo.nombre}</div>
+                              <div style={{ color: C.textMuted, fontSize: "9px", marginBottom: "6px" }}>
+                                {equipo.formacion || "Formación no disponible"}
+                                {equipo.estado ? ` · ${equipo.estado}` : ""}
+                              </div>
+                              {equipo.entrenador && (
+                                <div style={{ marginBottom: "7px", padding: "5px 6px", background: C.surfaceAlt, borderRadius: "3px", color: C.text, fontSize: "9px" }}>
+                                  DT: <strong>{equipo.entrenador}</strong>
+                                </div>
+                              )}
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {equipo.jugadores.length > 0 ? (
+                                  equipo.jugadores.map(jugador => {
+                                    const color = estiloPosicionJugador(jugador.posicion);
+                                    return (
+                                      <div key={`${equipo.id}-${jugador.numero ?? jugador.nombre}`} style={{ display: "flex", alignItems: "flex-start", gap: "5px", color: C.text, fontSize: "9px" }}>
+                                        {jugador.numero != null && (
+                                          <span style={{ minWidth: "19px", padding: "1px 2px", border: `1px solid ${color.border}`, borderRadius: "3px", background: color.background, color: color.color, fontWeight: "bold", textAlign: "center" }}>
+                                            {jugador.numero}
+                                          </span>
+                                        )}
+                                        <span style={{ overflowWrap: "anywhere" }}>
+                                          {jugador.nombre}{jugador.esCapitan ? " (C)" : ""}
+                                          {jugador.posicion && <span style={{ display: "block", color: color.color, fontSize: "8px" }}>{jugador.posicion}</span>}
+                                        </span>
+                                      </div>
+                                    );
+                                  })
+                                ) : (
+                                  <span style={{ color: C.textMuted, fontSize: "9px" }}>Sin datos de alineación.</span>
+                                )}
+                              </div>
+                              {equipo.suplentes?.length > 0 && (
+                                <details style={{ marginTop: "7px", borderTop: `1px solid ${C.border}`, paddingTop: "5px" }}>
+                                  <summary style={{ color: C.textMuted, cursor: "pointer", fontSize: "9px" }}>Suplentes ({equipo.suplentes.length})</summary>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "5px" }}>
+                                    {equipo.suplentes.map(jugador => {
+                                      const color = estiloPosicionJugador(jugador.posicion);
+                                      return (
+                                        <div key={`${equipo.id}-suplente-${jugador.numero ?? jugador.nombre}`} style={{ display: "flex", alignItems: "flex-start", gap: "5px", color: C.text, fontSize: "9px" }}>
+                                          {jugador.numero != null && (
+                                            <span style={{ minWidth: "19px", padding: "1px 2px", border: `1px solid ${color.border}`, borderRadius: "3px", background: color.background, color: color.color, fontWeight: "bold", textAlign: "center" }}>
+                                              {jugador.numero}
+                                            </span>
                                           )}
+                                          <span style={{ overflowWrap: "anywhere" }}>
+                                            {jugador.nombre}
+                                            {jugador.posicion && <span style={{ display: "block", color: color.color, fontSize: "8px" }}>{jugador.posicion}</span>}
+                                          </span>
                                         </div>
-                                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: "4px", padding: "8px", color: C.textMuted, fontSize: "10px" }}>
-                      {hayDatosFormaciones ? "Cargando formaciones..." : "No hay formaciones disponibles para este partido."}
-                    </div>
-                  )}
-                </section>
+                                      );
+                                    })}
+                                  </div>
+                                </details>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ color: C.textMuted, fontSize: "10px" }}>
+                        {hayDatosFormaciones ? "Cargando formaciones..." : "No hay formaciones disponibles para este partido."}
+                      </div>
+                    )}
+                  </div>
+                </details>
                 <section style={{ padding: "8px 12px 12px" }}>
                   <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>MINUTO A MINUTO</h3>
                   {Array.isArray(matchStats?.events) && matchStats.events.length > 0 ? (
