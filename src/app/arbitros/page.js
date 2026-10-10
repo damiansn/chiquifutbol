@@ -144,7 +144,7 @@ export default function RefereesPage() {
     <main style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: "Arial, Tahoma, Verdana, sans-serif", fontSize: "12px" }}>
       <header style={{ background: colors.blueDark, borderBottom: "2px solid #1e3a8a" }}>
         <div className="referee-navbar-inner" style={{ maxWidth: "1000px", minHeight: "48px", margin: "0 auto", padding: "6px 12px", display: "flex", alignItems: "center", gap: "14px" }}>
-          <Link href="/" className="referee-home-link" style={{ color: colors.white, fontWeight: "bold", textDecoration: "none" }}>← CHIQUIFÚTBOL</Link>
+          <Link href="/" className="referee-home-link" style={{ color: colors.white, fontWeight: "bold", textDecoration: "none" }}>← SECANUCA</Link>
           <span className="referee-title" style={{ color: colors.white, fontWeight: "bold" }}>HISTORIAL POR ÁRBITRO</span>
           <div className="referee-competitions"><CompetitionsMenu compact /></div>
         </div>

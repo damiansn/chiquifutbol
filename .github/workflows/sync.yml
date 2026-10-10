@@ -1,4 +1,4 @@
-name: Sincronizar Promiedos
+name: Sincronizar datos de Secanuca
 
 on:
   schedule:

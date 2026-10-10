@@ -104,7 +104,7 @@ function Navbar({ competition }) {
   return (
     <nav style={{ background: C.blueNav, borderBottom: "2px solid #1e3a8a" }}>
       <div className="standings-navbar-inner" style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center" }}>
-        <Link href="/" className="standings-home-link" aria-label="ChiquiFútbol, inicio" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "4px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
+        <Link href="/" className="standings-home-link" aria-label="Secanuca, inicio" style={{ color: C.white, fontWeight: "bold", fontSize: 14, padding: "4px 12px", textDecoration: "none", borderRight: "1px solid #2563eb", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
           <img
             src="/logo.png"
             alt="Secanuca"
@@ -771,7 +771,7 @@ function PosicionesContent() {
         )}
 
         <div style={{ borderTop: `1px solid ${C.border}`, padding: "6px 0", textAlign: "center", color: C.textMuted, fontSize: 10, marginTop: 10 }}>
-          ChiquiFútbol &copy; {new Date().getFullYear()}
+          Secanuca &copy; {new Date().getFullYear()}
         </div>
       </div>
     </div>
@@ -784,7 +784,7 @@ export default function PosicionesPage() {
   return (
     <Suspense fallback={
       <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "Arial, sans-serif" }}>
-        <div style={{ background: C.blueNav, padding: "7px 12px", color: C.white, fontWeight: "bold", fontSize: 14 }}>⚽ ChiquiFútbol</div>
+        <div style={{ background: C.blueNav, padding: "7px 12px", color: C.white, fontWeight: "bold", fontSize: 14 }}>⚽ Secanuca</div>
         <div style={{ padding: 30, textAlign: "center", color: C.textMuted, fontSize: 12 }}>Cargando...</div>
       </div>
     }>

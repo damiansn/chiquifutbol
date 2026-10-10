@@ -1960,7 +1960,7 @@ export default function Home() {
         )}
 
         <div style={S.footer}>
-          ChiquiFútbol &copy; {new Date().getFullYear()} &mdash; Resultados en tiempo real
+          Secanuca &copy; {new Date().getFullYear()} &mdash; Resultados en tiempo real
         </div>
       </div>
       {selectedMatch && (
