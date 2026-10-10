@@ -788,6 +788,14 @@ function grupoPosicionJugador(posicion) {
   return "otro";
 }
 
+function ordenarJugadoresPorPosicion(jugadores) {
+  const orden = { arquero: 0, defensor: 1, mediocampista: 2, delantero: 3, otro: 4 };
+  return jugadores
+    .map((jugador, indice) => ({ jugador, indice, posicion: orden[grupoPosicionJugador(jugador.posicion)] }))
+    .sort((a, b) => a.posicion - b.posicion || a.indice - b.indice)
+    .map(({ jugador }) => jugador);
+}
+
 function obtenerApellido(nombre) {
   const partes = String(nombre || "").trim().split(/\s+/).filter(Boolean);
   return partes.length > 0 ? partes[partes.length - 1] : "";
@@ -840,8 +848,8 @@ function extraerFormacionesPartido(matchStats) {
           formacion: normalizarFormacion(equipo?.formation),
           estado: equipo?.status || "",
           entrenador: obtenerApellido(nombreEntrenador),
-          jugadores: convertirJugadores(equipo?.starting),
-          suplentes: convertirJugadores(equipo?.bench),
+          jugadores: ordenarJugadoresPorPosicion(convertirJugadores(equipo?.starting)),
+          suplentes: ordenarJugadoresPorPosicion(convertirJugadores(equipo?.bench)),
         };
       })
       .filter(equipo => equipo.jugadores.length > 0 || equipo.formacion);
@@ -868,14 +876,14 @@ function extraerFormacionesPartido(matchStats) {
       equipo.starting_lineup?.formation ||
       equipo.lineup_data?.formation
     );
-    const jugadores = obtenerJugadoresEquipo(equipo)
+    const jugadores = ordenarJugadoresPorPosicion(obtenerJugadoresEquipo(equipo)
       .map((jugador, idx) => {
         const nombreJugador = obtenerNombreJugador(jugador);
         if (!nombreJugador) return null;
         const numero = Number(jugador?.shirt_number ?? jugador?.number ?? jugador?.dorsal ?? jugador?.shirtNumber ?? jugador?.jersey);
         return { nombre: nombreJugador, numero: Number.isFinite(numero) ? numero : null, posicion: jugador?.position || jugador?.pos || jugador?.role || "" };
       })
-      .filter(Boolean);
+      .filter(Boolean));
 
     if (formacion || jugadores.length > 0) {
       formaciones.push({
