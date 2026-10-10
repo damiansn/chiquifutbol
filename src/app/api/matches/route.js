@@ -240,7 +240,7 @@ export async function GET(request) {
                 cache: 'no-store',
             });
             if (!response.ok) {
-                return NextResponse.json({ error: 'Promiedos no pudo cargar las estadísticas de este partido.' }, { status: 502 });
+                return NextResponse.json({ error: 'No se pudo cargar las estadísticas de este partido.' }, { status: 502 });
             }
 
             const data = await response.json();
