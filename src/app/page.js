@@ -699,6 +699,153 @@ function obtenerTV(game) {
   return Array.isArray(game?.tv_networks) ? game.tv_networks : [];
 }
 
+function normalizarFormacion(value) {
+  if (value == null || value === "") return "";
+  if (typeof value === "object") {
+    const opciones = [
+      value.formation,
+      value.name,
+      value.label,
+      value.value,
+      value.short_name,
+      value.formacion,
+      value.lineup_formation,
+      value.formation_name,
+    ];
+    for (const opcion of opciones) {
+      const formacion = normalizarFormacion(opcion);
+      if (formacion) return formacion;
+    }
+    return "";
+  }
+  const texto = String(value).trim();
+  if (!texto) return "";
+  return texto.replace(/\s*[-–—]\s*/g, "-").replace(/\s+/g, " ");
+}
+
+function obtenerJugadoresEquipo(equipo) {
+  if (!equipo || typeof equipo !== "object") return [];
+  const candidatos = [
+    equipo.players,
+    equipo.lineup,
+    equipo.lineup_players,
+    equipo.starting_xi,
+    equipo.starters,
+    equipo.squad,
+    equipo.players_list,
+    equipo.player_list,
+    equipo.lineup_data,
+    equipo.lineups,
+    equipo.startingLineup,
+  ];
+  for (const candidato of candidatos) {
+    if (Array.isArray(candidato)) return candidato;
+    if (candidato && typeof candidato === "object") {
+      const sub = [
+        candidato.players,
+        candidato.lineup,
+        candidato.starters,
+        candidato.squad,
+        candidato.players_list,
+        candidato.player_list,
+      ].find(Array.isArray);
+      if (sub) return sub;
+    }
+  }
+  return [];
+}
+
+function obtenerNombreJugador(value) {
+  if (!value) return "";
+  if (typeof value === "object") {
+    const opciones = [
+      value.name,
+      value.player_name,
+      value.player_sname,
+      value.player,
+      value.full_name,
+      value.fullName,
+      value.short_name,
+      value.sname,
+      value.playerName,
+      value.player_name_display,
+    ];
+    for (const opcion of opciones) {
+      const nombre = obtenerNombreJugador(opcion);
+      if (nombre) return nombre;
+    }
+    return "";
+  }
+  return String(value).trim();
+}
+
+function extraerFormacionesPartido(matchStats) {
+  if (!matchStats || typeof matchStats !== "object") return [];
+
+  const equipos = [
+    { nombre: nombreEquipo(obtenerEquipo(matchStats, 0) || matchStats?.teams?.[0] || matchStats?.home || matchStats?.local || matchStats?.team1 || matchStats?.home_team), raw: obtenerEquipo(matchStats, 0) || matchStats?.teams?.[0] || matchStats?.home || matchStats?.local || matchStats?.team1 || matchStats?.home_team },
+    { nombre: nombreEquipo(obtenerEquipo(matchStats, 1) || matchStats?.teams?.[1] || matchStats?.away || matchStats?.visitor || matchStats?.team2 || matchStats?.away_team), raw: obtenerEquipo(matchStats, 1) || matchStats?.teams?.[1] || matchStats?.away || matchStats?.visitor || matchStats?.team2 || matchStats?.away_team },
+  ];
+
+  const formaciones = [];
+
+  const agregarEquipo = (equipo, nombre, index) => {
+    if (!equipo || typeof equipo !== "object") return;
+    const formacion = normalizarFormacion(
+      equipo.formation ||
+      equipo.formation_name ||
+      equipo.lineup_formation ||
+      equipo.formacion ||
+      equipo.lineup?.formation ||
+      equipo.lineups?.formation ||
+      equipo.starting_lineup?.formation ||
+      equipo.lineup_data?.formation
+    );
+    const jugadores = obtenerJugadoresEquipo(equipo)
+      .map((jugador, idx) => {
+        const nombreJugador = obtenerNombreJugador(jugador);
+        if (!nombreJugador) return null;
+        const numero = Number(jugador?.shirt_number ?? jugador?.number ?? jugador?.dorsal ?? jugador?.shirtNumber ?? jugador?.jersey);
+        return { nombre: nombreJugador, numero: Number.isFinite(numero) ? numero : null, posicion: jugador?.position || jugador?.pos || jugador?.role || "" };
+      })
+      .filter(Boolean);
+
+    if (formacion || jugadores.length > 0) {
+      formaciones.push({
+        id: `${(nombre || `equipo-${index}`).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${index}`,
+        nombre: nombre || `Equipo ${index + 1}`,
+        formacion,
+        jugadores,
+      });
+    }
+  };
+
+  equipos.forEach(({ nombre, raw }, index) => agregarEquipo(raw, nombre, index));
+
+  const directos = [
+    matchStats?.lineups?.home,
+    matchStats?.lineups?.local,
+    matchStats?.lineups?.team1,
+    matchStats?.lineups?.away,
+    matchStats?.lineups?.visitor,
+    matchStats?.lineups?.team2,
+    matchStats?.lineup?.home,
+    matchStats?.lineup?.local,
+    matchStats?.lineup?.team1,
+    matchStats?.lineup?.away,
+    matchStats?.lineup?.visitor,
+    matchStats?.lineup?.team2,
+  ].filter(Boolean);
+
+  directos.forEach((equipo, index) => {
+    if (formaciones[index] && formaciones[index].nombre) return;
+    const nombreEquipoDirecto = nombreEquipo(equipo?.team || equipo?.club || equipo?.equipo || equipo?.name || equipo?.team_name || equipo?.teamName || equipo?.club_name) || `Equipo ${index + 1}`;
+    agregarEquipo(equipo, nombreEquipoDirecto, index);
+  });
+
+  return formaciones.slice(0, 2);
+}
+
 function extraerPenalesDesdeTexto(texto) {
   if (typeof texto !== "string") return null;
 
@@ -1135,6 +1282,7 @@ export default function Home() {
   const [matchStats, setMatchStats] = useState(null);
   const [matchStatsLoading, setMatchStatsLoading] = useState(false);
   const [matchStatsError, setMatchStatsError] = useState("");
+  const formacionesPartido = extraerFormacionesPartido(matchStats);
 
   function seleccionarPartido(game, league, estado) {
     setSelectedMatch({
@@ -1797,6 +1945,31 @@ export default function Home() {
                           </div>
                         );
                       })}
+                  </section>
+                )}
+                {formacionesPartido.length > 0 && (
+                  <section style={{ padding: "8px 12px 0" }}>
+                    <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>FORMACIONES</h3>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
+                      {formacionesPartido.map((equipo) => (
+                        <div key={equipo.id} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: "4px", padding: "8px" }}>
+                          <div style={{ color: C.white, fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>{equipo.nombre}</div>
+                          <div style={{ color: C.textMuted, fontSize: "9px", marginBottom: "6px" }}>{equipo.formacion || "Formación no disponible"}</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                            {equipo.jugadores.length > 0 ? (
+                              equipo.jugadores.map((jugador) => (
+                                <div key={`${equipo.id}-${jugador.nombre}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", color: C.text, fontSize: "9px" }}>
+                                  <span style={{ overflowWrap: "anywhere" }}>{jugador.nombre}</span>
+                                  {jugador.numero != null && <span style={{ color: C.textMuted, fontWeight: "bold" }}>{jugador.numero}</span>}
+                                </div>
+                              ))
+                            ) : (
+                              <span style={{ color: C.textMuted, fontSize: "9px" }}>Sin datos de alineación.</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </section>
                 )}
                 <section style={{ padding: "8px 12px 12px" }}>
