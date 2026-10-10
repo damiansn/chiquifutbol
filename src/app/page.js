@@ -784,7 +784,7 @@ function grupoPosicionJugador(posicion) {
   if (/arquero|portero|goalkeeper/.test(texto)) return "arquero";
   if (/defensor|defensa|lateral|zaguero/.test(texto)) return "defensor";
   if (/delantero|atacante|extremo|punta/.test(texto)) return "delantero";
-  if (/mediocampista|mediocampo|volante|medio|interior/.test(texto)) return "mediocampista";
+  if (/centrocampista|mediocampista|mediocampo|volante|medio|interior/.test(texto)) return "mediocampista";
   return "otro";
 }
 
@@ -2026,7 +2026,7 @@ export default function Home() {
                           {[
                             ["Arquero", "arquero"],
                             ["Defensor", "defensor"],
-                            ["Mediocampista", "mediocampista"],
+                            ["Centrocampista", "mediocampista"],
                             ["Delantero", "delantero"],
                           ].map(([etiqueta, grupo]) => {
                             const color = estiloPosicionJugador(grupo === "arquero" ? "Arquero" : grupo === "defensor" ? "Defensor" : grupo === "mediocampista" ? "Mediocampista" : "Delantero").color;
