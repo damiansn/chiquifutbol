@@ -33,7 +33,6 @@ const S = {
   wrap:          { maxWidth: "1000px", margin: "0 auto", padding: "4px", background: C.bg },
   topBar:        { background: C.surface, color: C.text, fontSize: "10px", padding: "4px 6px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}` },
   dateBar:       { display: "flex", gap: "3px", alignItems: "center", padding: "4px 6px", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt },
-  refreshBtn:    { background: C.blueNav, border: `1px solid ${C.blue}`, color: C.white, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
   dateBtn:       { background: C.surface, border: `1px solid ${C.border}`, color: C.textDim, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
   dateBtnActive: { background: C.blueNav, border: `1px solid ${C.blue}`, color: C.white, padding: "2px 10px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" },
   grid:          { display: "flex", flexDirection: "column" },
@@ -1345,7 +1344,6 @@ export default function Home() {
   const [date, setDate] = useState("today");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actualizando, setActualizando] = useState(false);
   const [error, setError] = useState("");
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [search, setSearch] = useState("");
@@ -1447,15 +1445,6 @@ export default function Home() {
       setError(err.message || "Error cargando partidos.");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function actualizarPartidos() {
-    setActualizando(true);
-    try {
-      await cargarPartidos();
-    } finally {
-      setActualizando(false);
     }
   }
 
@@ -1735,16 +1724,6 @@ export default function Home() {
               {labelFecha()}
             </span>
           )}
-          <button
-            type="button"
-            className="match-refresh-button"
-            style={S.refreshBtn}
-            onClick={actualizarPartidos}
-            disabled={actualizando}
-            aria-label={actualizando ? "Actualizando partidos" : "Actualizar partidos"}
-          >
-            {actualizando ? "ACTUALIZANDO..." : "↻ ACTUALIZAR"}
-          </button>
         </div>
 
         {/* FILTROS DE LIGAS */}
@@ -1890,9 +1869,9 @@ export default function Home() {
                                 }}
                               >
                                 {/* LOCAL */}
-                                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "3px", minWidth: 0, flex: 1 }}>
+                                <div className="match-team-side match-team-home" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "3px", minWidth: 0, flex: 1 }}>
                                   {rojasA > 0 && Array.from({ length: rojasA }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
-                                  <span className="match-team-name" style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamA)}</span>
+                                  <span className="match-team-name" style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text }}>{nombreEquipo(teamA)}</span>
                                   <EscudoImg team={teamA} />
                                 </div>
                                 {/* MARCADOR */}
@@ -1904,9 +1883,9 @@ export default function Home() {
                                       : `${scoreA} - ${scoreB}`}
                                 </div>
                                 {/* VISITANTE */}
-                                <div style={{ display: "flex", alignItems: "center", gap: "3px", minWidth: 0, flex: 1 }}>
+                                <div className="match-team-side match-team-away" style={{ display: "flex", alignItems: "center", gap: "3px", minWidth: 0, flex: 1 }}>
                                   <EscudoImg team={teamB} />
-                                  <span className="match-team-name" style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombreEquipo(teamB)}</span>
+                                  <span className="match-team-name" style={{ fontWeight: "bold", fontSize: "11px", color: isLive ? C.green : C.text }}>{nombreEquipo(teamB)}</span>
                                   {rojasB > 0 && Array.from({ length: rojasB }).map((_, k) => <span key={k} style={S.redCard} title="Tarjeta roja" />)}
                                 </div>
                               </LineaPartido>

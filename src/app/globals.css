@@ -342,18 +342,8 @@ input {
 }
 
 .match-date-button,
-.match-refresh-button,
 .match-date-picker {
   min-height: 36px;
-}
-
-.match-refresh-button {
-  margin-left: auto;
-}
-
-.match-refresh-button:disabled {
-  cursor: wait;
-  opacity: 0.7;
 }
 
 .match-clear-leagues {
@@ -577,11 +567,6 @@ input {
     margin-left: 0 !important;
   }
 
-  .match-refresh-button {
-    flex: 1 0 100%;
-    margin-left: 0;
-  }
-
   .match-league-filters {
     flex-wrap: nowrap !important;
     overflow-x: auto;
@@ -628,9 +613,28 @@ input {
     font-size: 12px !important;
   }
 
+  .match-team-side {
+    flex-basis: 0;
+  }
+
+  .match-team-name {
+    min-width: 0;
+    flex: 1 1 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .match-team-home .match-team-name {
+    text-align: right;
+  }
+
+  .match-team-away .match-team-name {
+    text-align: left;
+  }
+
   .match-league-filter-toggle,
-  .match-date-button,
-  .match-refresh-button {
+  .match-date-button {
     min-height: 40px;
   }
 }
