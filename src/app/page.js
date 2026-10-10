@@ -782,6 +782,44 @@ function obtenerNombreJugador(value) {
 function extraerFormacionesPartido(matchStats) {
   if (!matchStats || typeof matchStats !== "object") return [];
 
+  const lineups = matchStats?.players?.lineups;
+  if (Array.isArray(lineups?.teams) && lineups.teams.length > 0) {
+    const equipos = Array.isArray(matchStats.teams) ? matchStats.teams : [];
+    const convertirJugadores = jugadores => (Array.isArray(jugadores) ? jugadores : [])
+      .map(jugador => {
+        const nombre = obtenerNombreJugador(jugador);
+        if (!nombre) return null;
+        const rawNumero = jugador?.jersey_num ?? jugador?.shirt_number ?? jugador?.number ?? jugador?.dorsal;
+        const numero = rawNumero == null || rawNumero === "" ? null : Number(rawNumero);
+        return {
+          nombre,
+          numero: Number.isFinite(numero) ? numero : null,
+          posicion: jugador?.formation_position || jugador?.position || "",
+          esCapitan: Boolean(jugador?.is_captain),
+        };
+      })
+      .filter(Boolean);
+
+    const formaciones = lineups.teams
+      .map((equipo, index) => {
+        const numeroEquipo = Number(equipo?.team_num);
+        const indiceEquipo = numeroEquipo === 1 || numeroEquipo === 2 ? numeroEquipo - 1 : index;
+        const nombre = equipos[indiceEquipo]?.name || `Equipo ${indiceEquipo + 1}`;
+        const id = `${nombre.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${indiceEquipo}`;
+        return {
+          id,
+          nombre,
+          formacion: normalizarFormacion(equipo?.formation),
+          estado: equipo?.status || "",
+          jugadores: convertirJugadores(equipo?.starting),
+          suplentes: convertirJugadores(equipo?.bench),
+        };
+      })
+      .filter(equipo => equipo.jugadores.length > 0 || equipo.formacion);
+
+    if (formaciones.length > 0) return formaciones.slice(0, 2);
+  }
+
   const equipos = [
     { nombre: nombreEquipo(obtenerEquipo(matchStats, 0) || matchStats?.teams?.[0] || matchStats?.home || matchStats?.local || matchStats?.team1 || matchStats?.home_team), raw: obtenerEquipo(matchStats, 0) || matchStats?.teams?.[0] || matchStats?.home || matchStats?.local || matchStats?.team1 || matchStats?.home_team },
     { nombre: nombreEquipo(obtenerEquipo(matchStats, 1) || matchStats?.teams?.[1] || matchStats?.away || matchStats?.visitor || matchStats?.team2 || matchStats?.away_team), raw: obtenerEquipo(matchStats, 1) || matchStats?.teams?.[1] || matchStats?.away || matchStats?.visitor || matchStats?.team2 || matchStats?.away_team },
@@ -1283,6 +1321,7 @@ export default function Home() {
   const [matchStatsLoading, setMatchStatsLoading] = useState(false);
   const [matchStatsError, setMatchStatsError] = useState("");
   const formacionesPartido = extraerFormacionesPartido(matchStats);
+  const hayDatosFormaciones = Array.isArray(matchStats?.lineups) || Array.isArray(matchStats?.lineup) || Boolean(matchStats?.players?.lineups || matchStats?.lineups || matchStats?.lineup || matchStats?.formation || matchStats?.starting_xi) || formacionesPartido.length > 0;
 
   function seleccionarPartido(game, league, estado) {
     setSelectedMatch({
@@ -1947,31 +1986,57 @@ export default function Home() {
                       })}
                   </section>
                 )}
-                {formacionesPartido.length > 0 && (
-                  <section style={{ padding: "8px 12px 0" }}>
-                    <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>FORMACIONES</h3>
+                <section style={{ padding: "8px 12px 0" }}>
+                  <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>FORMACIONES</h3>
+                  {formacionesPartido.length > 0 ? (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
                       {formacionesPartido.map((equipo) => (
                         <div key={equipo.id} style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: "4px", padding: "8px" }}>
                           <div style={{ color: C.white, fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>{equipo.nombre}</div>
-                          <div style={{ color: C.textMuted, fontSize: "9px", marginBottom: "6px" }}>{equipo.formacion || "Formación no disponible"}</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                            {equipo.jugadores.length > 0 ? (
-                              equipo.jugadores.map((jugador) => (
-                                <div key={`${equipo.id}-${jugador.nombre}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", color: C.text, fontSize: "9px" }}>
-                                  <span style={{ overflowWrap: "anywhere" }}>{jugador.nombre}</span>
-                                  {jugador.numero != null && <span style={{ color: C.textMuted, fontWeight: "bold" }}>{jugador.numero}</span>}
-                                </div>
-                              ))
-                            ) : (
-                              <span style={{ color: C.textMuted, fontSize: "9px" }}>Sin datos de alineación.</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                                          <div style={{ color: C.textMuted, fontSize: "9px", marginBottom: "6px" }}>
+                                            {equipo.formacion || "Formación no disponible"}
+                                            {equipo.estado ? ` · ${equipo.estado}` : ""}
+                                          </div>
+                                          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                            {equipo.jugadores.length > 0 ? (
+                                              equipo.jugadores.map((jugador) => (
+                                                <div key={`${equipo.id}-${jugador.numero ?? jugador.nombre}`} style={{ display: "flex", alignItems: "flex-start", gap: "5px", color: C.text, fontSize: "9px" }}>
+                                                  {jugador.numero != null && <span style={{ color: C.blue, fontWeight: "bold", minWidth: "15px" }}>{jugador.numero}</span>}
+                                                  <span style={{ overflowWrap: "anywhere" }}>
+                                                    {jugador.nombre}{jugador.esCapitan ? " (C)" : ""}
+                                                    {jugador.posicion && <span style={{ display: "block", color: C.textMuted, fontSize: "8px" }}>{jugador.posicion}</span>}
+                                                  </span>
+                                                </div>
+                                              ))
+                                            ) : (
+                                              <span style={{ color: C.textMuted, fontSize: "9px" }}>Sin datos de alineación.</span>
+                                            )}
+                                          </div>
+                                          {equipo.suplentes?.length > 0 && (
+                                            <details style={{ marginTop: "7px", borderTop: `1px solid ${C.border}`, paddingTop: "5px" }}>
+                                              <summary style={{ color: C.textMuted, cursor: "pointer", fontSize: "9px" }}>Suplentes ({equipo.suplentes.length})</summary>
+                                              <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "5px" }}>
+                                                {equipo.suplentes.map((jugador) => (
+                                                  <div key={`${equipo.id}-suplente-${jugador.numero ?? jugador.nombre}`} style={{ display: "flex", gap: "5px", color: C.text, fontSize: "9px" }}>
+                                                    {jugador.numero != null && <span style={{ color: C.blue, fontWeight: "bold", minWidth: "15px" }}>{jugador.numero}</span>}
+                                                    <span style={{ overflowWrap: "anywhere" }}>
+                                                      {jugador.nombre}
+                                                      {jugador.posicion && <span style={{ display: "block", color: C.textMuted, fontSize: "8px" }}>{jugador.posicion}</span>}
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </details>
+                                          )}
+                                        </div>
+                                      ))}
                     </div>
-                  </section>
-                )}
+                  ) : (
+                    <div style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: "4px", padding: "8px", color: C.textMuted, fontSize: "10px" }}>
+                      {hayDatosFormaciones ? "Cargando formaciones..." : "No hay formaciones disponibles para este partido."}
+                    </div>
+                  )}
+                </section>
                 <section style={{ padding: "8px 12px 12px" }}>
                   <h3 style={{ margin: "0 0 6px", color: C.white, fontSize: "11px" }}>MINUTO A MINUTO</h3>
                   {Array.isArray(matchStats?.events) && matchStats.events.length > 0 ? (
